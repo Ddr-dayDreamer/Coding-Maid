@@ -50,8 +50,17 @@ Technical guide for the Deep Code VS Code extension as implemented in the curren
 deepcode/
 ├── src/
 │   ├── extension.ts                 # VS Code activation + webview wiring
-│   ├── session.ts                   # Session manager, storage, status, skills
-│   ├── prompt.ts                    # System prompt and tool definitions
+│   ├── session.ts                   # [编排器] 会话生命周期协调，委托子模块
+│   ├── session-types.ts             # [新增] 所有会话相关类型定义
+│   ├── session-storage.ts           # [新增] 会话持久化（索引 JSON + 消息 JSONL）
+│   ├── session-file-history.ts      # [新增] 文件变更可撤回（Git checkpoint）
+│   ├── session-process.ts           # [新增] 子进程追踪与超时控制
+│   ├── session-skills.ts            # [新增] 技能发现、匹配、加载
+│   ├── session-message-builder.ts   # [新增] 消息构建 + OpenAI API 消息装配
+│   ├── session-activator.ts         # [新增] LLM 主循环 + 上下文压缩
+│   ├── session-notify.ts            # [新增] 提示上报 + 任务完成通知
+│   ├── llm-stream.ts                # [新增] LLM 流式通信封装
+│   ├── prompt.ts                    # System prompt 和工具定义
 │   └── tools/
 │       ├── executor.ts              # Tool dispatch
 │       ├── bash-handler.ts          # Persistent shell execution
@@ -61,7 +70,7 @@ deepcode/
 │       ├── ask-user-question-handler.ts
 │       └── state.ts                 # Read/snippet tracking for tool safety
 ├── resources/
-│   ├── webview.html                 # Webview markup and frontend logic
+│   ├── webview.html                 # [TODO: 需拆分] ~1500行，单文件过大
 │   ├── webview.css                  # Webview styles
 │   └── deepcoding_icon.png
 ├── docs/
@@ -105,14 +114,28 @@ Responsible for:
 
 ### SessionManager
 
-**Location**: `src/session.ts`
+**Location**: `src/session.ts`（编排器，~620 行）
+
+> 原文件 ~2600 行，已拆分为 10 个子模块。
+
+SessionManager 本身是**编排层**，不直接实现任何具体逻辑，而是将操作委托给子模块：
+
+| 子模块                | 文件                         | 职责                                          |
+| --------------------- | ---------------------------- | --------------------------------------------- |
+| SessionStorage        | `session-storage.ts`         | 会话索引和消息的持久化（JSONL）               |
+| SessionFileHistory    | `session-file-history.ts`    | Git-based 文件变更 checkpoint/undo            |
+| SessionProcessManager | `session-process.ts`         | 子进程追踪、超时控制                          |
+| SessionSkills         | `session-skills.ts`          | 技能发现、元数据解析、去重匹配                |
+| SessionMessageBuilder | `session-message-builder.ts` | 构建 SessionMessage + 装配 OpenAI API payload |
+| LlmStreamManager      | `llm-stream.ts`              | chat.completions.create 流式封装              |
+| SessionActivator      | `session-activator.ts`       | LLM 主循环执行 + 上下文压缩                   |
+| SessionNotifier       | `session-notify.ts`          | 提示上报 + 任务完成通知                       |
 
 Responsible for:
 
 - Session creation, updates, persistence, and active-session tracking
-- Building OpenAI chat payloads from session history
-- Injecting the system prompt, optional `AGENTS.md` instructions, and selected skills
-- Running the tool-call loop and appending assistant/tool/system messages
+- Injecting the system prompt, optional `AGENTS.md` instructions, and selected skills（提示词管道）
+- Running the tool-call loop via SessionActivator and appending assistant/tool/system messages
 - Status tracking (`pending`, `processing`, `waiting_for_user`, `completed`, `failed`, `interrupted`)
 
 Instruction lookup order:
@@ -124,6 +147,13 @@ Storage layout:
 
 - `~/.deepcode/projects/<projectCode>/sessions-index.json`
 - `~/.deepcode/projects/<projectCode>/<sessionId>.jsonl`
+
+**⚠️ 缺失功能 — 删除会话**：
+
+- 目前后端**没有**删除单条会话的方法
+- `SessionStorage.removeSessionMessages()` 仅在 `trimSessionsIndex`（超出数量限制时自动丢弃旧会话）时被调用
+- 前端 `webview.html` 中**没有**删除按钮或菜单
+- 需实现：后端 `SessionManager.deleteSession(sessionId)` → `SessionStorage` 删除索引条目 + 消息文件 → 前端 `deleteSession` 消息类型 + UI 按钮
 
 ### ToolExecutor
 
@@ -153,15 +183,16 @@ The extension uses VS Code's Webview API for bidirectional communication between
 
 ### Frontend -> Backend Message Types
 
-| Type               | Payload                                    | Description                                          |
-| ------------------ | ------------------------------------------ | ---------------------------------------------------- |
-| `ready`            | `{}`                                       | Webview signals it is ready to receive initial state |
-| `requestSkills`    | `{}`                                       | Request the currently available skill list           |
-| `userPrompt`       | `{ prompt: string, skills?: SkillInfo[] }` | Submit a prompt with optional selected skills        |
-| `interrupt`        | `{}`                                       | Interrupt the active session                         |
-| `createNewSession` | `{}`                                       | Start a new session                                  |
-| `selectSession`    | `{ sessionId: string }`                    | Load a specific session                              |
-| `backToList`       | `{}`                                       | Return to the session list view                      |
+| Type                | Payload                                    | Description                                          |
+| ------------------- | ------------------------------------------ | ---------------------------------------------------- |
+| `ready`             | `{}`                                       | Webview signals it is ready to receive initial state |
+| `requestSkills`     | `{}`                                       | Request the currently available skill list           |
+| `userPrompt`        | `{ prompt: string, skills?: SkillInfo[] }` | Submit a prompt with optional selected skills        |
+| `interrupt`         | `{}`                                       | Interrupt the active session                         |
+| `createNewSession`  | `{}`                                       | Start a new session                                  |
+| `selectSession`     | `{ sessionId: string }`                    | Load a specific session                              |
+| `backToList`        | `{}`                                       | Return to the session list view                      |
+| ~~`deleteSession`~~ | ~~`{ sessionId: string }`~~                | **❌ 尚未实现** — 删除指定会话                       |
 
 ### Backend -> Frontend Message Types
 
@@ -344,6 +375,19 @@ From `package.json`:
 - Session list, session switching, and new-session creation
 - Skill picker in the composer
 
+### ⚠️ 已知缺失功能
+
+| 功能                 | 说明                                                                                                                                                                                          | 状态      |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **删除会话**         | 后端无 `deleteSession` 方法，前端无删除按钮。需新增 `deleteSession` 消息类型 + UI 确认对话框                                                                                                  | ❌ 待实现 |
+| **Webview 拆分**     | `resources/webview.html` ~1500 行单文件，修改风险高。需拆分为 `webview/` 目录：`app.js`（主逻辑）、`session-list.js`（会话列表）、`chat-view.js`（聊天视图）、`skill-picker.js`（技能选择）等 | ❌ 待实现 |
+| **会话重命名**       | 会话自动取前 100 字符做标题，无手动重命名                                                                                                                                                     | ❌ 待实现 |
+| **Webview 类型定义** | 前后端消息类型无共享定义，`webview.html` 中硬编码字符串，易出错                                                                                                                               | ❌ 待实现 |
+
+---
+
+## Summary
+
 ### Message Bubble Types
 
 - `role === "user"`: plain text user bubble
@@ -446,6 +490,29 @@ Deep Code is a VS Code AI assistant extension with:
 3. **`src/settings.ts`** — 简化，去掉四层 env 合并逻辑，改为调用连接预设
 4. **`src/extension.ts`** — 接入新配置系统，通过 `context.globalState` 管理加密密钥
 5. **`package.json`** — 添加 `contributes.configuration` 设置面板
+
+### 第一点五阶段：核心模块拆分 ✅ （已完成）
+
+```
+目标：将 ~2600 行的 session.ts 按关注点拆分为 10 个小模块，为预设系统铺路
+```
+
+1. **`src/session-types.ts`** — 所有类型定义抽出（纯数据层）
+2. **`src/session-storage.ts`** — 存储层（索引 JSONL + 消息 JSONL）
+3. **`src/session-file-history.ts`** — 文件历史/Checkpoint
+4. **`src/session-process.ts`** — 进程管理
+5. **`src/session-skills.ts`** — 技能管理
+6. **`src/session-message-builder.ts`** — 消息构建 + OpenAI 装配
+7. **`src/llm-stream.ts`** — LLM 流式通信
+8. **`src/session-activator.ts`** — LLM 主循环 + 上下文压缩
+9. **`src/session-notify.ts`** — 通知
+10. **`src/session.ts`** — 降级为 ~620 行的编排器
+
+**关键收益**：
+
+- `SessionMessageBuilder` 成为将来预设系统的天然对接点
+- 每个子模块可独立测试
+- `activateSession` + `compactSession` 移入 `SessionActivator`，主循环逻辑独立
 
 ### 第二阶段：提示词预设系统
 
