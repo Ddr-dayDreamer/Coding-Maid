@@ -153,29 +153,29 @@ The extension uses VS Code's Webview API for bidirectional communication between
 
 ### Frontend -> Backend Message Types
 
-| Type | Payload | Description |
-|------|---------|-------------|
-| `ready` | `{}` | Webview signals it is ready to receive initial state |
-| `requestSkills` | `{}` | Request the currently available skill list |
-| `userPrompt` | `{ prompt: string, skills?: SkillInfo[] }` | Submit a prompt with optional selected skills |
-| `interrupt` | `{}` | Interrupt the active session |
-| `createNewSession` | `{}` | Start a new session |
-| `selectSession` | `{ sessionId: string }` | Load a specific session |
-| `backToList` | `{}` | Return to the session list view |
+| Type               | Payload                                    | Description                                          |
+| ------------------ | ------------------------------------------ | ---------------------------------------------------- |
+| `ready`            | `{}`                                       | Webview signals it is ready to receive initial state |
+| `requestSkills`    | `{}`                                       | Request the currently available skill list           |
+| `userPrompt`       | `{ prompt: string, skills?: SkillInfo[] }` | Submit a prompt with optional selected skills        |
+| `interrupt`        | `{}`                                       | Interrupt the active session                         |
+| `createNewSession` | `{}`                                       | Start a new session                                  |
+| `selectSession`    | `{ sessionId: string }`                    | Load a specific session                              |
+| `backToList`       | `{}`                                       | Return to the session list view                      |
 
 ### Backend -> Frontend Message Types
 
-| Type | Payload | Description |
-|------|---------|-------------|
-| `initializeEmpty` | `{ sessions, status }` | Show an empty composer state |
-| `loadSession` | `{ sessionId, summary, status, sessions, messages }` | Load a session and its visible messages |
-| `showSessionsList` | `{ sessions }` | Refresh the session dropdown data |
-| `skillsList` | `{ skills }` | Update the available skill list |
-| `sessionStatus` | `{ sessionId, status }` | Update the status of the current session |
-| `userMessage` | `{ content }` | Append the raw user text bubble |
-| `assistant` | `{ html }` | Append a direct assistant HTML message, typically for failures |
-| `appendMessage` | `{ message, shouldConnect }` | Append a structured session message generated during execution |
-| `loading` | `{ value: boolean }` | Toggle the loading indicator |
+| Type               | Payload                                              | Description                                                    |
+| ------------------ | ---------------------------------------------------- | -------------------------------------------------------------- |
+| `initializeEmpty`  | `{ sessions, status }`                               | Show an empty composer state                                   |
+| `loadSession`      | `{ sessionId, summary, status, sessions, messages }` | Load a session and its visible messages                        |
+| `showSessionsList` | `{ sessions }`                                       | Refresh the session dropdown data                              |
+| `skillsList`       | `{ skills }`                                         | Update the available skill list                                |
+| `sessionStatus`    | `{ sessionId, status }`                              | Update the status of the current session                       |
+| `userMessage`      | `{ content }`                                        | Append the raw user text bubble                                |
+| `assistant`        | `{ html }`                                           | Append a direct assistant HTML message, typically for failures |
+| `appendMessage`    | `{ message, shouldConnect }`                         | Append a structured session message generated during execution |
+| `loading`          | `{ value: boolean }`                                 | Toggle the loading indicator                                   |
 
 ### Communication Flow Overview
 
@@ -217,33 +217,70 @@ Persist state and notify the webview
 
 ## Configuration
 
-### Settings File
+### 配置文件架构（Coding Maid 改造后）
 
-**Location**: `~/.deepcode/settings.json`
+Coding Maid 将配置拆分为两层：
+
+#### 1. 连接预设（Connection Profiles）
+
+**路径**: `~/.codingmaid/profiles/<name>.json`
+
+每个连接预设是一个独立的 JSON 文件，方便切换模型/渠道：
 
 ```json
 {
-  "env": {
-    "API_KEY": "sk-...",
-    "BASE_URL": "https://api.deepseek.com",
-    "MODEL": "deepseek-v4-pro"
-  },
+  "name": "default",
+  "model": "deepseek-v4-pro",
+  "baseURL": "https://api.deepseek.com",
+  "apiKeyEncrypted": "iv:tag:ciphertext",
   "thinkingEnabled": true,
-  "reasoningEffort": "max",
-  "notify": "~/.deepcode/notify.sh"
+  "reasoningEffort": "max"
 }
 ```
 
-### Configuration Options
+- API Key 使用 **AES-256-GCM** 加密存储，加密密钥存在 VS Code 的 `globalState` 中（与机器绑定）
+- 用户可以在插件 UI 中切换预设
+- 支持导入/导出预设
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `env.API_KEY` | string | Yes | - | API key for the configured provider |
-| `env.BASE_URL` | string | No | `https://api.deepseek.com` | Base URL for a DeepSeek or other OpenAI-compatible endpoint |
-| `env.MODEL` | string | No | `deepseek-v4-pro` | Model identifier passed to `chat.completions.create()` |
-| `thinkingEnabled` | boolean | No | `true` for `deepseek-v4-flash` and `deepseek-v4-pro`; otherwise `false` | Enables the optional `thinking` request field when set to `true` |
-| `reasoningEffort` | `"high"` or `"max"` | No | `"max"` | Controls DeepSeek thinking strength via `reasoning_effort` when thinking mode is enabled |
-| `notify` | string | No | - | Executable script path triggered when a task ends in `completed` or `failed`, with `DURATION` set to the elapsed seconds |
+#### 2. 全局设置（Global Settings）
+
+**路径**: `~/.codingmaid/settings.json`
+
+```json
+{
+  "activeProfile": "default",
+  "notify": "~/.codingmaid/notify.sh",
+  "debugLogEnabled": false,
+  "debugPromptEnabled": false,
+  "mcpServers": {}
+}
+```
+
+#### 3. VS Code 设置面板
+
+非敏感配置也暴露在 VS Code 的 `settings.json` 中：
+
+| 设置 ID                         | 类型    | 默认值      | 说明               |
+| ------------------------------- | ------- | ----------- | ------------------ |
+| `codingmaid.activeProfile`      | string  | `"default"` | 当前激活的连接预设 |
+| `codingmaid.debugLogEnabled`    | boolean | `false`     | 启用 API 调试日志  |
+| `codingmaid.debugPromptEnabled` | boolean | `false`     | 显示完整提示词     |
+| `codingmaid.notify`             | string  | `""`        | 通知脚本路径       |
+
+#### 加密方案
+
+- `src/common/crypto-utils.ts` — AES-256-GCM 加密/解密
+- 加密密钥由 `generateEncryptionKey()` 生成，存储在 `context.globalState` 中
+- API Key 在磁盘上是加密状态，仅在运行时解密到内存
+- 加密格式：`iv:tag:ciphertext`（全部 hex 编码）
+
+#### 存储路径变更
+
+| 原路径                      | 新路径                               |
+| --------------------------- | ------------------------------------ |
+| `~/.deepcode/settings.json` | `~/.codingmaid/settings.json`        |
+| 无                          | `~/.codingmaid/profiles/*.json`      |
+| 无                          | `~/.codingmaid/presets/`（后续阶段） |
 
 ---
 
@@ -326,3 +363,196 @@ Deep Code is a VS Code AI assistant extension with:
 - DeepSeek-oriented defaults with configurable OpenAI-compatible API access
 - Skill discovery and loading for session-specific behavior
 - A multi-step tool execution loop including structured user clarification
+
+---
+
+# Coding Maid 改造计划
+
+> 本文档记录从 Deep Code 到 Coding Maid 的改造方向与计划。
+
+## 改造目标
+
+**核心目标**：让用户能够控制**所有提示词**（system prompt、工具定义、行为指令等），提供类似 SillyTavern 的"提示词预设"控制界面。
+
+**设计原则**：
+
+- 保持编程助手的完整功能（工具执行、文件操作、会话管理等核心能力不变）
+- 提示词可控是手段，角色扮演是自然衍生结果，不是改造目标本身
+- 不牺牲编程助手的安全机制（如 file-history 的文件变更可撤回）
+
+## 架构评估
+
+### ✅ 保留的核心功能
+
+| 模块         | 文件                                     | 理由                              |
+| ------------ | ---------------------------------------- | --------------------------------- |
+| 文件变更历史 | `src/common/file-history.ts`             | AI 改文件的撤回机制，编程助手必备 |
+| Bash 执行    | `src/tools/bash-handler.ts`              | 核心工具之一                      |
+| 文件读取     | `src/tools/read-handler.ts`              | 核心工具之一                      |
+| 文件写入     | `src/tools/write-handler.ts`             | 核心工具之一                      |
+| 文件编辑     | `src/tools/edit-handler.ts`              | 核心工具之一                      |
+| 用户询问     | `src/tools/ask-user-question-handler.ts` | 需要澄清时与用户交互              |
+| 进程树管理   | `src/common/process-tree.ts`             | Windows 下中断进程必备            |
+| 思考模式     | `src/common/openai-thinking.ts`          | DeepSeek 思考模式支持             |
+| 错误日志     | `src/common/error-logger.ts`             | 排查问题需要                      |
+| 调试日志     | `src/common/debug-logger.ts`             | 排查问题需要                      |
+| 通知脚本     | `src/common/notify.ts`                   | 任务完成通知                      |
+| 状态管理     | `src/tools/state.ts`                     | 文件读取/片段追踪的安全保障       |
+| Shell 工具   | `src/common/shell-utils.ts`              | Shell 路径解析等                  |
+
+### ⚠️ 可简化/合并的模块
+
+| 模块                       | 问题                                                                          | 方案                         |
+| -------------------------- | ----------------------------------------------------------------------------- | ---------------------------- |
+| 三个 Skill 发现路径        | `~/.agents/skills/`、`./.agents/skills/`、`./.deepcode/skills/` 冗余          | 统一为一个路径               |
+| 配置合并层 (`settings.ts`) | 四层合并（user env → project env → system env → DEEPCODE\_ env vars）过于复杂 | 简化为单一配置源             |
+| Skill 自动匹配             | `identifyMatchingSkillNames()` 额外发一次 LLM 调用                            | 改为用户手动选择，不自动匹配 |
+
+### 🔧 需要改造的核心模块
+
+| 优先级 | 模块                                     | 改造内容                                                                        | 状态      |
+| ------ | ---------------------------------------- | ------------------------------------------------------------------------------- | --------- |
+| P0     | `src/prompt.ts`                          | 从硬编码 System Prompt 改为**预设模板引擎**，支持从预设目录加载完整的提示词配置 | ⏳ 待开始 |
+| P0     | `src/session.ts`                         | 将提示词组装流水线改为**可配置的模板管道**                                      | ⏳ 待开始 |
+| P1     | `src/settings.ts`                        | 简化配置结构，去掉多层 env 合并，改为连接预设系统                               | ✅ 已完成 |
+| P1     | 新增 `src/common/crypto-utils.ts`        | AES-256-GCM 加密工具                                                            | ✅ 已完成 |
+| P1     | 新增 `src/common/connection-profiles.ts` | 连接预设管理器（CRUD、加密存储）                                                | ✅ 已完成 |
+| P1     | `src/extension.ts`                       | 接入新的配置系统，管理加密密钥                                                  | ✅ 已完成 |
+| P1     | `package.json`                           | 添加 `contributes.configuration` 设置面板                                       | ✅ 已完成 |
+| P1     | 新增 `src/preset-manager.ts`             | 提示词预设管理器，负责预设的 CRUD、模板渲染                                     | ⏳ 待开始 |
+| P1     | `resources/webview.html` + `.css`        | 增加连接预设选择器、提示词预设编辑器 UI                                         | ⏳ 待开始 |
+| P2     | `src/extension.ts`                       | 添加新的前后端消息类型用于预设管理                                              | ⏳ 待开始 |
+
+### ❓ 暂不确定的模块
+
+| 模块                                  | 说明                                                             |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| Web Search (`web-search-handler.ts`)  | 编程时查文档有用，但非核心，可后续按需加入                       |
+| UpdatePlan (`update-plan-handler.ts`) | 计划更新工具，比较小众，评估是否保留                             |
+| 上下文压缩 (COMPACT_PROMPT_BASE)      | DeepSeek V4 有 1M token 上下文，短期内压力不大，可保留但暂不优化 |
+
+> **MCP** (`src/mcp/`)：模型上下文协议，当前保留。虽然暂时用不上，但到处都能看到它，说明是行业趋势，先留着不动。
+
+## 改造路线图
+
+### 第一阶段：配置系统重构 ✅ （已完成）
+
+```
+目标：将配置从四层 env 合并简化为连接预设系统，API Key 加密存储
+```
+
+1. **`src/common/crypto-utils.ts`** — 新增 AES-256-GCM 加密工具
+2. **`src/common/connection-profiles.ts`** — 新增连接预设管理器（CRUD、加密解密）
+3. **`src/settings.ts`** — 简化，去掉四层 env 合并逻辑，改为调用连接预设
+4. **`src/extension.ts`** — 接入新配置系统，通过 `context.globalState` 管理加密密钥
+5. **`package.json`** — 添加 `contributes.configuration` 设置面板
+
+### 第二阶段：提示词预设系统
+
+```
+目标：让提示词可以被用户选择和切换
+```
+
+1. **`src/prompt.ts`** — 重构为预设模板引擎
+   - 将当前硬编码的 `SYSTEM_PROMPT_BASE`、`loadSystemPromptBase()`、`getSystemPrompt()`、`getTools()` 整合
+   - 从 `~/.codingmaid/presets/` 读取预设
+   - 每个预设是一个目录，包含 `system.md`（系统提示词）、`tools.json`（工具定义/开关）、`config.json`（模型参数等）
+
+2. **`src/session.ts`** — 提示词组装管道化
+   - 将 `buildChatPayload()` 中逐段拼接提示词的逻辑改为可配置
+   - 用户预设决定：是否插 skills、是否插 AGENTS.md、system prompt 内容、工具定义内容等
+
+3. **新增 `src/preset-manager.ts`**
+   - 预设列表扫描
+   - 预设的读取、保存、删除
+   - 预设模板渲染（支持变量替换）
+   - 预设导入/导出
+
+### 第三阶段：UI 与打磨
+
+```
+目标：用户可以在界面上管理和编辑预设
+```
+
+4. **`resources/webview.html`** — 预设管理 UI
+   - 预设选择器（下拉/侧面板）
+   - 预设编辑器（内联编辑 system prompt、调整工具开关等）
+   - 预设管理（新建、复制、导入、导出）
+
+5. **`src/extension.ts`** — 新增消息类型
+   - `listPresets` / `loadPreset` / `savePreset` / `deletePreset`
+   - `importPreset` / `exportPreset`
+
+### 第四阶段：清理与打磨
+
+```
+目标：移除多余模块，完善细节
+```
+
+7. 移除 MCP 相关代码（按需保留或彻底移除）
+8. 统一 Skill 发现路径
+9. 完善预设模板系统（支持角色卡片 JSON、变量插值等）
+10. 完善文档与示例预设
+
+## 预设目录结构设计（草案）
+
+```
+~/.codingmaid/
+├── settings.json              # 全局配置
+├── presets/
+│   ├── default/               # 默认预设（Deep Code 原始行为）
+│   │   ├── system.md          # System prompt
+│   │   ├── tools.json         # 工具定义
+│   │   └── config.json        # 模型参数
+│   ├── minimal/               # 极简预设
+│   │   └── ...
+│   └── <user-presets>/
+│       └── ...
+└── skills/                    # 统一 skill 路径
+    └── ...
+```
+
+### 预设文件格式（草案）
+
+**system.md** — System prompt 主体，支持 EJS 模板变量：
+
+```markdown
+你是 Coding Maid，一个全能的编程助手。
+
+当前模型：<%= model %>
+当前日期：<%= date %>
+
+<%= tools %>
+```
+
+**tools.json** — 工具开关与定义：
+
+```json
+{
+  "enabled": ["bash", "read", "write", "edit", "AskUserQuestion"],
+  "disabled": ["WebSearch", "UpdatePlan"],
+  "customDefinitions": {}
+}
+```
+
+**config.json** — 预设级别的模型配置：
+
+```json
+{
+  "model": "deepseek-v4-pro",
+  "thinkingEnabled": true,
+  "reasoningEffort": "max",
+  "temperature": 0.7
+}
+```
+
+## 存储路径迁移
+
+| 原路径                      | 新路径                        | 说明               |
+| --------------------------- | ----------------------------- | ------------------ |
+| `~/.deepcode/settings.json` | `~/.codingmaid/settings.json` | 全局配置           |
+| `~/.deepcode/projects/`     | `~/.codingmaid/projects/`     | 会话存储           |
+| `~/.deepcode/logs/`         | `~/.codingmaid/logs/`         | 日志               |
+| `~/.agents/skills/`         | `~/.codingmaid/skills/`       | 统一 skill 路径    |
+| `./.agents/skills/`         | （移除）                      | 只保留用户级路径   |
+| `./.deepcode/skills/`       | （移除）                      | 兼容路径，不再支持 |

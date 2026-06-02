@@ -15,15 +15,20 @@ import {
   type UserPromptContent,
 } from "./session";
 import {
-  resolveSettingsSources,
-  type DeepcodingSettings,
+  resolveSettingsWithCryptoKey,
+  ensureDefaultProfile,
+  saveProfile,
+  loadProfile,
+  listProfiles,
+  setActiveProfile,
+  type ConnectionProfile,
   type ReasoningEffort,
   type ResolvedDeepcodingSettings,
 } from "./settings";
 import { setShellIfWindows } from "./common/shell-utils";
+import { generateEncryptionKey } from "./common/crypto-utils";
 
-const DEFAULT_MODEL = "deepseek-v4-pro";
-const DEFAULT_BASE_URL = "https://api.deepseek.com";
+const CRYPTO_KEY_STORAGE_KEY = "codingmaid.cryptoKey";
 
 type ReasoningMessageParams = {
   reasoning_content?: string;
@@ -88,14 +93,13 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
       onDebugPrompt: (messages: ChatCompletionMessageParam[], iteration: number) => {
         this.debugOutputChannel.clear();
         this.debugOutputChannel.appendLine("=".repeat(80));
-        this.debugOutputChannel.appendLine(`[Deep Code Mod Debug] Iteration: ${iteration === -1 ? "COMPACT" : iteration}`);
+        this.debugOutputChannel.appendLine(
+          `[Deep Code Mod Debug] Iteration: ${iteration === -1 ? "COMPACT" : iteration}`
+        );
         this.debugOutputChannel.appendLine("=".repeat(80));
         for (const msg of messages) {
           const role = msg.role ?? "unknown";
-          const content =
-            typeof msg.content === "string"
-              ? msg.content
-              : JSON.stringify(msg.content, null, 2);
+          const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content, null, 2);
           this.debugOutputChannel.appendLine(`\n--- ${role.toUpperCase()} ---`);
           this.debugOutputChannel.appendLine(content);
           this.debugOutputChannel.appendLine("");
@@ -105,6 +109,8 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
         this.debugOutputChannel.show(true);
       },
     });
+    this.initCryptoKey();
+    ensureDefaultProfile(this.getCryptoKey());
     void this.initializeMcpServers();
   }
 
@@ -349,8 +355,9 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
     client: OpenAI | null;
     model: string;
     baseURL: string;
-    thinkingEnabled: boolean;
-    reasoningEffort: ReasoningEffort;
+    thinkingEnabled?: boolean;
+    reasoningEffort?: ReasoningEffort;
+    params?: Record<string, unknown>;
     debugLogEnabled: boolean;
     debugPromptEnabled: boolean;
     notify?: string;
@@ -360,8 +367,18 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
   } {
     const settings = this.resolveCurrentSettings();
 
-    const { apiKey, baseURL, model, thinkingEnabled, reasoningEffort, debugLogEnabled, debugPromptEnabled, notify, webSearchTool, env } =
-      settings;
+    const {
+      apiKey,
+      baseURL,
+      model,
+      thinkingEnabled,
+      reasoningEffort,
+      params,
+      debugLogEnabled,
+      debugPromptEnabled,
+      notify,
+      webSearchTool,
+    } = settings;
     const machineId = vscode.env.machineId;
 
     if (!apiKey) {
@@ -371,11 +388,11 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
         baseURL,
         thinkingEnabled,
         reasoningEffort,
+        params,
         debugLogEnabled,
         debugPromptEnabled,
         notify,
         webSearchTool,
-        env,
         machineId,
       };
     }
@@ -391,11 +408,11 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
       baseURL,
       thinkingEnabled,
       reasoningEffort,
+      params,
       debugLogEnabled,
       debugPromptEnabled,
       notify,
       webSearchTool,
-      env,
       machineId,
     };
   }
@@ -411,8 +428,8 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
     const settings = this.resolveCurrentSettings();
     return {
       model: settings.model,
-      thinkingEnabled: settings.thinkingEnabled,
-      reasoningEffort: settings.reasoningEffort,
+      thinkingEnabled: settings.thinkingEnabled ?? false,
+      reasoningEffort: settings.reasoningEffort ?? "max",
       activeTokens: session?.activeTokens ?? 0,
       compactPromptTokenThreshold: getCompactPromptTokenThreshold(settings.model),
       usage: session?.usage ?? null,
@@ -428,51 +445,21 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private getCryptoKey(): string {
+    return this.context.globalState.get<string>(CRYPTO_KEY_STORAGE_KEY, "");
+  }
+
+  private initCryptoKey(): void {
+    const existing = this.context.globalState.get<string>(CRYPTO_KEY_STORAGE_KEY);
+    if (!existing) {
+      const key = generateEncryptionKey();
+      void this.context.globalState.update(CRYPTO_KEY_STORAGE_KEY, key);
+    }
+  }
+
   private resolveCurrentSettings(): ResolvedDeepcodingSettings {
-    return resolveSettingsSources(
-      this.readUserSettings(),
-      this.readProjectSettings(),
-      {
-        model: DEFAULT_MODEL,
-        baseURL: DEFAULT_BASE_URL,
-      },
-      process.env
-    );
-  }
-
-  private readUserSettings(): DeepcodingSettings | null {
-    try {
-      const settingsPath = path.join(os.homedir(), ".deepcode", "settings.json");
-      if (!fs.existsSync(settingsPath)) {
-        return null;
-      }
-
-      const raw = fs.readFileSync(settingsPath, "utf8");
-      return JSON.parse(raw) as DeepcodingSettings;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      vscode.window.showErrorMessage(`Failed to read ~/.deepcode/settings.json: ${message}`);
-      return null;
-    }
-  }
-
-  private readProjectSettings(): DeepcodingSettings | null {
-    const workspaceRoot = this.getWorkspaceRoot();
-    try {
-      const settingsPath = path.join(workspaceRoot, ".deepcode", "settings.json");
-      if (!fs.existsSync(settingsPath)) {
-        return null;
-      }
-
-      const raw = fs.readFileSync(settingsPath, "utf8");
-      return JSON.parse(raw) as DeepcodingSettings;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      vscode.window.showErrorMessage(
-        `Failed to read ${path.join(workspaceRoot, ".deepcode", "settings.json")}: ${message}`
-      );
-      return null;
-    }
+    const cryptoKey = this.getCryptoKey();
+    return resolveSettingsWithCryptoKey(cryptoKey);
   }
 
   private getWorkspaceRoot(): string {
@@ -495,6 +482,48 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
       serialized[pid] = entry;
     }
     return serialized;
+  }
+
+  /**
+   * 弹出输入框让用户设置 API Key
+   */
+  async promptSetApiKey(): Promise<void> {
+    const cryptoKey = this.getCryptoKey();
+    const profiles = listProfiles();
+    let targetProfile = profiles[0] || "default";
+
+    if (profiles.length > 1) {
+      const picked = await vscode.window.showQuickPick(profiles, {
+        placeHolder: "选择要设置 API Key 的连接预设",
+      });
+      if (!picked) {
+        return;
+      }
+      targetProfile = picked;
+    }
+
+    const apiKey = await vscode.window.showInputBox({
+      prompt: `输入 ${targetProfile} 的 API Key`,
+      password: true,
+      placeHolder: "sk-...",
+      ignoreFocusOut: true,
+    });
+
+    if (apiKey === undefined || apiKey.trim() === "") {
+      return;
+    }
+
+    // 读取当前预设，更新 API Key 后保存（自动加密）
+    const current = loadProfile(targetProfile, cryptoKey) ?? {
+      name: targetProfile,
+      model: "deepseek-v4-pro",
+      baseURL: "https://api.deepseek.com",
+    };
+    current.apiKey = apiKey.trim();
+    saveProfile(current, cryptoKey);
+    setActiveProfile(targetProfile);
+
+    void vscode.window.showInformationMessage(`Coding Maid: ${targetProfile} 的 API Key 已设置（AES-256 加密存储）`);
   }
 
   private getWebviewHtml(webview: vscode.Webview): string {
@@ -558,6 +587,19 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("deepcode.openView", async () => {
       await vscode.commands.executeCommand("workbench.view.extension.deepcode");
       await vscode.commands.executeCommand("deepcode.chatView.focus");
+    })
+  );
+
+  // 设置 API Key 命令
+  context.subscriptions.push(
+    vscode.commands.registerCommand("codingmaid.setApiKey", async () => {
+      const provider = context.subscriptions.find((s) => s instanceof DeepcodingViewProvider) as
+        | DeepcodingViewProvider
+        | undefined;
+      if (!provider) {
+        return;
+      }
+      await provider.promptSetApiKey();
     })
   );
 }

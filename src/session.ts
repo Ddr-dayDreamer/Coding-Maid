@@ -1074,8 +1074,18 @@ ${skillMd}
 
   async activateSession(sessionId: string, controller?: AbortController): Promise<void> {
     const startedAt = Date.now();
-    const { client, model, baseURL, thinkingEnabled, reasoningEffort, debugLogEnabled, debugPromptEnabled, notify, env } =
-      this.createOpenAIClient();
+    const {
+      client,
+      model,
+      baseURL,
+      thinkingEnabled,
+      reasoningEffort,
+      params,
+      debugLogEnabled,
+      debugPromptEnabled,
+      notify,
+      env,
+    } = this.createOpenAIClient();
     const now = new Date().toISOString();
 
     if (!client) {
@@ -1160,11 +1170,13 @@ ${skillMd}
           await this.compactSession(sessionId, sessionController.signal);
         }
 
-        const messages = this.buildOpenAIMessages(this.listSessionMessages(sessionId), thinkingEnabled, model);
+        const messages = this.buildOpenAIMessages(this.listSessionMessages(sessionId), thinkingEnabled ?? false, model);
         if (debugPromptEnabled && this.onDebugPrompt) {
           this.onDebugPrompt(messages, iteration);
         }
-        const thinkingOptions = buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort);
+        const thinkingOptions = thinkingEnabled
+          ? buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort)
+          : {};
         const response = await this.createChatCompletionStream(
           client,
           {
@@ -1172,6 +1184,7 @@ ${skillMd}
             messages,
             tools: getTools(this.getPromptToolOptions(), this.mcpToolDefinitions),
             ...thinkingOptions,
+            ...params,
           },
           { signal: sessionController.signal },
           sessionId,
@@ -1274,7 +1287,8 @@ ${skillMd}
 
   async compactSession(sessionId: string, signal?: AbortSignal): Promise<void> {
     this.throwIfAborted(signal);
-    const { client, model, baseURL, thinkingEnabled, reasoningEffort, debugLogEnabled, debugPromptEnabled } = this.createOpenAIClient();
+    const { client, model, baseURL, thinkingEnabled, reasoningEffort, params, debugLogEnabled, debugPromptEnabled } =
+      this.createOpenAIClient();
     if (!client) {
       return;
     }
@@ -1302,18 +1316,19 @@ ${skillMd}
 
     const compactPrompt = getCompactPrompt(sessionMessages.slice(startIndex, endIndex));
     if (debugPromptEnabled && this.onDebugPrompt) {
-      const compactMessages: ChatCompletionMessageParam[] = [
-        { role: "system", content: compactPrompt },
-      ];
+      const compactMessages: ChatCompletionMessageParam[] = [{ role: "system", content: compactPrompt }];
       this.onDebugPrompt(compactMessages, -1);
     }
-    const thinkingOptions = buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort);
+    const thinkingOptions = thinkingEnabled
+      ? buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort)
+      : {};
     const response = await this.createChatCompletionStream(
       client,
       {
         model,
         messages: [{ role: "user", content: compactPrompt }],
         ...thinkingOptions,
+        ...params,
       },
       signal ? { signal } : undefined,
       sessionId,

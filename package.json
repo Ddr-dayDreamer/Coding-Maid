@@ -11,7 +11,9 @@
     "Other"
   ],
   "icon": "resources/deepcoding_icon.png",
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:codingmaid.setApiKey"
+  ],
   "main": "./out/extension.js",
   "files": [
     "out/extension.js",
@@ -33,6 +35,10 @@
           "light": "resources/deepcoding_icon.svg",
           "dark": "resources/deepcoding_icon.svg"
         }
+      },
+      {
+        "command": "codingmaid.setApiKey",
+        "title": "Coding Maid: Set API Key"
       }
     ],
     "viewsContainers": {
@@ -61,6 +67,31 @@
           "group": "navigation@100"
         }
       ]
+    },
+    "configuration": {
+      "title": "Coding Maid",
+      "properties": {
+        "codingmaid.activeProfile": {
+          "type": "string",
+          "default": "default",
+          "description": "当前激活的连接预设名称（在插件 UI 中管理）"
+        },
+        "codingmaid.debugLogEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "启用 OpenAI API 调用的详细调试日志"
+        },
+        "codingmaid.debugPromptEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "显示每次 LLM 调用时发送的完整提示词（在 Debug Output 中）"
+        },
+        "codingmaid.notify": {
+          "type": "string",
+          "default": "",
+          "description": "任务完成时触发的通知脚本路径"
+        }
+      }
     }
   },
   "scripts": {
