@@ -51,16 +51,18 @@ deepcode/
 ├── src/
 │   ├── extension.ts                 # VS Code activation + webview wiring
 │   ├── session.ts                   # [编排器] 会话生命周期协调，委托子模块
-│   ├── session-types.ts             # [新增] 所有会话相关类型定义
-│   ├── session-storage.ts           # [新增] 会话持久化（索引 JSON + 消息 JSONL）
-│   ├── session-file-history.ts      # [新增] 文件变更可撤回（Git checkpoint）
-│   ├── session-process.ts           # [新增] 子进程追踪与超时控制
-│   ├── session-skills.ts            # [新增] 技能发现、匹配、加载
-│   ├── session-message-builder.ts   # [新增] 消息构建 + OpenAI API 消息装配
-│   ├── session-activator.ts         # [新增] LLM 主循环 + 上下文压缩
-│   ├── session-notify.ts            # [新增] 提示上报 + 任务完成通知
-│   ├── llm-stream.ts                # [新增] LLM 流式通信封装
+│   ├── session-types.ts             # 所有会话相关类型定义
+│   ├── session-storage.ts           # 会话持久化（索引 JSON + 消息 JSONL）
+│   ├── session-file-history.ts      # 文件变更可撤回（Git checkpoint）
+│   ├── session-process.ts           # 子进程追踪与超时控制
+│   ├── session-skills.ts            # 技能发现、匹配、加载
+│   ├── session-message-builder.ts   # 消息构建 + OpenAI API 消息装配
+│   ├── session-activator.ts         # LLM 主循环 + 上下文压缩
+│   ├── session-notify.ts            # 提示上报 + 任务完成通知
+│   ├── llm-stream.ts                # LLM 流式通信封装
 │   ├── prompt.ts                    # System prompt 和工具定义
+│   ├── preset-manager.ts            # [新增] 提示词预设管理器
+│   ├── preset-macros.ts             # [新增] 宏引擎（MacroEngine）
 │   └── tools/
 │       ├── executor.ts              # Tool dispatch
 │       ├── bash-handler.ts          # Persistent shell execution
@@ -329,11 +331,7 @@ From `package.json`:
    - Markdown parser and renderer
    - Converts assistant responses into HTML for the webview
 
-3. **gray-matter**
-   - Parses skill frontmatter from `SKILL.md`
-   - Used when discovering skill name and description metadata
-
-4. **ignore**
+3. **ignore**
    - Applies `.gitignore`-style matching in the read tool
    - Helps avoid ambiguous or ignored file-path matches
 
@@ -454,18 +452,20 @@ Deep Code is a VS Code AI assistant extension with:
 
 ### 🔧 需要改造的核心模块
 
-| 优先级 | 模块                                     | 改造内容                                                                        | 状态      |
-| ------ | ---------------------------------------- | ------------------------------------------------------------------------------- | --------- |
-| P0     | `src/prompt.ts`                          | 从硬编码 System Prompt 改为**预设模板引擎**，支持从预设目录加载完整的提示词配置 | ⏳ 待开始 |
-| P0     | `src/session.ts`                         | 将提示词组装流水线改为**可配置的模板管道**                                      | ⏳ 待开始 |
-| P1     | `src/settings.ts`                        | 简化配置结构，去掉多层 env 合并，改为连接预设系统                               | ✅ 已完成 |
-| P1     | 新增 `src/common/crypto-utils.ts`        | AES-256-GCM 加密工具                                                            | ✅ 已完成 |
-| P1     | 新增 `src/common/connection-profiles.ts` | 连接预设管理器（CRUD、加密存储）                                                | ✅ 已完成 |
-| P1     | `src/extension.ts`                       | 接入新的配置系统，管理加密密钥                                                  | ✅ 已完成 |
-| P1     | `package.json`                           | 添加 `contributes.configuration` 设置面板                                       | ✅ 已完成 |
-| P1     | 新增 `src/preset-manager.ts`             | 提示词预设管理器，负责预设的 CRUD、模板渲染                                     | ⏳ 待开始 |
-| P1     | `resources/webview.html` + `.css`        | 增加连接预设选择器、提示词预设编辑器 UI                                         | ⏳ 待开始 |
-| P2     | `src/extension.ts`                       | 添加新的前后端消息类型用于预设管理                                              | ⏳ 待开始 |
+| 优先级 | 模块                                     | 改造内容                                                                                 | 状态      |
+| ------ | ---------------------------------------- | ---------------------------------------------------------------------------------------- | --------- |
+| P0     | 新增 `src/preset-manager.ts`             | 提示词预设管理器：扫描、CRUD、渲染（委托给 MacroEngine）                                 | ✅ 已完成 |
+| P0     | 新增 `src/preset-macros.ts`              | MacroEngine：`{{...}}` 宏解析器、变量存储、工具/skill/上下文读取                         | ✅ 已完成 |
+| P0     | `src/prompt.ts`                          | 去掉 EJS；`getTools()` 支持 `availableTools` 过滤                                        | ✅ 已完成 |
+| P0     | `src/session.ts`                         | 预设驱动提示词管道；`chat_history` 角色；`replySession` 重渲染预设                       | ✅ 已完成 |
+| P0     | 创建默认预设                             | `templates/buildin_preset.json`，首次启动自动写入 `~/.codingmaid/presets/default/`       | ✅ 已完成 |
+| P1     | `src/settings.ts`                        | 简化配置结构，去掉多层 env 合并，改为连接预设系统                                        | ✅ 已完成 |
+| P1     | 新增 `src/common/crypto-utils.ts`        | AES-256-GCM 加密工具                                                                     | ✅ 已完成 |
+| P1     | 新增 `src/common/connection-profiles.ts` | 连接预设管理器（CRUD、加密存储）                                                         | ✅ 已完成 |
+| P1     | `src/extension.ts`                       | 接入新配置系统、管理加密密钥、添加预设管理消息类型                                       | ✅ 已完成 |
+| P1     | `package.json`                           | 添加 `contributes.configuration` 设置面板                                                | ✅ 已完成 |
+| P1     | `resources/webview.html` + `.css`        | 增加连接预设选择器、提示词预设编辑器 UI                                                  | ⏳ 待开始 |
+| P2     | `src/extension.ts`                       | 添加预设管理前端消息处理（`listPresets` / `loadPreset` / `savePreset` / `deletePreset`） | ⏳ 待开始 |
 
 ### ❓ 暂不确定的模块
 
@@ -517,23 +517,67 @@ Deep Code is a VS Code AI assistant extension with:
 ### 第二阶段：提示词预设系统
 
 ```
-目标：让提示词可以被用户选择和切换
+目标：让提示词可以被用户选择和切换，完全替代当前硬编码的提示词流水线
 ```
 
-1. **`src/prompt.ts`** — 重构为预设模板引擎
-   - 将当前硬编码的 `SYSTEM_PROMPT_BASE`、`loadSystemPromptBase()`、`getSystemPrompt()`、`getTools()` 整合
-   - 从 `~/.codingmaid/presets/` 读取预设
-   - 每个预设是一个目录，包含 `system.md`（系统提示词）、`tools.json`（工具定义/开关）、`config.json`（模型参数等）
+#### 设计概要
 
-2. **`src/session.ts`** — 提示词组装管道化
-   - 将 `buildChatPayload()` 中逐段拼接提示词的逻辑改为可配置
-   - 用户预设决定：是否插 skills、是否插 AGENTS.md、system prompt 内容、工具定义内容等
+一个预设 = 一个 `preset.json` 文件，包含元信息 + 工具开关 + 条目数组。
 
-3. **新增 `src/preset-manager.ts`**
-   - 预设列表扫描
-   - 预设的读取、保存、删除
-   - 预设模板渲染（支持变量替换）
+- **条目**按数组 index 顺序注入会话（`0` 最先，`N` 最后），排序由 UI 拖拽决定
+- **完全替换**当前硬编码提示词管道，不做合并
+- **无 EJS** — 全部使用类 SillyTavern 的 `{{...}}` 宏语法
+- **工具控制分两层**：
+  - API 层面：`availableTools` 控制注册到 OpenAI `tools` 参数的 function calling schema
+  - 提示词层面：`{{tool.bash}}`、`{{tool.read}}` 等逐个宏控制工具描述文本的插入
+- **模型参数**（temperature 等）走连接预设（Connection Profiles），预设不控制
+
+#### 宏系统
+
+| 宏                            | 说明                                       |
+| ----------------------------- | ------------------------------------------ |
+| `{{tool.bash}}`               | bash 工具描述文档                          |
+| `{{tool.read}}`               | read 工具描述文档                          |
+| `{{tool.write}}`              | write 工具描述文档                         |
+| `{{tool.edit}}`               | edit 工具描述文档                          |
+| `{{tool.ask_user_question}}`  | AskUserQuestion 工具描述文档               |
+| `{{tool.web_search}}`         | WebSearch 工具描述文档                     |
+| `{{tool.update_plan}}`        | UpdatePlan 工具描述文档                    |
+| `{{skill.agent-drift-guard}}` | 内建 skill 文档（agent-drift-guard）       |
+| `{{skill.plan-and-execute}}`  | 内建 skill 文档（plan-and-execute）        |
+| `{{runtime_context}}`         | 运行时环境信息（日期、系统、路径、版本等） |
+| `{{agents_md}}`               | AGENTS.md 指令内容                         |
+| `{{date}}`                    | 当前日期                                   |
+| `{{time}}`                    | 当前准确时间                               |
+| `{{model}}`                   | 当前模型名                                 |
+| `{{user}}`                    | 当前用户名                                 |
+| `{{char}}`                    | 当前角色名，在预设里定义                   |
+| `{{workspace}}`               | 工作区路径                                 |
+| `{{setvar::key::val}}`        | 设置会话级变量                             |
+| `{{getvar::key}}`             | 读取会话级变量                             |
+
+#### 实现步骤
+
+1. **新增 `src/preset-manager.ts`**
+   - 预设列表扫描（`~/.codingmaid/presets/`）
+   - 预设的 CRUD
+   - `{{...}}` 宏解析器（内置宏 + setvar/getvar）
+   - 渲染预设条目为 `SessionMessage[]`
    - 预设导入/导出
+
+2. **重构 `src/prompt.ts`**
+   - 去掉 EJS 依赖
+   - `getTools()` 支持 `availableTools` 参数过滤
+
+3. **修改 `src/session.ts`**（提示词组装管道化）
+   - `startSession()` 中 6 步硬编码流水线 → 读取预设 → 解析宏 → 生成消息
+   - 预设条目支持 `role: "chat_history"`，在此位置展开全部历史对话消息
+   - `replySession()` 重渲染预设，替换旧条目，`chat_history` 自动展开包括新消息
+   - 预设注入的消息标记 `meta.isPreset: true`，方便后续过滤
+
+4. **创建默认预设** `templates/buildin_preset.json`
+   - 首次启动自动写入 `~/.codingmaid/presets/default/preset.json`
+   - 支持顶层字段 `char` / `user` 为 `{{char}}` / `{{user}}` 提供默认值
 
 ### 第三阶段：UI 与打磨
 
@@ -541,14 +585,18 @@ Deep Code is a VS Code AI assistant extension with:
 目标：用户可以在界面上管理和编辑预设
 ```
 
-4. **`resources/webview.html`** — 预设管理 UI
+5. **`resources/webview.html`** — 预设管理 UI
    - 预设选择器（下拉/侧面板）
-   - 预设编辑器（内联编辑 system prompt、调整工具开关等）
+   - 预设编辑器（拖拽排序、启用/禁用条目、编辑内容、管理宏）
    - 预设管理（新建、复制、导入、导出）
 
-5. **`src/extension.ts`** — 新增消息类型
+6. **`src/extension.ts`** — 新增预设管理前后端消息类型
    - `listPresets` / `loadPreset` / `savePreset` / `deletePreset`
    - `importPreset` / `exportPreset`
+
+7. **完善宏系统**
+   - 按需添加新宏
+   - 支持宏嵌套等高级用法
 
 ### 第四阶段：清理与打磨
 
@@ -556,62 +604,138 @@ Deep Code is a VS Code AI assistant extension with:
 目标：移除多余模块，完善细节
 ```
 
-7. 移除 MCP 相关代码（按需保留或彻底移除）
-8. 统一 Skill 发现路径
-9. 完善预设模板系统（支持角色卡片 JSON、变量插值等）
-10. 完善文档与示例预设
+8. 移除 MCP 相关代码（按需保留或彻底移除）
+9. 完善文档与示例预设
 
-## 预设目录结构设计（草案）
+---
+
+## 技能系统设计
+
+> 从 Deep Code 继承的 `SessionSkills`（`src/session-skills.ts`）已于 2026-06 移除。
+> 以下记录其遗留设计以及未来的重构方向。
+
+### 已移除的旧系统（SessionSkills）
+
+旧系统的工作方式：
+
+1. **扫描路径**：从 `~/.agents/skills/`、`.deepcode/skills/`、`.agents/skills/` 三个目录收集 `SKILL.md`
+2. **LLM 匹配**：`identifyMatchingSkillNames()` 额外调用一次 LLM，根据 name + description 判断哪些 skill 与用户输入相关
+3. **独立注入**：匹配到的 skill 文档作为独立的 system message **追加到预设之后**，绕过预设系统
+
+**移除原因**：
+
+- 与"所有提示词由预设控制"的设计原则冲突 — 技能文档在预设渲染完成后才追加，存在第二条注入路径
+- 消息顺序不合理 — 技能文档在用户消息**之后**注入，LLM 看到用户消息时才获得上下文
+- `isLoaded` 去重标记脆弱 — 依赖扫描已有消息的 `meta.skill` 字段判断是否已注入
+- `gray-matter` 依赖仅用于解析 SKILL.md 的 YAML frontmatter，性价比低
+
+### 当前实现（预设宏）
+
+内置技能通过预设宏 `{{skill.xxx}}` 加载，由 `MacroEngine` 从 `templates/skills/xxx.md` 读取：
+
+```jsonc
+// 预设中的技能条目
+{
+  "name": "skills/技能",
+  "role": "system",
+  "content": "{{skill.agent-drift-guard}}\n\n{{skill.plan-and-execute}}",
+  "enabled": true,
+}
+```
+
+渲染时宏展开为对应 .md 文件的完整内容。**所有提示词走同一条流水线**，不存在第二条注入路径。
+
+### 未来设计方向
+
+当前实现有两个缺失：
+
+1. **AI 无法主动选择技能** — 技能文档通过宏直接灌给 AI，AI 没有"要不要看"的选择权
+2. **无法支持用户自定义技能** — `{{skill.xxx}}` 宏只读取 `templates/skills/` 下的内置文件
+
+计划引入以下机制解决：
+
+#### 宏系统扩展
+
+| 宏                       | 作用                                                              | 状态      |
+| ------------------------ | ----------------------------------------------------------------- | --------- |
+| `{{skill.xxx}}`          | 加载指定内置技能文档（`templates/skills/xxx.md`）                 | ✅ 现有   |
+| `{{skill_catalog}}`      | 所有可用技能的目录（仅 name + description），让 AI 知道有什么可选 | ❌ 待实现 |
+| `{{skill_detail::name}}` | 加载指定技能的完整指引文档                                        | ❌ 待实现 |
+
+#### AI 主动请求技能
+
+```
+{{skill_catalog}} → AI 看到目录 → AI 决定需要某个技能 →
+调用 read_skill 工具 → 系统注入完整指引
+```
+
+需要一个 `read_skill` 工具（类似现有的 `read` 工具但专门用于技能加载），当 AI 在预设中看到 `{{skill_catalog}}` 生成的目录后，可以主动调用此工具加载需要的技能完整内容。工具返回的 skill 文档作为 system message 注入对话。
+
+#### 用户自定义技能支持
+
+`{{skill_catalog}}` 和 `{{skill_detail::name}}` 应该同时支持：
+
+- **内置技能**：`templates/skills/xxx.md`
+- **用户技能**：`~/.codingmaid/skills/xxx/SKILL.md`（统一路径，去掉旧系统的三个冗余路径）
+
+用户技能放在 `~/.codingmaid/skills/` 下，每个技能一个目录，包含 `SKILL.md` 文件（YAML frontmatter + Markdown 正文），结构与旧系统一致但路径统一。
+
+### Skill vs Instruction 的概念边界
+
+| 维度             | Skill（技能）                                                   | Instruction（指引/指令）                   |
+| ---------------- | --------------------------------------------------------------- | ------------------------------------------ |
+| **文件形态**     | `SKILL.md`，带 YAML frontmatter                                 | `AGENTS.md`，纯 Markdown                   |
+| **存放位置**     | `~/.codingmaid/skills/<name>/SKILL.md`                          | `./AGENTS.md`、`.deepcode/AGENTS.md`       |
+| **粒度**         | 单一、专注（"如何做计划"、"如何防漂移"）                        | 宏观、全局（项目结构、编码约定、安全规则） |
+| **加载方式**     | 预设宏 `{{skill_catalog}}` → AI 主动请求                        | 预设宏 `{{agents_md}}` 自动展开            |
+| **元数据**       | 有 name/description，用于 AI 判断是否匹配                       | 无元数据，纯内容                           |
+| **预设中的位置** | `{{skill_catalog}}` 生成目录，`{{skill_detail::name}}` 加载内容 | `{{agents_md}}` 直接展开                   |
+| **类比**         | 工具书中的特定技巧"如何做 X"                                    | 项目规章制度"本项目用 pnpm"                |
+
+**总结**：Instructions 是**规则**（不管问什么都要遵守），Skills 是**能力**（特定场景下才启用）。两者在预设中各有对应的宏，但加载方式不同。
+
+## 预设目录结构设计
 
 ```
 ~/.codingmaid/
 ├── settings.json              # 全局配置
 ├── presets/
-│   ├── default/               # 默认预设（Deep Code 原始行为）
-│   │   ├── system.md          # System prompt
-│   │   ├── tools.json         # 工具定义
-│   │   └── config.json        # 模型参数
+│   ├── default/               # 默认预设（兼容原有行为）
+│   │   └── preset.json
 │   ├── minimal/               # 极简预设
-│   │   └── ...
+│   │   └── preset.json
 │   └── <user-presets>/
-│       └── ...
+│       └── preset.json
 └── skills/                    # 统一 skill 路径
     └── ...
 ```
 
-### 预设文件格式（草案）
+### 预设文件格式
 
-**system.md** — System prompt 主体，支持 EJS 模板变量：
+每个预设是 json 文件，内置预设为 `templates/buildin_preset.json`：
 
-```markdown
-你是 Coding Maid，一个全能的编程助手。
-
-当前模型：<%= model %>
-当前日期：<%= date %>
-
-<%= tools %>
-```
-
-**tools.json** — 工具开关与定义：
-
-```json
+```jsonc
 {
-  "enabled": ["bash", "read", "write", "edit", "AskUserQuestion"],
-  "disabled": ["WebSearch", "UpdatePlan"],
-  "customDefinitions": {}
+  "name": "默认编程助手",          // 预设显示名
+  "char": "Coding Maid",           // {{char}} 默认值（未设置时使用 name）
+  "user": "user",                  // {{user}} 默认值（未设置时使用 "用户"）
+  "description": "...",
+  "availableTools": ["bash", "read", ...],
+  "entries": [
+    {
+      "name": "系统设定",
+      "role": "system",            // system | user | assistant | chat_history
+      "content": "You are {{char}}...",
+      "enabled": true
+    }
+  ]
 }
 ```
 
-**config.json** — 预设级别的模型配置：
-
-```json
-{
-  "model": "deepseek-v4-pro",
-  "thinkingEnabled": true,
-  "reasoningEffort": "max",
-  "temperature": 0.7
-}
-```
+- `char` / `user`：预设顶层字段，为 `{{char}}` / `{{user}}` 宏提供默认值
+- `availableTools`：仅在此列表中的工具会被注册到 OpenAI API 的 `tools` 参数
+- `entries`：按数组顺序注入，`enabled: false` 的条目被跳过
+- `role: "chat_history"`：特殊角色，在此位置展开全部历史对话消息（作为独立 user/assistant/tool 消息，不是文本拼接），用于实现**后置指令**——预设条目中在 `chat_history` 之后的条目会出现在历史对话之后
 
 ## 存储路径迁移
 

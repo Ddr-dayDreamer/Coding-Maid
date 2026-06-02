@@ -11,7 +11,6 @@ import {
   getCompactPromptTokenThreshold,
   type LlmStreamProgress,
   type SessionEntry,
-  type SkillInfo,
   type UserPromptContent,
 } from "./session";
 import {
@@ -133,11 +132,6 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
       if (message?.type === "ready") {
         // webview 已准备好，发送初始数据
         this.loadInitialSession();
-        // 同时请求 skills 列表
-        this.sendSkillsList();
-      } else if (message?.type === "requestSkills") {
-        // 请求 skills 列表
-        this.sendSkillsList();
       } else if (message?.type === "userPrompt") {
         const prompt = String(message.prompt || "").trim();
         const images = Array.isArray(message.images)
@@ -146,9 +140,7 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
         if (!prompt && images.length === 0) {
           return;
         }
-        // 获取 skills
-        const skills = message.skills || [];
-        await this.handlePrompt(prompt, skills, images);
+        await this.handlePrompt(prompt, images);
       } else if (message?.type === "interrupt") {
         // 中断当前会话
         this.sessionManager.interruptActiveSession();
@@ -158,7 +150,6 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
         const sessionId = String(message.sessionId || "").trim();
         if (sessionId) {
           this.loadSession(sessionId);
-          await this.sendSkillsList(sessionId);
         }
       } else if (message?.type === "backToList") {
         this.showSessionsList();
@@ -276,7 +267,6 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
       status: null,
       tokenTelemetry: this.buildTokenTelemetry(null),
     });
-    await this.sendSkillsList();
   }
 
   private sendMessage(message: unknown): void {
@@ -286,17 +276,7 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
     this.webviewView.webview.postMessage(message);
   }
 
-  private async sendSkillsList(sessionId?: string): Promise<void> {
-    if (!this.webviewView) {
-      return;
-    }
-    const skills = await this.sessionManager.listSkills(
-      sessionId ?? this.sessionManager.getActiveSessionId() ?? undefined
-    );
-    this.sendMessage({ type: "skillsList", skills });
-  }
-
-  private async handlePrompt(prompt: string, skills?: SkillInfo[], imageUrls?: string[]): Promise<void> {
+  private async handlePrompt(prompt: string, imageUrls?: string[]): Promise<void> {
     if (!this.webviewView) {
       return;
     }
@@ -311,9 +291,8 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
     webview.postMessage({ type: "loading", value: true });
 
     try {
-      const userPrompt: UserPromptContent = { text: prompt, skills, imageUrls: normalizedImages };
+      const userPrompt: UserPromptContent = { text: prompt, imageUrls: normalizedImages };
       await this.sessionManager.handleUserPrompt(userPrompt);
-      await this.sendSkillsList();
 
       const activeSessionId = this.sessionManager.getActiveSessionId();
       const activeSession = activeSessionId ? this.sessionManager.getSession(activeSessionId) : null;

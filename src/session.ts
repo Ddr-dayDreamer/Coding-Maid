@@ -7,17 +7,15 @@
  * - SessionStorage          → 持久化
  * - SessionFileHistory      → 文件变更可撤回
  * - SessionProcessManager   → 进程追踪
- * - SessionSkills           → 技能发现
  * - SessionMessageBuilder   → 消息构建 + OpenAI 装配
  * - LlmStreamManager        → LLM 流式调用
  * - SessionActivator        → LLM 主循环 + 上下文压缩
  * - SessionNotifier         → 提示上报 + 任务完成通知
  */
 
-import * as fs from "fs";
 import * as crypto from "crypto";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { getDefaultSkillPrompt, getRuntimeContext, getSystemPrompt, getTools, type ToolDefinition } from "./prompt";
+import { getExtensionRoot, type ToolDefinition } from "./prompt";
 import { ToolExecutor, type CreateOpenAIClient } from "./tools/executor";
 import { McpManager } from "./mcp/mcp-manager";
 import type { McpServerConfig } from "./settings";
@@ -26,11 +24,11 @@ import { killProcessTree } from "./common/process-tree";
 import { SessionStorage } from "./session-storage";
 import { SessionFileHistory } from "./session-file-history";
 import { SessionProcessManager } from "./session-process";
-import { SessionSkills } from "./session-skills";
 import { SessionMessageBuilder } from "./session-message-builder";
 import { LlmStreamManager, getCompactPromptTokenThreshold } from "./llm-stream";
 import { SessionActivator } from "./session-activator";
 import { SessionNotifier } from "./session-notify";
+import { PresetManager } from "./preset-manager";
 
 // ─── 类型 re-export ──────────────────────────────────────
 
@@ -46,7 +44,6 @@ export type {
   SessionMessage,
   UndoTarget,
   UserPromptContent,
-  SkillInfo,
   SessionManagerOptions,
   LlmStreamProgress,
 } from "./session-types";
@@ -78,12 +75,12 @@ export class SessionManager {
   private readonly storage: SessionStorage;
   private readonly fileHistory: SessionFileHistory;
   private readonly processMgr: SessionProcessManager;
-  private readonly skills: SessionSkills;
   private readonly messageBuilder: SessionMessageBuilder;
   private readonly llm: LlmStreamManager;
   private readonly activator: SessionActivator;
   private readonly notifier: SessionNotifier;
   private readonly toolExecutor: ToolExecutor;
+  private readonly presetMgr: PresetManager;
 
   /* MCP */
   private readonly mcpManager = new McpManager();
@@ -109,10 +106,10 @@ export class SessionManager {
     this.storage = new SessionStorage(this.projectRoot);
     this.fileHistory = new SessionFileHistory(this.projectRoot, this.storage);
     this.processMgr = new SessionProcessManager();
-    this.skills = new SessionSkills(this.projectRoot, this.storage, this.createOpenAIClient);
     this.messageBuilder = new SessionMessageBuilder(this.projectRoot, this.storage, this.fileHistory);
     this.llm = new LlmStreamManager(this.createOpenAIClient);
     this.toolExecutor = new ToolExecutor(this.projectRoot, this.createOpenAIClient, this.mcpManager);
+    this.presetMgr = new PresetManager(getExtensionRoot());
     this.notifier = new SessionNotifier(this.storage, this.createOpenAIClient, (sid) => this.getSession(sid));
     this.activator = new SessionActivator(
       this.storage,
@@ -183,15 +180,17 @@ export class SessionManager {
   // ═══════════════════════════════════════════════════════
 
   async handleUserPrompt(userPrompt: import("./session-types").UserPromptContent): Promise<void> {
+    console.log("[DEBUG] handleUserPrompt enter", JSON.stringify({ text: userPrompt.text?.slice(0, 50) }));
     const controller = new AbortController();
     this.activePromptController = controller;
 
     try {
       if (!this.activeSessionId || !this.getSession(this.activeSessionId)) {
-        await this.createSession(userPrompt, controller);
-      } else {
-        await this.replySession(this.activeSessionId, userPrompt, controller);
+        console.log("[DEBUG] handleUserPrompt: no active session, creating new");
+        this.createSession(userPrompt);
       }
+      console.log("[DEBUG] handleUserPrompt: activeSessionId =", this.activeSessionId);
+      await this.sendMessage(this.activeSessionId!, userPrompt, controller);
     } catch (error) {
       if (!this.isAbortLikeError(error) && !controller.signal.aborted) {
         throw error;
@@ -207,33 +206,15 @@ export class SessionManager {
   //  创建会话
   // ═══════════════════════════════════════════════════════
 
-  async createSession(
-    userPrompt: import("./session-types").UserPromptContent,
-    controller?: AbortController
-  ): Promise<string> {
+  /**
+   * 创建会话索引（同步，不触发 LLM）。
+   * 消息发送统一由 sendMessage 处理。
+   */
+  createSession(userPrompt: import("./session-types").UserPromptContent): string {
     this.notifier.reportNewPrompt();
-    const signal = controller?.signal;
-    this.throwIfAborted(signal);
 
-    // 技能匹配
-    if (userPrompt.text) {
-      const skillList = await this.skills.listSkills();
-      const skillNames = await this.skills.identifyMatchingSkillNames(skillList, userPrompt.text, { signal });
-      this.throwIfAborted(signal);
-      const skillSet = new Set(skillNames);
-      const matchedSkill = skillList.filter((skill) => skillSet.has(skill.name));
-      if (Array.isArray(userPrompt.skills)) {
-        userPrompt.skills.push(...matchedSkill);
-      } else if (matchedSkill.length > 0) {
-        userPrompt.skills = matchedSkill;
-      }
-    }
-    const normalizedSkills = await this.skills.normalizeSkills(userPrompt.skills);
-    userPrompt = { ...userPrompt, skills: normalizedSkills };
-    this.throwIfAborted(signal);
-
-    // 创建会话索引
     const sessionId = crypto.randomUUID();
+    console.log("[DEBUG] createSession: new sessionId =", sessionId);
     this.fileHistory.ensureSession(sessionId);
     const now = new Date().toISOString();
     const index = this.storage.loadSessionsIndex();
@@ -259,58 +240,7 @@ export class SessionManager {
     this.storage.saveSessionsIndex(kept);
     this.storage.removeSessionMessages(dropped);
 
-    // ── 提示词管道 ────────────────────────────────────
-    const promptToolOptions = this.getPromptToolOptions();
-
-    // 1. 系统 prompt
-    const systemPrompt = getSystemPrompt(this.projectRoot, promptToolOptions);
-    this.storage.appendSessionMessage(sessionId, this.messageBuilder.buildSystemMessage(sessionId, systemPrompt));
-
-    // 2. 默认 skill
-    const defaultSkillPrompt = getDefaultSkillPrompt();
-    if (defaultSkillPrompt) {
-      this.storage.appendSessionMessage(
-        sessionId,
-        this.messageBuilder.buildSystemMessage(sessionId, defaultSkillPrompt)
-      );
-    }
-
-    // 3. 运行时上下文
-    this.storage.appendSessionMessage(
-      sessionId,
-      this.messageBuilder.buildSystemMessage(sessionId, getRuntimeContext(this.projectRoot, promptToolOptions.model))
-    );
-
-    // 4. AGENTS.md 指令
-    const agentInstructions = this.messageBuilder.loadAgentInstructions();
-    if (agentInstructions) {
-      this.storage.appendSessionMessage(
-        sessionId,
-        this.messageBuilder.buildSystemMessage(sessionId, agentInstructions)
-      );
-    }
-
-    // 5. 用户消息
-    this.storage.appendSessionMessage(sessionId, this.messageBuilder.buildUserMessage(sessionId, userPrompt));
-
-    // 6. 技能文档
-    if (userPrompt.skills?.length) {
-      for (const skill of userPrompt.skills) {
-        if (skill.isLoaded) continue;
-        const skillMd = fs.readFileSync(this.skills.resolveSkillPath(skill.path), "utf8");
-        const text = `<${skill.name}-skill path="${this.skills.resolveSkillPath(skill.path)}">\n${skillMd}\n</${skill.name}-skill>`;
-        const msg = this.messageBuilder.buildSkillMessage(
-          sessionId,
-          `Use the skill document below to assist the user:\n\n${text}`,
-          skill
-        );
-        this.storage.appendSessionMessage(sessionId, msg);
-        this.onAssistantMessage(msg, true);
-      }
-    }
-
     this.activeSessionId = sessionId;
-    await this.runActivate(sessionId, controller);
     return sessionId;
   }
 
@@ -318,7 +248,11 @@ export class SessionManager {
   //  回复会话
   // ═══════════════════════════════════════════════════════
 
-  async replySession(
+  /**
+   * 统一发送消息（首次和后续对话共用）。
+   * 不负责创建会话索引，由调用方保证 session 已存在。
+   */
+  async sendMessage(
     sessionId: string,
     userPrompt: import("./session-types").UserPromptContent,
     controller?: AbortController
@@ -327,66 +261,49 @@ export class SessionManager {
     this.throwIfAborted(signal);
     const now = new Date().toISOString();
 
-    const updated = this.storage.updateSessionEntry(sessionId, (entry) => ({
+    // 更新会话状态
+    this.storage.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
       status: "pending",
       failReason: null,
       updateTime: now,
     }));
 
-    if (!updated) {
-      await this.createSession(userPrompt, controller);
-      return;
-    }
-
+    // /continue → 直接继续 LLM 主循环，不加新消息
     if (this.isContinuePrompt(userPrompt)) {
-      this.activeSessionId = sessionId;
       await this.runActivate(sessionId, controller);
       return;
     }
 
     this.notifier.reportNewPrompt();
-
-    // 技能匹配
-    if (userPrompt.text) {
-      const skillList = await this.skills.listSkills(sessionId);
-      const skillNames = await this.skills.identifyMatchingSkillNames(skillList, userPrompt.text, {
-        signal,
-        sessionId,
-      });
-      this.throwIfAborted(signal);
-      const skillSet = new Set(skillNames);
-      const matchedSkill = skillList.filter((skill) => skillSet.has(skill.name));
-      if (Array.isArray(userPrompt.skills)) {
-        userPrompt.skills.push(...matchedSkill);
-      } else if (matchedSkill.length > 0) {
-        userPrompt.skills = matchedSkill;
-      }
-    }
-    const normalizedSkills = await this.skills.normalizeSkills(userPrompt.skills, sessionId);
-    userPrompt = { ...userPrompt, skills: normalizedSkills };
-    this.throwIfAborted(signal);
-
     this.fileHistory.ensureSession(sessionId);
-    this.storage.appendSessionMessage(sessionId, this.messageBuilder.buildUserMessage(sessionId, userPrompt));
 
-    if (userPrompt.skills?.length) {
-      for (const skill of userPrompt.skills) {
-        if (skill.isLoaded) continue;
-        const skillMd = fs.readFileSync(this.skills.resolveSkillPath(skill.path), "utf8");
-        const text = `<${skill.name}-skill path="${this.skills.resolveSkillPath(skill.path)}">\n${skillMd}\n</${skill.name}-skill>`;
-        const msg = this.messageBuilder.buildSkillMessage(
-          sessionId,
-          `Use the skill document below to assist the user:\n\n${text}`,
-          skill
-        );
-        this.storage.appendSessionMessage(sessionId, msg);
-        this.onAssistantMessage(msg, true);
-      }
-    }
+    console.log("[DEBUG] sendMessage: appending user msg, sessionId =", sessionId);
+    // 增量保存：只追加用户消息，预设由 SessionActivator 运行时注入
+    const newUserMsg = this.messageBuilder.buildUserMessage(sessionId, userPrompt);
+    this.storage.appendSessionMessage(sessionId, newUserMsg);
+    console.log("[DEBUG] sendMessage: user msg appended, calling runActivate");
 
     this.activeSessionId = sessionId;
     await this.runActivate(sessionId, controller);
+    console.log("[DEBUG] sendMessage: runActivate returned");
+  }
+
+  /**
+   * 回复会话（公开接口，委托给 sendMessage）。
+   * 如 session 不存在则自动创建。
+   */
+  async replySession(
+    sessionId: string,
+    userPrompt: import("./session-types").UserPromptContent,
+    controller?: AbortController
+  ): Promise<void> {
+    const existing = this.getSession(sessionId);
+    if (!existing) {
+      this.createSession(userPrompt);
+      sessionId = this.activeSessionId!;
+    }
+    await this.sendMessage(sessionId, userPrompt, controller);
   }
 
   /**
@@ -410,6 +327,7 @@ export class SessionManager {
         onAssistantMessage: (msg, connect) => this.onAssistantMessage(msg, connect),
         onSessionEntryUpdated: (entry) => this.onSessionEntryUpdated?.(entry),
         onDebugPrompt: (msgs, iter) => this.onDebugPrompt?.(msgs, iter),
+        presetMgr: this.presetMgr,
       });
     } finally {
       this.activationControllers.delete(sessionId);
@@ -539,22 +457,6 @@ export class SessionManager {
   }
 
   // ═══════════════════════════════════════════════════════
-  //  技能
-  // ═══════════════════════════════════════════════════════
-
-  async listSkills(sessionId?: string): Promise<import("./session-types").SkillInfo[]> {
-    return this.skills.listSkills(sessionId);
-  }
-
-  async identifyMatchingSkillNames(
-    skills: import("./session-types").SkillInfo[],
-    userPrompt: string,
-    options?: { signal?: AbortSignal; sessionId?: string }
-  ): Promise<string[]> {
-    return this.skills.identifyMatchingSkillNames(skills, userPrompt, options);
-  }
-
-  // ═══════════════════════════════════════════════════════
   //  工具消息追加
   // ═══════════════════════════════════════════════════════
 
@@ -629,16 +531,27 @@ export class SessionManager {
   //  内部工具
   // ═══════════════════════════════════════════════════════
 
-  private getPromptToolOptions(): { model: string; webSearchEnabled: boolean } {
-    return { model: this.getResolvedSettings().model, webSearchEnabled: true };
+  private getPromptToolOptions(): { model: string; webSearchEnabled: boolean; availableTools?: string[] } {
+    const base = { model: this.getResolvedSettings().model, webSearchEnabled: true };
+
+    // 从当前预设获取 availableTools
+    try {
+      const preset = this.presetMgr.ensureDefaultPreset();
+      if (preset.availableTools && preset.availableTools.length > 0) {
+        return { ...base, availableTools: preset.availableTools };
+      }
+    } catch {
+      // 预设加载失败时只返回 base
+    }
+
+    return base;
   }
 
   private isContinuePrompt(userPrompt: import("./session-types").UserPromptContent): boolean {
     return (
       typeof userPrompt.text === "string" &&
       userPrompt.text.trim() === "/continue" &&
-      (!userPrompt.imageUrls || userPrompt.imageUrls.length === 0) &&
-      (!userPrompt.skills || userPrompt.skills.length === 0)
+      (!userPrompt.imageUrls || userPrompt.imageUrls.length === 0)
     );
   }
 

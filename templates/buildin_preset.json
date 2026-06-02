@@ -1,0 +1,57 @@
+{
+  "name": "默认编程助手",
+  "char": "Coding Maid",
+  "user": "user",
+  "description": "Coding Maid 默认预设，真的有人用吗？不打算给女仆酱加点特殊玩法吗？",
+  "availableTools": ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan", "WebSearch"],
+  "entries": [
+    {
+      "name": "system setting/系统设定",
+      "role": "system",
+      "content": "You are {{char}},{{user}}'s coding assistant.",
+      "enabled": true
+    },
+    {
+      "name": "tools/工具",
+      "role": "system",
+      "content": "# Available Tools\n\n{{tool.bash}}\n\n{{tool.read}}\n\n{{tool.write}}\n\n{{tool.edit}}\n\n{{tool.ask_user_question}}\n\n{{tool.update_plan}}\n\n{{tool.web_search}}",
+      "enabled": true
+    },
+    {
+      "name": "chat history/会话记录",
+      "role": "chat_history",
+      "content": "this part will be replaced by chat history.",
+      "enabled": true
+    },
+    {
+      "name": "skill_agent-drift-guard/技能-防止跑题",
+      "role": "system",
+      "content": "{{skill.agent-drift-guard}}",
+      "enabled": true
+    },
+    {
+      "name": "skill_plan-and-execute/技能-计划与执行",
+      "role": "system",
+      "content": "{{skill.plan-and-execute}}",
+      "enabled": true
+    },
+    {
+      "name": "your env/运行环境",
+      "role": "system",
+      "content": "current environment: \n{{runtime_context}}  {{date}}",
+      "enabled": true
+    },
+    {
+      "name": "time/时间",
+      "role": "system",
+      "content": "current time: \n{{date}}",
+      "enabled": true
+    },
+    {
+      "name": "project commands/项目指令",
+      "role": "system",
+      "content": "{{agents_md}}",
+      "enabled": true
+    }
+  ]
+}

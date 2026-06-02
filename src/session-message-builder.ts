@@ -16,10 +16,9 @@ import * as path from "path";
 import * as os from "os";
 import * as crypto from "crypto";
 import { fileURLToPath } from "url";
-import ejs from "ejs";
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "openai/resources/chat/completions";
 import { supportsMultimodal } from "./common/model-capabilities";
-import type { SessionMessage, SessionMessageRole, MessageMeta, SkillInfo, UserPromptContent } from "./session-types";
+import type { SessionMessage, SessionMessageRole, MessageMeta, UserPromptContent } from "./session-types";
 import type { SessionStorage } from "./session-storage";
 import type { SessionFileHistory } from "./session-file-history";
 
@@ -95,23 +94,6 @@ export class SessionMessageBuilder {
       createTime: now,
       updateTime: now,
       meta,
-    };
-  }
-
-  buildSkillMessage(sessionId: string, content: string, skill: SkillInfo): SessionMessage {
-    const now = new Date().toISOString();
-    return {
-      id: crypto.randomUUID(),
-      sessionId,
-      role: "system",
-      content,
-      contentParams: null,
-      messageParams: null,
-      compacted: false,
-      visible: true,
-      createTime: now,
-      updateTime: now,
-      meta: { skill: { ...skill, isLoaded: true } },
     };
   }
 
@@ -287,15 +269,8 @@ export class SessionMessageBuilder {
   // ═══════════════════════════════════════════════════════
 
   private renderInitCommandPrompt(): string {
-    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "init_command.md.ejs");
-    const template = fs.readFileSync(templatePath, "utf8");
-    return ejs.render(template, {
-      agentsMdFile: this.getEffectiveProjectAgentsMdFile(),
-    });
-  }
-
-  private getEffectiveProjectAgentsMdFile(): string | null {
-    return this.loadProjectAgentInstructions()?.displayPath ?? null;
+    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "init_command.md");
+    return fs.readFileSync(templatePath, "utf8");
   }
 
   loadProjectAgentInstructions(): { content: string; displayPath: string } | null {

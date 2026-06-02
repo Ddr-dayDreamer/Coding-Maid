@@ -7,31 +7,27 @@
 
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { buildThinkingRequestOptions } from "./common/openai-thinking";
-import { getCompactPrompt, getTools, type ToolDefinition } from "./prompt";
+import { getExtensionRoot, getCompactPrompt, getTools, type ToolDefinition } from "./prompt";
 import type { CreateOpenAIClient } from "./tools/executor";
 import type { SessionStorage } from "./session-storage";
 import type { SessionMessageBuilder } from "./session-message-builder";
 import type { SessionNotifier } from "./session-notify";
 import type { SessionEntry, SessionMessage } from "./session-types";
-import type {
-  LlmStreamManager} from "./llm-stream";
-import {
-  getCompactPromptTokenThreshold,
-  accumulateUsage,
-  accumulateUsagePerModel,
-  getTotalTokens,
-} from "./llm-stream";
+import type { LlmStreamManager } from "./llm-stream";
+import { accumulateUsage, accumulateUsagePerModel, getTotalTokens } from "./llm-stream";
+import type { PresetManager } from "./preset-manager";
 
 // ─── Activate 选项 ───────────────────────────────────────
 
 export type ActivateOptions = {
   controller?: AbortController;
   mcpToolDefinitions: ToolDefinition[];
-  getPromptToolOptions: () => { model: string; webSearchEnabled: boolean };
+  getPromptToolOptions: () => { model: string; webSearchEnabled: boolean; availableTools?: string[] };
   appendToolMessages: (sessionId: string, toolCalls: unknown[]) => Promise<{ waitingForUser: boolean }>;
   onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
   onSessionEntryUpdated?: (entry: SessionEntry) => void;
   onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;
+  presetMgr: PresetManager;
 };
 
 // ─── SessionActivator ────────────────────────────────────
@@ -69,6 +65,7 @@ export class SessionActivator {
   // ═══════════════════════════════════════════════════════
 
   async activate(sessionId: string, opts: ActivateOptions): Promise<void> {
+    console.log("[DEBUG] activate enter, sessionId =", sessionId);
     const startedAt = Date.now();
     const {
       client,
@@ -83,6 +80,8 @@ export class SessionActivator {
       env,
     } = this.createOpenAIClient();
     const now = new Date().toISOString();
+
+    console.log("[DEBUG] activate: client ready?", !!client, "model:", model);
 
     if (!client) {
       this.storage.updateSessionEntry(sessionId, (entry) => ({
@@ -157,25 +156,51 @@ export class SessionActivator {
           }
         }
 
-        // 上下文压缩
-        const compactPromptTokenThreshold = getCompactPromptTokenThreshold(model);
-        if (session.activeTokens > compactPromptTokenThreshold) {
-          const msg = this.messageBuilder.buildAssistantMessage(
+        // 上下文压缩（暂时禁用 — 后续再启用）
+
+        // 运行时注入预设（预设不落盘，仅运行时注入）
+        const conversationMessages = this.storage.listSessionMessages(sessionId);
+        console.log("[DEBUG] activate iter", iteration, ": conversationMessages count =", conversationMessages.length);
+        const promptToolOptions = opts.getPromptToolOptions();
+        console.log("[DEBUG] activate: promptToolOptions =", JSON.stringify(promptToolOptions));
+        let preset;
+        try {
+          preset = opts.presetMgr.ensureDefaultPreset();
+          console.log("[DEBUG] activate: preset loaded, name =", preset.name);
+        } catch (e) {
+          console.log("[DEBUG] activate: preset load FAILED:", e);
+          throw e;
+        }
+        const macroContext = {
+          projectRoot: this.projectRoot,
+          model: promptToolOptions.model,
+          extensionRoot: getExtensionRoot(),
+        };
+        let renderedEntries;
+        try {
+          renderedEntries = opts.presetMgr.renderPreset(preset, macroContext);
+          console.log("[DEBUG] activate: renderedEntries count =", renderedEntries.length);
+        } catch (e) {
+          console.log("[DEBUG] activate: renderPreset FAILED:", e);
+          throw e;
+        }
+        let fullMessages;
+        try {
+          fullMessages = opts.presetMgr.buildMessages(
             sessionId,
-            "The conversation is getting long, compacting...",
-            null
+            renderedEntries,
+            conversationMessages,
+            this.messageBuilder
           );
-          msg.meta = { asThinking: true };
-          opts.onAssistantMessage(msg, false);
-          await this.compact(sessionId, sessionController.signal, opts.onDebugPrompt);
+          console.log("[DEBUG] activate: fullMessages count =", fullMessages.length);
+        } catch (e) {
+          console.log("[DEBUG] activate: buildMessages FAILED:", e);
+          throw e;
         }
 
         // 构建消息 → 调用 LLM
-        const messages = this.messageBuilder.buildOpenAIMessages(
-          this.storage.listSessionMessages(sessionId),
-          thinkingEnabled ?? false,
-          model
-        );
+        const messages = this.messageBuilder.buildOpenAIMessages(fullMessages, thinkingEnabled ?? false, model);
+        console.log("[DEBUG] activate: openai messages count =", messages.length);
         if (debugPromptEnabled && opts.onDebugPrompt) {
           opts.onDebugPrompt(messages, iteration);
         }
@@ -246,7 +271,23 @@ export class SessionActivator {
 
         opts.onSessionEntryUpdated?.(this.getSession(sessionId)!);
 
+        console.log(
+          "[DEBUG] activate: iter",
+          iteration,
+          "done, status =",
+          refusal
+            ? "failed"
+            : waitingForUser
+              ? "waiting_for_user"
+              : toolCalls
+                ? "processing (has tool calls)"
+                : "completed"
+        );
         if (refusal || waitingForUser || !toolCalls) {
+          console.log(
+            "[DEBUG] activate: returning, reason:",
+            refusal ? "refusal" : waitingForUser ? "waiting_for_user" : "no tool_calls"
+          );
           return;
         }
       }
@@ -267,6 +308,7 @@ export class SessionActivator {
       );
     } catch (error) {
       const errMessage = error instanceof Error ? error.message : String(error);
+      console.log("[DEBUG] activate: CATCH error =", errMessage);
       const aborted = this.isAbortLikeError(error) || sessionController.signal.aborted;
       this.storage.updateSessionEntry(sessionId, (entry) => ({
         ...entry,

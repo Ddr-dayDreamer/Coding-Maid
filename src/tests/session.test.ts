@@ -308,92 +308,9 @@ test("SessionManager keeps usagePerModel null until response usage is available"
   assert.equal(manager.getSession(sessionId)?.usagePerModel, null);
 });
 
-test("SessionManager marks skills loaded from existing session messages", async () => {
-  const workspace = createTempDir("deepcode-loaded-skills-workspace-");
-  const home = createTempDir("deepcode-loaded-skills-home-");
-  setHomeDir(home);
-
-  const skillDir = path.join(home, ".agents", "skills", "lessweb-starter");
-  fs.mkdirSync(skillDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(skillDir, "SKILL.md"),
-    "---\nname: lessweb-starter\ndescription: Create Lessweb projects\n---\n# Lessweb Starter\n",
-    "utf8"
-  );
-
-  const projectCode = workspace.replace(/[\\/]/g, "-").replace(/:/g, "");
-  const projectDir = path.join(home, ".deepcode", "projects", projectCode);
-  fs.mkdirSync(projectDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(projectDir, "loaded-session.jsonl"),
-    `${JSON.stringify({
-      id: "skill-message",
-      sessionId: "loaded-session",
-      role: "system",
-      content: "Use the skill document below",
-      contentParams: null,
-      messageParams: null,
-      compacted: false,
-      visible: true,
-      createTime: "2026-01-01T00:00:00.000Z",
-      updateTime: "2026-01-01T00:00:00.000Z",
-      meta: {
-        skill: {
-          name: "lessweb-starter",
-          path: "~/.agents/skills/lessweb-starter/SKILL.md",
-          description: "Create Lessweb projects",
-          isLoaded: true,
-        },
-      },
-    })}\n`,
-    "utf8"
-  );
-
-  const manager = createSessionManager(workspace, "machine-id-loaded-skills");
-  const loadedSkill = (await manager.listSkills("loaded-session")).find((skill) => skill.name === "lessweb-starter");
-
-  assert.equal(loadedSkill?.isLoaded, true);
-});
-
-test("SessionManager lists project skills from .agents with legacy .deepcode compatibility", async () => {
-  const workspace = createTempDir("deepcode-project-skills-workspace-");
-  const home = createTempDir("deepcode-project-skills-home-");
-  setHomeDir(home);
-
-  const userSkillDir = path.join(home, ".agents", "skills", "shared");
-  fs.mkdirSync(userSkillDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(userSkillDir, "SKILL.md"),
-    "---\nname: shared\ndescription: User-level skill\n---\n# Shared\n",
-    "utf8"
-  );
-
-  const legacyProjectSkillDir = path.join(workspace, ".deepcode", "skills", "legacy");
-  fs.mkdirSync(legacyProjectSkillDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(legacyProjectSkillDir, "SKILL.md"),
-    "---\nname: legacy\ndescription: Legacy project skill\n---\n# Legacy\n",
-    "utf8"
-  );
-
-  const projectAgentsSkillDir = path.join(workspace, ".agents", "skills", "shared");
-  fs.mkdirSync(projectAgentsSkillDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(projectAgentsSkillDir, "SKILL.md"),
-    "---\nname: shared\ndescription: Project .agents skill\n---\n# Shared\n",
-    "utf8"
-  );
-
-  const manager = createSessionManager(workspace, "machine-id-project-skills");
-  const skills = await manager.listSkills();
-  const legacySkill = skills.find((skill) => skill.name === "legacy");
-  const sharedSkill = skills.find((skill) => skill.name === "shared");
-
-  assert.equal(legacySkill?.path, "./.deepcode/skills/legacy/SKILL.md");
-  assert.equal(legacySkill?.description, "Legacy project skill");
-  assert.equal(sharedSkill?.path, "./.agents/skills/shared/SKILL.md");
-  assert.equal(sharedSkill?.description, "Project .agents skill");
-});
+// Skill tests removed — SessionSkills has been deleted.
+// Skill system is now fully managed by preset macros ({{skill.xxx}}).
+// See docs/guide.md → 技能系统设计
 
 test("SessionManager dispose disconnects MCP servers", async () => {
   const workspace = createTempDir("deepcode-mcp-dispose-workspace-");

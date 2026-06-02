@@ -1,12 +1,6 @@
-import { execFileSync, execSync } from "child_process";
-import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 import { fileURLToPath } from "url";
-import ejs from "ejs";
 import type { SessionMessage } from "./session";
-import { findGitBashPath, resolveShellPath } from "./common/shell-utils";
-import { supportsMultimodal } from "./common/model-capabilities";
 
 const COMPACT_PROMPT_BASE = `Your task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions.
 This summary should be thorough in capturing technical details, code patterns, and architectural decisions that would be essential for continuing development work without losing context.
@@ -90,110 +84,6 @@ Here's an example of how your output should be structured:
 
 </summary>`;
 
-/** 外置 system prompt 文件名，放在项目根目录的 .deepcode/ 下 */
-const EXTERNAL_SYSTEM_PROMPT_FILE = ".deepcode/system-prompt.md";
-
-/** 硬编码的默认 system prompt（回退方案） */
-const SYSTEM_PROMPT_BASE = `你是名叫Deep Code的交互式CLI工具，帮助用户完成软件工程任务。 Use the instructions below and the tools available to you to assist the user.
-
-重要：严禁编造任何非编程相关的 URL。对于编程链接，仅限使用：1) 用户提供的上下文；2) 你确定的官方文档主域名。在输出前，必须自查该链接是否存在于你的上下文记忆中；若不存在，请明确说明无法提供。`;
-
-/**
- * 加载 system prompt 内容。
- * 优先读取项目根目录下 `.deepcode/system-prompt.md` 文件，
- * 不存在则返回硬编码的 SYSTEM_PROMPT_BASE。
- */
-function loadSystemPromptBase(projectRoot: string): string {
-  const externalPath = path.join(projectRoot, EXTERNAL_SYSTEM_PROMPT_FILE);
-  try {
-    if (fs.existsSync(externalPath)) {
-      const content = fs.readFileSync(externalPath, "utf8").trim();
-      if (content) {
-        return content;
-      }
-    }
-  } catch {
-    // 读取失败时静默回退到默认 prompt
-  }
-  return SYSTEM_PROMPT_BASE;
-}
-
-type PromptToolOptions = {
-  model?: string;
-  webSearchEnabled?: boolean;
-};
-
-const DEFAULT_SKILL_TEMPLATES = ["agent-drift-guard.md", "plan-and-execute.md"];
-
-function readToolDocs(extensionRoot: string, options: PromptToolOptions = {}): string {
-  const toolsDir = path.join(extensionRoot, "templates", "tools");
-  if (!fs.existsSync(toolsDir)) {
-    return "";
-  }
-
-  const entries = fs.readdirSync(toolsDir);
-  const docs = entries
-    .filter((entry) => entry.endsWith(".md") || entry.endsWith(".md.ejs"))
-    .sort()
-    .map((entry) => {
-      const fullPath = path.join(toolsDir, entry);
-      try {
-        const template = fs.readFileSync(fullPath, "utf8");
-        const content = entry.endsWith(".ejs")
-          ? ejs.render(template, { supportsMultimodal: supportsMultimodal(options.model ?? "") })
-          : template;
-        return content.trim();
-      } catch {
-        return "";
-      }
-    })
-    .filter((content) => content.length > 0);
-
-  return docs.join("\n\n");
-}
-
-function readDefaultSkillDocs(extensionRoot: string): Array<{ name: string; content: string }> {
-  const skillsDir = path.join(extensionRoot, "templates", "skills");
-  return DEFAULT_SKILL_TEMPLATES.map((entry) => {
-    const fullPath = path.join(skillsDir, entry);
-    try {
-      return {
-        name: path.basename(entry, ".md"),
-        content: fs.readFileSync(fullPath, "utf8").trim(),
-      };
-    } catch {
-      return null;
-    }
-  }).filter((skill): skill is { name: string; content: string } => Boolean(skill?.content));
-}
-
-export function getDefaultSkillPrompt(): string {
-  const skillDocs = readDefaultSkillDocs(getExtensionRoot());
-  if (skillDocs.length === 0) {
-    return "";
-  }
-
-  const blocks = skillDocs.map(
-    (skill) => `<${skill.name}-skill>
-${skill.content}
-</${skill.name}-skill>`
-  );
-  return `Use the skill documents below to assist the user:\n${blocks.join("\n\n")}`;
-}
-
-function getCurrentDateAndModelPrompt(model?: string): string {
-  const date = new Date();
-  let prompt = `今天是${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日。随着对话的进行，时间在流逝。`;
-  prompt += model ? `\n当前LLM模型为${model}，对话中可通过/model命令切换模型。` : "";
-  return prompt;
-}
-
-export function getSystemPrompt(projectRoot: string, options: PromptToolOptions = {}): string {
-  const systemBase = loadSystemPromptBase(projectRoot);
-  const toolDocs = readToolDocs(getExtensionRoot(), options);
-  return toolDocs ? `${systemBase}\n\n# Available Tools\n\n${toolDocs}` : systemBase;
-}
-
 export function getCompactPrompt(sessionMessages: SessionMessage[]): string {
   const jsonl = sessionMessages
     .map((message) =>
@@ -210,108 +100,15 @@ export function getCompactPrompt(sessionMessages: SessionMessage[]): string {
   return `${COMPACT_PROMPT_BASE}\n\nconversation below:\n\n\`\`\`jsonl\n${jsonl}\n\`\`\``;
 }
 
-export function getRuntimeContext(projectRoot: string, model?: string): string {
-  const uname = getUnameInfo();
-  const shellPath = getShellPathInfo();
-  const shellModeOpts = process.platform === "win32" ? { "shell mode": "git-bash" } : {};
-  const runtimeVersions = getRuntimeVersionInfo();
-  const env = {
-    "root path": projectRoot,
-    pwd: projectRoot,
-    homedir: os.homedir(),
-    "system info": uname,
-    "shell path": shellPath,
-    ...shellModeOpts,
-    ...runtimeVersions,
-    "command installed": {
-      ripgrep: checkToolInstalled("rg"),
-      jq: checkToolInstalled("jq"),
-    },
-  };
-  return `${getCurrentDateAndModelPrompt(model)}
+/** 工具选项，控制哪些工具注册到 API */
+type PromptToolOptions = {
+  model?: string;
+  webSearchEnabled?: boolean;
+  /** 仅在此列表中的工具会被注册到 API，未指定时返回全部 */
+  availableTools?: string[];
+};
 
-# Local Workspace Environment
-
-\`\`\`json
-${JSON.stringify(env, null, 2)}
-\`\`\``;
-}
-
-function checkToolInstalled(tool: string): boolean {
-  try {
-    if (process.platform === "win32") {
-      const bashPath = findGitBashPath();
-      execFileSync(bashPath, ["-lc", `command -v ${shellSingleQuote(tool)}`], {
-        encoding: "utf8",
-        stdio: "ignore",
-        windowsHide: true,
-      });
-      return true;
-    }
-    execSync(`command -v ${tool}`, { encoding: "utf8", stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function getShellPathInfo(): string {
-  try {
-    return resolveShellPath();
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error);
-  }
-}
-
-function shellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, "'\"'\"'")}'`;
-}
-
-function getRuntimeVersionInfo(): Record<string, string> {
-  const versions: Record<string, string> = {};
-  const pythonVersion = getCommandVersion("python3", ["--version"]);
-  const nodeVersion = getCommandVersion("node", ["--version"]);
-
-  if (pythonVersion) {
-    versions["python3 version"] = pythonVersion.replace(/^Python\s+/i, "");
-  }
-  if (nodeVersion) {
-    versions["node version"] = nodeVersion;
-  }
-
-  return versions;
-}
-
-function getCommandVersion(command: string, args: string[]): string | null {
-  try {
-    const commandText = [command, ...args].map(shellSingleQuote).join(" ");
-    if (process.platform === "win32") {
-      return execFileSync(findGitBashPath(), ["-lc", `${commandText} 2>&1`], {
-        encoding: "utf8",
-        windowsHide: true,
-      }).trim();
-    }
-    return execSync(`${commandText} 2>&1`, { encoding: "utf8" }).trim();
-  } catch {
-    return null;
-  }
-}
-
-function getUnameInfo(): string {
-  try {
-    if (process.platform === "win32") {
-      return execFileSync(findGitBashPath(), ["-lc", "uname -a"], {
-        encoding: "utf8",
-        windowsHide: true,
-      }).trim();
-    }
-    return execSync("uname -a", { encoding: "utf8" }).trim();
-  } catch {
-    return `${os.type()} ${os.release()} ${os.arch()}`;
-  }
-}
-
-function getExtensionRoot(): string {
+export function getExtensionRoot(): string {
   // Prefer `__dirname` which is always available in the CJS bundle output.
   // Fall back to `import.meta.url` for ESM test environments (tsx --test).
   if (typeof __dirname !== "undefined") {
@@ -337,7 +134,9 @@ export type ToolDefinition = {
 };
 
 export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDefinition[] = []): ToolDefinition[] {
-  const tools: ToolDefinition[] = [
+  const { availableTools } = _options;
+
+  const allTools: ToolDefinition[] = [
     {
       type: "function",
       function: {
@@ -531,7 +330,7 @@ export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDe
     },
   ];
 
-  tools.push({
+  allTools.push({
     type: "function",
     function: {
       name: "WebSearch",
@@ -552,8 +351,13 @@ export function getTools(_options: PromptToolOptions = {}, externalTools: ToolDe
   });
 
   for (const tool of externalTools) {
-    tools.push(tool);
+    allTools.push(tool);
   }
 
-  return tools;
+  if (availableTools && availableTools.length > 0) {
+    const allowed = new Set(availableTools.map((t: string) => t.toLowerCase()));
+    return allTools.filter((t) => allowed.has(t.function.name.toLowerCase()));
+  }
+
+  return allTools;
 }

@@ -81,8 +81,8 @@ export type MessageMeta = {
   resultMd?: string;
   asThinking?: boolean;
   isSummary?: boolean;
+  isPreset?: boolean;
   isModelChange?: boolean;
-  skill?: SkillInfo;
 };
 
 export type SessionMessage = {
@@ -114,16 +114,6 @@ export type UndoTarget = {
 export type UserPromptContent = {
   text?: string;
   imageUrls?: string[];
-  skills?: SkillInfo[];
-};
-
-// ─── Skill 信息 ─────────────────────────────────────────
-
-export type SkillInfo = {
-  name: string;
-  path: string;
-  description: string;
-  isLoaded?: boolean;
 };
 
 // ─── SessionManager 构造选项 ────────────────────────────
@@ -154,4 +144,48 @@ export type LlmStreamProgress = {
   estimatedTokens: number;
   formattedTokens: string;
   phase: "start" | "update" | "end";
+};
+
+// ─── 提示词预设 ──────────────────────────────────────────
+
+/** 预设中的单个条目 */
+export type PresetEntry = {
+  name: string;
+  role: "system" | "user" | "assistant" | "chat_history";
+  content: string;
+  enabled: boolean;
+};
+
+/** 预设定义（序列化为 preset.json） */
+export type PresetDefinition = {
+  name: string;
+  description: string;
+  /** {{char}} 的默认值（未指定时使用 name） */
+  char?: string;
+  /** {{user}} 的默认值（未指定时使用 "user"） */
+  user?: string;
+  /** 仅在此列表中的工具会被注册到 OpenAI API 的 tools 参数 */
+  availableTools: string[];
+  entries: PresetEntry[];
+};
+
+/** 预设元信息（列表展示用） */
+export type PresetMeta = {
+  /** 目录名，也是预设的唯一标识 */
+  name: string;
+  /** 来自 preset.json 的 display name */
+  displayName: string;
+  description: string;
+  path: string;
+};
+
+/** 宏解析上下文 */
+export type MacroContext = {
+  projectRoot: string;
+  model: string;
+  extensionRoot: string;
+  /** {{char}} 默认值（优先级：setvar > 此字段 > "助手"） */
+  charName?: string;
+  /** {{user}} 默认值（优先级：setvar > 此字段 > "用户"） */
+  userName?: string;
 };
