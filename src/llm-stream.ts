@@ -7,22 +7,10 @@
 
 import * as crypto from "crypto";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { DEEPSEEK_V4_MODELS } from "./common/model-capabilities";
 import { logApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug, normalizeDebugError } from "./common/debug-logger";
 import type { CreateOpenAIClient } from "./tools/executor";
 import type { ModelUsage, LlmStreamProgress } from "./session-types";
-
-// ─── 常量 ────────────────────────────────────────────────
-
-const DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD = 128 * 1024;
-const DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD = 512 * 1024;
-
-export function getCompactPromptTokenThreshold(model: string): number {
-  return DEEPSEEK_V4_MODELS.has(model)
-    ? DEEPSEEK_V4_COMPACT_PROMPT_TOKEN_THRESHOLD
-    : DEFAULT_COMPACT_PROMPT_TOKEN_THRESHOLD;
-}
 
 // ─── 内部类型 ────────────────────────────────────────────
 
@@ -53,15 +41,10 @@ export function accumulateUsage(current: ModelUsage | null, next: unknown | null
   if (next == null) {
     return current ?? null;
   }
-  return addUsageValue(current, next) as ModelUsage;
-}
-
-function usageWithRequestCount(usage: ModelUsage): ModelUsage {
-  const totalReqs = typeof usage.total_reqs === "number" ? usage.total_reqs + 1 : 1;
-  return {
-    ...usage,
-    total_reqs: totalReqs,
-  };
+  const nextObj = { ...(next as Record<string, unknown>) } as ModelUsage;
+  // 每次调用计为一次请求
+  nextObj.total_reqs = 1;
+  return addUsageValue(current, nextObj) as ModelUsage;
 }
 
 export function accumulateUsagePerModel(
@@ -72,10 +55,9 @@ export function accumulateUsagePerModel(
   if (next == null) {
     return current ?? null;
   }
-
   const usagePerModel = { ...(current ?? {}) };
   const modelName = model.trim() || "unknown";
-  usagePerModel[modelName] = accumulateUsage(usagePerModel[modelName] ?? null, usageWithRequestCount(next))!;
+  usagePerModel[modelName] = accumulateUsage(usagePerModel[modelName] ?? null, next)!;
   return usagePerModel;
 }
 

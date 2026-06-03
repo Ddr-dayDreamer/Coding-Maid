@@ -59,7 +59,6 @@ export interface SessionMessageData {
   html?: string;
   contentParams?: unknown | null;
   messageParams?: Record<string, unknown> | null;
-  compacted?: boolean;
   visible?: boolean;
   createTime?: string;
   updateTime?: string;
@@ -80,7 +79,18 @@ export interface TokenTelemetry {
   activeTokens: number;
   model: string;
   thinkingEnabled: boolean;
+  /** 模型的上下文窗口上限（tokens），默认 1,000,000 */
+  contextLimit: number;
+  /** 整个对话的累计用量 */
   usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    prompt_cache_hit_tokens?: number;
+    prompt_cache_miss_tokens?: number;
+  };
+  /** 最后一次 LLM 响应的原始用量（含缓存数据） */
+  lastUsage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;

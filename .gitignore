@@ -6,3 +6,4 @@ out/
 deploy.ps1
 rfc
 resources/webview/bundle.js
+dist/

@@ -60,8 +60,6 @@ export type {
   LlmStreamProgress,
 } from "./session-types";
 
-export { getCompactPromptTokenThreshold } from "./llm-stream";
-
 // ─── SessionManager ──────────────────────────────────────
 
 export class SessionManager {
@@ -244,6 +242,7 @@ export class SessionManager {
       failReason: null,
       usage: null,
       usagePerModel: null,
+      lastUsage: null,
       activeTokens: 0,
       createTime: now,
       updateTime: now,

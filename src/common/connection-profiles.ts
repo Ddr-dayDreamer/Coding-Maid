@@ -41,6 +41,11 @@ export type ConnectionProfileStored = {
   /** 思考强度，仅 thinkingEnabled 为 true 时生效 */
   reasoningEffort?: ReasoningEffort;
   /**
+   * 模型的上下文窗口上限（tokens）。
+   * 用于前端 context meter 显示用量比例。不设置时默认 1,000,000（DeepSeek V4）。
+   */
+  contextLimit?: number;
+  /**
    * 附加 API 请求参数，会直接合并到 chat.completions.create() 的请求体中。
    * 例如：{ "temperature": 0.7, "max_tokens": 4096, "top_p": 0.9 }
    * 可用于覆盖默认参数或传入模型特有参数（如 Gemini 的 thinking_level）。
@@ -61,6 +66,8 @@ export type ConnectionProfile = {
   thinkingEnabled?: boolean;
   /** 思考强度，仅 thinkingEnabled 为 true 时生效 */
   reasoningEffort?: ReasoningEffort;
+  /** 模型的上下文窗口上限（tokens），不设置时默认 1,000,000 */
+  contextLimit?: number;
   /**
    * 附加 API 请求参数，直接合并到 chat.completions.create() 的请求体中。
    */

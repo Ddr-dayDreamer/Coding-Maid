@@ -1163,11 +1163,11 @@ ${component_stack}
     var effects = collected_effects = [];
     var render_effects = [];
     var updates = legacy_updates = [];
-    for (const root6 of roots) {
+    for (const root7 of roots) {
       try {
-        __privateMethod(this, _Batch_instances, traverse_fn).call(this, root6, effects, render_effects);
+        __privateMethod(this, _Batch_instances, traverse_fn).call(this, root7, effects, render_effects);
       } catch (e) {
-        reset_all(root6);
+        reset_all(root7);
         if (!__privateMethod(this, _Batch_instances, is_deferred_fn).call(this)) this.discard();
         throw e;
       }
@@ -1240,9 +1240,9 @@ ${component_stack}
    * @param {Effect[]} effects
    * @param {Effect[]} render_effects
    */
-  traverse_fn = function(root6, effects, render_effects) {
-    root6.f ^= CLEAN;
-    var effect2 = root6.first;
+  traverse_fn = function(root7, effects, render_effects) {
+    root7.f ^= CLEAN;
+    var effect2 = root7.first;
     while (effect2 !== null) {
       var flags2 = effect2.f;
       var is_branch = (flags2 & (BRANCH_EFFECT | ROOT_EFFECT)) !== 0;
@@ -1420,8 +1420,8 @@ ${component_stack}
         }
         if (__privateGet(batch, _roots).length > 0 && !__privateGet(batch, _decrement_queued)) {
           batch.apply();
-          for (var root6 of __privateGet(batch, _roots)) {
-            __privateMethod(_a2 = batch, _Batch_instances, traverse_fn).call(_a2, root6, [], []);
+          for (var root7 of __privateGet(batch, _roots)) {
+            __privateMethod(_a2 = batch, _Batch_instances, traverse_fn).call(_a2, root7, [], []);
           }
           __privateSet(batch, _roots, []);
         }
@@ -2343,6 +2343,12 @@ ${component_stack}
       }
       next2(promise);
     });
+  }
+  // @__NO_SIDE_EFFECTS__
+  function user_derived(fn) {
+    const d = /* @__PURE__ */ derived(fn);
+    if (!async_mode_flag) push_reaction_value(d);
+    return d;
   }
   // @__NO_SIDE_EFFECTS__
   function derived_safe_equal(fn) {
@@ -3617,7 +3623,7 @@ ${component_stack}
     }
     return false;
   }
-  function schedule_possible_effect_self_invalidation(signal, effect2, root6 = true) {
+  function schedule_possible_effect_self_invalidation(signal, effect2, root7 = true) {
     var reactions = signal.reactions;
     if (reactions === null) return;
     if (!async_mode_flag && current_sources !== null && current_sources.has(signal)) {
@@ -3633,7 +3639,7 @@ ${component_stack}
           false
         );
       } else if (effect2 === reaction) {
-        if (root6) {
+        if (root7) {
           set_signal_status(reaction, DIRTY);
         } else if ((reaction.f & CLEAN) !== 0) {
           set_signal_status(reaction, MAYBE_DIRTY);
@@ -4134,6 +4140,38 @@ ${component_stack}
   var event_symbol = Symbol("events");
   var all_registered_events = /* @__PURE__ */ new Set();
   var root_event_handles = /* @__PURE__ */ new Set();
+  function create_event(event_name, dom, handler, options = {}) {
+    function target_handler(event2) {
+      if (!options.capture) {
+        handle_event_propagation.call(dom, event2);
+      }
+      if (!event2.cancelBubble) {
+        return without_reactive_context(() => {
+          return handler?.call(this, event2);
+        });
+      }
+    }
+    if (event_name.startsWith("pointer") || event_name.startsWith("touch") || event_name === "wheel") {
+      queue_micro_task(() => {
+        dom.addEventListener(event_name, target_handler, options);
+      });
+    } else {
+      dom.addEventListener(event_name, target_handler, options);
+    }
+    return target_handler;
+  }
+  function event(event_name, dom, handler, capture2, passive2) {
+    var options = { capture: capture2, passive: passive2 };
+    var target_handler = create_event(event_name, dom, handler, options);
+    if (dom === document.body || // @ts-ignore
+    dom === window || // @ts-ignore
+    dom === document || // Firefox has quirky behavior, it can happen that we still get "canplay" events when the element is already removed
+    dom instanceof HTMLMediaElement) {
+      teardown(() => {
+        dom.removeEventListener(event_name, target_handler, options);
+      });
+    }
+  }
   function delegated(event_name, element2, handler) {
     (element2[event_symbol] ?? (element2[event_symbol] = {}))[event_name] = handler;
   }
@@ -4316,21 +4354,21 @@ ${component_stack}
           /** @type {DocumentFragment} */
           create_fragment_from_html(wrapped)
         );
-        var root6 = (
+        var root7 = (
           /** @type {Element} */
           get_first_child(fragment)
         );
         if (is_fragment) {
           node = document.createDocumentFragment();
-          while (get_first_child(root6)) {
+          while (get_first_child(root7)) {
             node.appendChild(
               /** @type {TemplateNode} */
-              get_first_child(root6)
+              get_first_child(root7)
             );
           }
         } else {
           node = /** @type {Element} */
-          get_first_child(root6);
+          get_first_child(root7);
         }
       }
       var clone = (
@@ -5408,6 +5446,99 @@ ${component_stack}
     }
     return classname === "" ? null : classname;
   }
+  function append_styles(styles, important = false) {
+    var separator = important ? " !important;" : ";";
+    var css = "";
+    for (var key2 of Object.keys(styles)) {
+      var value = styles[key2];
+      if (value != null && value !== "") {
+        css += " " + key2 + ": " + value + separator;
+      }
+    }
+    return css;
+  }
+  function to_css_name(name) {
+    if (name[0] !== "-" || name[1] !== "-") {
+      return name.toLowerCase();
+    }
+    return name;
+  }
+  function to_style(value, styles) {
+    if (styles) {
+      var new_style = "";
+      var normal_styles;
+      var important_styles;
+      if (Array.isArray(styles)) {
+        normal_styles = styles[0];
+        important_styles = styles[1];
+      } else {
+        normal_styles = styles;
+      }
+      if (value) {
+        value = String(value).replaceAll(/\s*\/\*.*?\*\/\s*/g, "").trim();
+        var in_str = false;
+        var in_apo = 0;
+        var in_comment = false;
+        var reserved_names = [];
+        if (normal_styles) {
+          reserved_names.push(...Object.keys(normal_styles).map(to_css_name));
+        }
+        if (important_styles) {
+          reserved_names.push(...Object.keys(important_styles).map(to_css_name));
+        }
+        var start_index = 0;
+        var name_index = -1;
+        const len = value.length;
+        for (var i = 0; i < len; i++) {
+          var c = value[i];
+          if (in_comment) {
+            if (c === "/" && value[i - 1] === "*") {
+              in_comment = false;
+            }
+          } else if (in_str) {
+            if (in_str === c) {
+              in_str = false;
+            }
+          } else if (c === "/" && value[i + 1] === "*") {
+            in_comment = true;
+          } else if (c === '"' || c === "'") {
+            in_str = c;
+          } else if (c === "(") {
+            in_apo++;
+          } else if (c === ")") {
+            in_apo--;
+          }
+          if (!in_comment && in_str === false && in_apo === 0) {
+            if (c === ":" && name_index === -1) {
+              name_index = i;
+            } else if (c === ";" || i === len - 1) {
+              if (name_index !== -1) {
+                var name = to_css_name(value.substring(start_index, name_index).trim());
+                if (!reserved_names.includes(name)) {
+                  if (c !== ";") {
+                    i++;
+                  }
+                  var property = value.substring(start_index, i).trim();
+                  new_style += " " + property + ";";
+                }
+              }
+              start_index = i + 1;
+              name_index = -1;
+            }
+          }
+        }
+      }
+      if (normal_styles) {
+        new_style += append_styles(normal_styles);
+      }
+      if (important_styles) {
+        new_style += append_styles(important_styles, true);
+      }
+      new_style = new_style.trim();
+      return new_style === "" ? null : new_style;
+    }
+    return value == null ? null : String(value);
+  }
 
   // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/client/dom/elements/class.js
   function set_class(dom, is_html, value, hash2, prev_classes, next_classes) {
@@ -5436,6 +5567,45 @@ ${component_stack}
       }
     }
     return next_classes;
+  }
+
+  // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/client/dom/elements/style.js
+  function update_styles(dom, prev = {}, next2, priority) {
+    for (var key2 in next2) {
+      var value = next2[key2];
+      if (prev[key2] !== value) {
+        if (next2[key2] == null) {
+          dom.style.removeProperty(key2);
+        } else {
+          dom.style.setProperty(key2, value, priority);
+        }
+      }
+    }
+  }
+  function set_style(dom, value, prev_styles, next_styles) {
+    var prev = (
+      /** @type {any} */
+      dom[STYLE_CACHE]
+    );
+    if (hydrating || prev !== value) {
+      var next_style_attr = to_style(value, next_styles);
+      if (!hydrating || next_style_attr !== dom.getAttribute("style")) {
+        if (next_style_attr == null) {
+          dom.removeAttribute("style");
+        } else {
+          dom.style.cssText = next_style_attr;
+        }
+      }
+      dom[STYLE_CACHE] = value;
+    } else if (next_styles) {
+      if (Array.isArray(next_styles)) {
+        update_styles(dom, prev_styles?.[0], next_styles[0]);
+        update_styles(dom, prev_styles?.[1], next_styles[1], "important");
+      } else {
+        update_styles(dom, prev_styles, next_styles);
+      }
+    }
+    return next_styles;
   }
 
   // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/client/dom/elements/attributes.js
@@ -6320,19 +6490,223 @@ ${component_stack}
     }
   };
 
+  // resources/webview/components/ContextMeter.svelte
+  var root2 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8F93\u5165</span> <span class="svelte-vvns5x"> </span></div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8F93\u51FA</span> <span class="svelte-vvns5x"> </span></div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8BF7\u6C42\u6B21\u6570</span> <span class="svelte-vvns5x"> </span></div>`, 1);
+  var root_12 = from_html(`<div class="meter-empty svelte-vvns5x">\u6682\u65E0\u7528\u91CF\u6570\u636E</div>`);
+  var root_2 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u672C\u6B21\u7F13\u5B58</span> <span class="svelte-vvns5x"> </span></div>`);
+  var root_3 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u7D2F\u8BA1\u7F13\u5B58</span> <span class="svelte-vvns5x"> </span></div>`);
+  var root_4 = from_html(`<!> <!>`, 1);
+  var root_5 = from_html(`<div class="meter-tooltip svelte-vvns5x" role="tooltip"><div class="meter-tooltip-header svelte-vvns5x"> </div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u4E0A\u4E0B\u6587</span> <span class="svelte-vvns5x"> </span></div> <!> <!></div>`);
+  var root_6 = from_html(`<span class="context-meter svelte-vvns5x" role="img"><svg viewBox="0 0 24 24" width="18" height="18" class="ring-svg svelte-vvns5x"><circle cx="12" cy="12" fill="none" stroke="var(--vscode-input-border, #333)" stroke-width="2" transform="rotate(-90 12 12)"></circle><circle cx="12" cy="12" fill="none" stroke-width="2" stroke-linecap="round" transform="rotate(-90 12 12)"></circle></svg> <!></span>`);
+  function ContextMeter($$anchor, $$props) {
+    push($$props, true);
+    let hovered = state(false);
+    let meterEl = state(void 0);
+    let tooltipStyle = state("");
+    user_effect(() => {
+      if (!get2(hovered) || !get2(meterEl)) {
+        set(tooltipStyle, "");
+        return;
+      }
+      const updatePos = () => {
+        const rect = get2(meterEl).getBoundingClientRect();
+        const gap = 6;
+        let left = rect.left;
+        const bottom = window.innerHeight - rect.top + gap;
+        const tooltipW = 240;
+        if (left + tooltipW > window.innerWidth - 8) {
+          left = window.innerWidth - tooltipW - 8;
+        }
+        if (left < 8) left = 8;
+        set(tooltipStyle, `left:${left}px;bottom:${bottom}px`);
+      };
+      updatePos();
+      const observer = new ResizeObserver(updatePos);
+      observer.observe(get2(meterEl));
+      return () => observer.disconnect();
+    });
+    const R = 9;
+    const CIRCUMFERENCE = 2 * Math.PI * R;
+    const activeTokens = user_derived(() => appState.tokenTelemetry?.activeTokens ?? 0);
+    const contextLimit = user_derived(() => appState.tokenTelemetry?.contextLimit ?? 1e6);
+    const proportion = user_derived(() => get2(contextLimit) > 0 ? Math.min(get2(activeTokens) / get2(contextLimit), 1) : 0);
+    const dashOffset = user_derived(() => CIRCUMFERENCE * (1 - get2(proportion)));
+    const model = user_derived(() => appState.tokenTelemetry?.model ?? "");
+    const totalPrompt = user_derived(() => appState.tokenTelemetry?.usage?.prompt_tokens ?? 0);
+    const totalCompletion = user_derived(() => appState.tokenTelemetry?.usage?.completion_tokens ?? 0);
+    const totalTokens = user_derived(() => appState.tokenTelemetry?.usage?.total_tokens ?? 0);
+    const totalReqs = user_derived(() => appState.tokenTelemetry?.usage?.["total_reqs"] ?? 0);
+    const totalCacheHit = user_derived(() => appState.tokenTelemetry?.usage?.prompt_cache_hit_tokens ?? 0);
+    const totalCacheMiss = user_derived(() => appState.tokenTelemetry?.usage?.prompt_cache_miss_tokens ?? 0);
+    const totalCache = user_derived(() => get2(totalCacheHit) + get2(totalCacheMiss));
+    const totalCacheRate = user_derived(() => get2(totalCache) > 0 ? get2(totalCacheHit) / get2(totalCache) * 100 : null);
+    const lastCacheHit = user_derived(() => appState.tokenTelemetry?.lastUsage?.prompt_cache_hit_tokens ?? 0);
+    const lastCacheMiss = user_derived(() => appState.tokenTelemetry?.lastUsage?.prompt_cache_miss_tokens ?? 0);
+    const lastCache = user_derived(() => get2(lastCacheHit) + get2(lastCacheMiss));
+    const lastCacheRate = user_derived(() => get2(lastCache) > 0 ? get2(lastCacheHit) / get2(lastCache) * 100 : null);
+    const ringColor = user_derived(() => get2(proportion) === 0 ? "var(--vscode-input-border, #ccc)" : get2(proportion) > 0.8 ? "var(--vscode-charts-red, #e33)" : get2(proportion) > 0.5 ? "var(--vscode-charts-yellow, #ea3)" : "var(--vscode-charts-green, #3b8)");
+    function fmt(n) {
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+      return String(n);
+    }
+    function pct(n) {
+      return (n * 100).toFixed(1) + "%";
+    }
+    var span = root_6();
+    var svg = child(span);
+    var circle = child(svg);
+    set_attribute2(circle, "r", R);
+    var circle_1 = sibling(circle);
+    set_attribute2(circle_1, "r", R);
+    set_attribute2(circle_1, "stroke-dasharray", CIRCUMFERENCE);
+    let classes;
+    reset(svg);
+    var node = sibling(svg, 2);
+    {
+      var consequent_4 = ($$anchor2) => {
+        var div = root_5();
+        var div_1 = child(div);
+        var text2 = child(div_1, true);
+        reset(div_1);
+        var div_2 = sibling(div_1, 2);
+        var span_1 = sibling(child(div_2), 2);
+        var text_1 = child(span_1);
+        reset(span_1);
+        reset(div_2);
+        var node_1 = sibling(div_2, 2);
+        {
+          var consequent = ($$anchor3) => {
+            var fragment = root2();
+            var div_3 = first_child(fragment);
+            var span_2 = sibling(child(div_3), 2);
+            var text_2 = child(span_2);
+            reset(span_2);
+            reset(div_3);
+            var div_4 = sibling(div_3, 2);
+            var span_3 = sibling(child(div_4), 2);
+            var text_3 = child(span_3);
+            reset(span_3);
+            reset(div_4);
+            var div_5 = sibling(div_4, 2);
+            var span_4 = sibling(child(div_5), 2);
+            var text_4 = child(span_4, true);
+            reset(span_4);
+            reset(div_5);
+            template_effect(
+              ($0, $1) => {
+                set_text(text_2, `${$0 ?? ""} tokens`);
+                set_text(text_3, `${$1 ?? ""} tokens`);
+                set_text(text_4, get2(totalReqs));
+              },
+              [
+                () => fmt(get2(totalPrompt)),
+                () => fmt(get2(totalCompletion))
+              ]
+            );
+            append($$anchor3, fragment);
+          };
+          var alternate = ($$anchor3) => {
+            var div_6 = root_12();
+            append($$anchor3, div_6);
+          };
+          if_block(node_1, ($$render) => {
+            if (get2(totalTokens) > 0) $$render(consequent);
+            else $$render(alternate, -1);
+          });
+        }
+        var node_2 = sibling(node_1, 2);
+        {
+          var consequent_3 = ($$anchor3) => {
+            var fragment_1 = root_4();
+            var node_3 = first_child(fragment_1);
+            {
+              var consequent_1 = ($$anchor4) => {
+                var div_7 = root_2();
+                var span_5 = sibling(child(div_7), 2);
+                var text_5 = child(span_5, true);
+                reset(span_5);
+                reset(div_7);
+                template_effect(($0) => set_text(text_5, $0), [() => pct(get2(lastCacheRate) / 100)]);
+                append($$anchor4, div_7);
+              };
+              if_block(node_3, ($$render) => {
+                if (get2(lastCacheRate) !== null) $$render(consequent_1);
+              });
+            }
+            var node_4 = sibling(node_3, 2);
+            {
+              var consequent_2 = ($$anchor4) => {
+                var div_8 = root_3();
+                var span_6 = sibling(child(div_8), 2);
+                var text_6 = child(span_6, true);
+                reset(span_6);
+                reset(div_8);
+                template_effect(($0) => set_text(text_6, $0), [() => pct(get2(totalCacheRate) / 100)]);
+                append($$anchor4, div_8);
+              };
+              if_block(node_4, ($$render) => {
+                if (get2(totalCacheRate) !== null) $$render(consequent_2);
+              });
+            }
+            append($$anchor3, fragment_1);
+          };
+          if_block(node_2, ($$render) => {
+            if (get2(totalCacheRate) !== null || get2(lastCacheRate) !== null) $$render(consequent_3);
+          });
+        }
+        reset(div);
+        template_effect(
+          ($0, $1, $2) => {
+            set_style(div, get2(tooltipStyle));
+            set_text(text2, get2(model) || "\u7B49\u5F85\u6570\u636E\u2026");
+            set_text(text_1, `${$0 ?? ""} / ${$1 ?? ""} (${$2 ?? ""})`);
+          },
+          [
+            () => fmt(get2(activeTokens)),
+            () => fmt(get2(contextLimit)),
+            () => pct(get2(proportion))
+          ]
+        );
+        append($$anchor2, div);
+      };
+      if_block(node, ($$render) => {
+        if (get2(hovered)) $$render(consequent_4);
+      });
+    }
+    reset(span);
+    bind_this(span, ($$value) => set(meterEl, $$value), () => get2(meterEl));
+    template_effect(
+      ($0, $1) => {
+        set_attribute2(span, "aria-label", `Token \u7528\u91CF: ${$0 ?? ""} / ${$1 ?? ""}`);
+        set_attribute2(circle_1, "stroke", get2(ringColor));
+        set_attribute2(circle_1, "stroke-dashoffset", get2(dashOffset));
+        classes = set_class(circle_1, 0, "svelte-vvns5x", null, classes, { active: get2(activeTokens) > 0 });
+      },
+      [
+        () => fmt(get2(activeTokens)),
+        () => fmt(get2(contextLimit))
+      ]
+    );
+    event("mouseenter", span, () => set(hovered, true));
+    event("mouseleave", span, () => set(hovered, false));
+    append($$anchor, span);
+    pop();
+  }
+
   // resources/webview/components/ChatPage.svelte
-  var root2 = from_html(`<button role="option"><span class="session-item-title svelte-1mroaqi"> </span> <span class="session-item-time svelte-1mroaqi"> </span></button>`);
-  var root_12 = from_html(`<div class="session-empty svelte-1mroaqi">\u6682\u65E0\u5386\u53F2\u5BF9\u8BDD</div>`);
-  var root_2 = from_html(`<div class="session-dropdown svelte-1mroaqi" role="listbox"></div>`);
-  var root_3 = from_html(`<div class="bubble-content html svelte-1mroaqi"></div>`);
-  var root_4 = from_html(`<div class="bubble-content svelte-1mroaqi"> </div>`);
-  var root_5 = from_html(`<div><div class="bubble-avatar svelte-1mroaqi"> </div> <div class="bubble-body svelte-1mroaqi"><!></div></div>`);
-  var root_6 = from_html(`<div class="empty-state svelte-1mroaqi"><div class="empty-icon svelte-1mroaqi">\u{1F4AC}</div> <p class="svelte-1mroaqi">\u5F00\u59CB\u65B0\u7684\u5BF9\u8BDD</p> <p class="empty-hint svelte-1mroaqi">\u8F93\u5165\u6D88\u606F\u5E76\u6309 Enter \u53D1\u9001</p></div>`);
+  var root3 = from_html(`<button role="option"><span class="session-item-title svelte-1mroaqi"> </span> <span class="session-item-time svelte-1mroaqi"> </span></button>`);
+  var root_13 = from_html(`<div class="session-empty svelte-1mroaqi">\u6682\u65E0\u5386\u53F2\u5BF9\u8BDD</div>`);
+  var root_22 = from_html(`<div class="session-dropdown svelte-1mroaqi" role="listbox"></div>`);
+  var root_32 = from_html(`<div class="bubble-content html svelte-1mroaqi"></div>`);
+  var root_42 = from_html(`<div class="bubble-content svelte-1mroaqi"> </div>`);
+  var root_52 = from_html(`<div><div class="bubble-avatar svelte-1mroaqi"> </div> <div class="bubble-body svelte-1mroaqi"><!></div></div>`);
+  var root_62 = from_html(`<div class="empty-state svelte-1mroaqi"><div class="empty-icon svelte-1mroaqi">\u{1F4AC}</div> <p class="svelte-1mroaqi">\u5F00\u59CB\u65B0\u7684\u5BF9\u8BDD</p> <p class="empty-hint svelte-1mroaqi">\u8F93\u5165\u6D88\u606F\u5E76\u6309 Enter \u53D1\u9001</p></div>`);
   var root_7 = from_html(`<div class="bubble bubble-assistant svelte-1mroaqi"><div class="bubble-avatar svelte-1mroaqi">A</div> <div class="bubble-body svelte-1mroaqi"><div class="bubble-content svelte-1mroaqi"> <span class="cursor svelte-1mroaqi">\u258A</span></div></div></div>`);
   var root_8 = from_html(`<div class="loading-indicator svelte-1mroaqi"><div class="spinner svelte-1mroaqi"></div> <span class="svelte-1mroaqi">\u601D\u8003\u4E2D...</span></div>`);
   var root_9 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16" class="svelte-1mroaqi"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor" class="svelte-1mroaqi"></rect></svg>`);
   var root_10 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16" class="svelte-1mroaqi"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor" class="svelte-1mroaqi"></path></svg>`);
-  var root_11 = from_html(`<div class="chat-page svelte-1mroaqi"><div class="session-bar svelte-1mroaqi"><button class="session-btn svelte-1mroaqi"><span class="session-title svelte-1mroaqi"> </span> <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z" class="svelte-1mroaqi"></path></svg></button> <button class="new-chat-btn svelte-1mroaqi" title="\u65B0\u5BF9\u8BDD">+</button> <!></div> <div class="messages svelte-1mroaqi"><!> <!> <!></div> <div class="composer svelte-1mroaqi"><div class="input-wrap svelte-1mroaqi"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="3" class="svelte-1mroaqi"></textarea> <div class="composer-footer svelte-1mroaqi"><div class="footer-left svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> </button> <button class="badge-btn svelte-1mroaqi"> </button></div> <div class="footer-right svelte-1mroaqi"><button class="send-btn svelte-1mroaqi"><!></button></div></div></div></div></div>`);
+  var root_11 = from_html(`<div class="chat-page svelte-1mroaqi"><div class="session-bar svelte-1mroaqi"><button class="session-btn svelte-1mroaqi"><span class="session-title svelte-1mroaqi"> </span> <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z" class="svelte-1mroaqi"></path></svg></button> <button class="new-chat-btn svelte-1mroaqi" title="\u65B0\u5BF9\u8BDD">+</button> <!></div> <div class="messages svelte-1mroaqi"><!> <!> <!></div> <div class="composer svelte-1mroaqi"><div class="input-wrap svelte-1mroaqi"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="3" class="svelte-1mroaqi"></textarea> <div class="composer-footer svelte-1mroaqi"><div class="footer-left svelte-1mroaqi"><!> <button class="badge-btn svelte-1mroaqi"> </button> <button class="badge-btn svelte-1mroaqi"> </button></div> <div class="footer-right svelte-1mroaqi"><button class="send-btn svelte-1mroaqi"><!></button></div></div></div></div></div>`);
   function ChatPage($$anchor, $$props) {
     push($$props, true);
     let promptText = state("");
@@ -6405,14 +6779,14 @@ ${component_stack}
     var node = sibling(button_1, 2);
     {
       var consequent = ($$anchor2) => {
-        var div_2 = root_2();
+        var div_2 = root_22();
         each(
           div_2,
           21,
           () => appState.sessions,
           (session) => session.id,
           ($$anchor3, session) => {
-            var button_2 = root2();
+            var button_2 = root3();
             let classes_1;
             var span_1 = child(button_2);
             var text_2 = child(span_1, true);
@@ -6436,7 +6810,7 @@ ${component_stack}
             append($$anchor3, button_2);
           },
           ($$anchor3) => {
-            var div_3 = root_12();
+            var div_3 = root_13();
             append($$anchor3, div_3);
           }
         );
@@ -6460,7 +6834,7 @@ ${component_stack}
       () => appState.messages,
       index,
       ($$anchor2, msg) => {
-        var div_5 = root_5();
+        var div_5 = root_52();
         var div_6 = child(div_5);
         var text_4 = child(div_6, true);
         reset(div_6);
@@ -6468,13 +6842,13 @@ ${component_stack}
         var node_2 = child(div_7);
         {
           var consequent_1 = ($$anchor3) => {
-            var div_8 = root_3();
+            var div_8 = root_32();
             html(div_8, () => get2(msg).html, true);
             reset(div_8);
             append($$anchor3, div_8);
           };
           var alternate = ($$anchor3) => {
-            var div_9 = root_4();
+            var div_9 = root_42();
             var text_5 = child(div_9, true);
             reset(div_9);
             template_effect(() => set_text(text_5, get2(msg).content));
@@ -6498,7 +6872,7 @@ ${component_stack}
         var node_3 = first_child(fragment);
         {
           var consequent_2 = ($$anchor3) => {
-            var div_10 = root_6();
+            var div_10 = root_62();
             append($$anchor3, div_10);
           };
           if_block(node_3, ($$render) => {
@@ -6544,7 +6918,9 @@ ${component_stack}
     remove_textarea_child(textarea);
     var div_17 = sibling(textarea, 2);
     var div_18 = child(div_17);
-    var button_3 = child(div_18);
+    var node_6 = child(div_18);
+    ContextMeter(node_6, {});
+    var button_3 = sibling(node_6, 2);
     var text_7 = child(button_3);
     reset(button_3);
     var button_4 = sibling(button_3, 2);
@@ -6553,7 +6929,7 @@ ${component_stack}
     reset(div_18);
     var div_19 = sibling(div_18, 2);
     var button_5 = child(div_19);
-    var node_6 = child(button_5);
+    var node_7 = child(button_5);
     {
       var consequent_5 = ($$anchor2) => {
         var svg_1 = root_9();
@@ -6563,7 +6939,7 @@ ${component_stack}
         var svg_2 = root_10();
         append($$anchor2, svg_2);
       };
-      if_block(node_6, ($$render) => {
+      if_block(node_7, ($$render) => {
         if (appState.isProcessing) $$render(consequent_5);
         else $$render(alternate_1, -1);
       });
@@ -6601,11 +6977,11 @@ ${component_stack}
   delegate(["click", "keydown"]);
 
   // resources/webview/components/PresetPage.svelte
-  var root3 = from_html(`<p class="hint svelte-1bnrgqd">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_13 = from_html(`<p class="hint error svelte-1bnrgqd"> </p>`);
-  var root_22 = from_html(`<div class="preset-card svelte-1bnrgqd"><strong class="svelte-1bnrgqd"> </strong> <p class="svelte-1bnrgqd"> </p></div>`);
-  var root_32 = from_html(`<div class="preset-list svelte-1bnrgqd"></div>`);
-  var root_42 = from_html(`<div class="page svelte-1bnrgqd"><div class="page-header svelte-1bnrgqd"><h2 class="svelte-1bnrgqd">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-1bnrgqd">\u5373\u5C06\u63A8\u51FA</span></div> <!></div>`);
+  var root4 = from_html(`<p class="hint svelte-1bnrgqd">\u52A0\u8F7D\u4E2D...</p>`);
+  var root_14 = from_html(`<p class="hint error svelte-1bnrgqd"> </p>`);
+  var root_23 = from_html(`<div class="preset-card svelte-1bnrgqd"><strong class="svelte-1bnrgqd"> </strong> <p class="svelte-1bnrgqd"> </p></div>`);
+  var root_33 = from_html(`<div class="preset-list svelte-1bnrgqd"></div>`);
+  var root_43 = from_html(`<div class="page svelte-1bnrgqd"><div class="page-header svelte-1bnrgqd"><h2 class="svelte-1bnrgqd">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-1bnrgqd">\u5373\u5C06\u63A8\u51FA</span></div> <!></div>`);
   function PresetPage($$anchor, $$props) {
     push($$props, true);
     let presets = state(proxy([]));
@@ -6620,24 +6996,24 @@ ${component_stack}
         set(loading, false);
       }
     });
-    var div = root_42();
+    var div = root_43();
     var node = sibling(child(div), 2);
     {
       var consequent = ($$anchor2) => {
-        var p = root3();
+        var p = root4();
         append($$anchor2, p);
       };
       var consequent_1 = ($$anchor2) => {
-        var p_1 = root_13();
+        var p_1 = root_14();
         var text2 = child(p_1, true);
         reset(p_1);
         template_effect(() => set_text(text2, get2(error)));
         append($$anchor2, p_1);
       };
       var alternate = ($$anchor2) => {
-        var div_1 = root_32();
+        var div_1 = root_33();
         each(div_1, 21, () => get2(presets), index, ($$anchor3, preset) => {
-          var div_2 = root_22();
+          var div_2 = root_23();
           var strong = child(div_2);
           var text_1 = child(strong, true);
           reset(strong);
@@ -6666,13 +7042,13 @@ ${component_stack}
   }
 
   // resources/webview/components/ProfilePage.svelte
-  var root4 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_14 = from_html(`<p class="hint error svelte-1no2ghb"> </p>`);
-  var root_23 = from_html(`<span class="current svelte-1no2ghb">(\u5F53\u524D)</span>`);
-  var root_33 = from_html(`<div class="profile-card svelte-1no2ghb"><strong> <!></strong></div>`);
-  var root_43 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E</p>`);
-  var root_52 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
-  var root_62 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb">\u5373\u5C06\u63A8\u51FA</span></div> <!></div>`);
+  var root5 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
+  var root_15 = from_html(`<p class="hint error svelte-1no2ghb"> </p>`);
+  var root_24 = from_html(`<span class="current svelte-1no2ghb">(\u5F53\u524D)</span>`);
+  var root_34 = from_html(`<div class="profile-card svelte-1no2ghb"><strong> <!></strong></div>`);
+  var root_44 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E</p>`);
+  var root_53 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
+  var root_63 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb">\u5373\u5C06\u63A8\u51FA</span></div> <!></div>`);
   function ProfilePage($$anchor, $$props) {
     push($$props, true);
     let profiles = state(proxy([]));
@@ -6687,36 +7063,36 @@ ${component_stack}
         set(loading, false);
       }
     });
-    var div = root_62();
+    var div = root_63();
     var node = sibling(child(div), 2);
     {
       var consequent = ($$anchor2) => {
-        var p = root4();
+        var p = root5();
         append($$anchor2, p);
       };
       var consequent_1 = ($$anchor2) => {
-        var p_1 = root_14();
+        var p_1 = root_15();
         var text2 = child(p_1, true);
         reset(p_1);
         template_effect(() => set_text(text2, get2(error)));
         append($$anchor2, p_1);
       };
       var alternate = ($$anchor2) => {
-        var div_1 = root_52();
+        var div_1 = root_53();
         each(
           div_1,
           21,
           () => get2(profiles),
           index,
           ($$anchor3, profile) => {
-            var div_2 = root_33();
+            var div_2 = root_34();
             var strong = child(div_2);
             let classes;
             var text_1 = child(strong);
             var node_1 = sibling(text_1);
             {
               var consequent_2 = ($$anchor4) => {
-                var span = root_23();
+                var span = root_24();
                 append($$anchor4, span);
               };
               if_block(node_1, ($$render) => {
@@ -6732,7 +7108,7 @@ ${component_stack}
             append($$anchor3, div_2);
           },
           ($$anchor3) => {
-            var p_2 = root_43();
+            var p_2 = root_44();
             append($$anchor3, p_2);
           }
         );
@@ -6751,11 +7127,11 @@ ${component_stack}
   }
 
   // resources/webview/App.svelte
-  var root5 = from_html(`<div class="app svelte-w8ccf7"><!> <!></div>`);
+  var root6 = from_html(`<div class="app svelte-w8ccf7"><!> <!></div>`);
   function App($$anchor, $$props) {
     push($$props, false);
     init();
-    var div = root5();
+    var div = root6();
     var node = child(div);
     TabBar(node, {});
     var node_1 = sibling(node, 2);

@@ -7,7 +7,6 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import type { SessionMessage } from "./session";
 import {
   SessionManager,
-  getCompactPromptTokenThreshold,
   type LlmStreamProgress,
   type SessionEntry,
   type UserPromptContent,
@@ -16,7 +15,7 @@ import {
   resolveSettingsWithCryptoKey,
   ensureInitialConfig,
   type ReasoningEffort,
-  type ResolvedCodingMaidSettings,
+  type ResolvedSettings,
 } from "./settings";
 import {
   listProfiles,
@@ -97,7 +96,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         this.debugOutputChannel.clear();
         this.debugOutputChannel.appendLine("=".repeat(80));
         this.debugOutputChannel.appendLine(
-          `[Coding Maid Debug] Iteration: ${iteration === -1 ? "COMPACT" : iteration}`
+          `[Coding Maid Debug] Iteration: ${iteration}`
         );
         this.debugOutputChannel.appendLine("=".repeat(80));
         for (const msg of messages) {
@@ -114,6 +113,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     });
 
     // 注册消息处理器
+    this.registerHandler("ready", async () => this.loadInitialSession());
     this.registerHandler("userPrompt", this.handleUserPromptMsg);
     this.registerHandler("interrupt", async () => this.sessionManager.interruptActiveSession());
     this.registerHandler("createNewSession", async () => this.createNewSession());
@@ -164,10 +164,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
-
-    this.loadInitialSession().catch((error) => {
-      void vscode.window.showErrorMessage(`初始化失败：${error}`);
-    });
 
     webviewView.webview.onDidReceiveMessage(async (message: Record<string, unknown>) => {
       const handler = this.handlers.get(message?.type as string);
@@ -575,8 +571,10 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     thinkingEnabled: boolean;
     reasoningEffort: ReasoningEffort;
     activeTokens: number;
-    compactPromptTokenThreshold: number;
+    contextLimit: number;
     usage: unknown | null;
+    usagePerModel: Record<string, unknown> | null;
+    lastUsage: unknown | null;
   } {
     const settings = this.resolveCurrentSettings();
     return {
@@ -584,8 +582,10 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       thinkingEnabled: settings.thinkingEnabled ?? false,
       reasoningEffort: settings.reasoningEffort ?? "max",
       activeTokens: session?.activeTokens ?? 0,
-      compactPromptTokenThreshold: getCompactPromptTokenThreshold(settings.model),
+      contextLimit: settings.contextLimit ?? 1_000_000,
       usage: session?.usage ?? null,
+      usagePerModel: (session?.usagePerModel as Record<string, unknown> | null) ?? null,
+      lastUsage: session?.lastUsage ?? null,
     };
   }
 
@@ -610,7 +610,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private resolveCurrentSettings(): ResolvedCodingMaidSettings {
+  private resolveCurrentSettings(): ResolvedSettings {
     const cryptoKey = this.getCryptoKey();
     return resolveSettingsWithCryptoKey(cryptoKey);
   }

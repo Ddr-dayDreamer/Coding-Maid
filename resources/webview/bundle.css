@@ -51,6 +51,56 @@
   font-size: 13px;
 }
 
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/ContextMeter.esbuild-svelte-fake-css */
+.context-meter.svelte-vvns5x {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+  line-height: 0;
+}
+.ring-svg.svelte-vvns5x {
+  display: block;
+  flex-shrink: 0;
+}
+.ring-svg.svelte-vvns5x circle.active:where(.svelte-vvns5x) {
+  transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+}
+.meter-tooltip.svelte-vvns5x {
+  position: fixed;
+  z-index: 1000;
+  min-width: 200px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--vscode-editorWidget-border, #454545);
+  color: var(--vscode-editorWidget-foreground, #ccc);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+.meter-tooltip-header.svelte-vvns5x {
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--vscode-editorWidget-border, #454545);
+  color: var(--vscode-editor-foreground, #eee);
+}
+.meter-row.svelte-vvns5x {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.meter-row.svelte-vvns5x span:where(.svelte-vvns5x):first-child {
+  color: var(--vscode-descriptionForeground, #999);
+}
+.meter-empty.svelte-vvns5x {
+  color: var(--vscode-descriptionForeground, #999);
+  font-style: italic;
+}
+
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/ChatPage.esbuild-svelte-fake-css */
 .chat-page.svelte-1mroaqi {
   flex: 1;

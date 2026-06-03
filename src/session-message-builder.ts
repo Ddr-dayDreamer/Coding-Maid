@@ -66,7 +66,6 @@ export class SessionMessageBuilder {
       content: prompt.text ?? "",
       contentParams: imageParams.length > 0 ? imageParams : null,
       messageParams: null,
-      compacted: false,
       visible: true,
       createTime: now,
       updateTime: now,
@@ -89,7 +88,6 @@ export class SessionMessageBuilder {
       content,
       contentParams,
       messageParams: null,
-      compacted: false,
       visible,
       createTime: now,
       updateTime: now,
@@ -120,7 +118,6 @@ export class SessionMessageBuilder {
       content,
       contentParams: null,
       messageParams,
-      compacted: false,
       visible: (content || reasoningContent || "").trim() ? true : false,
       createTime: now,
       updateTime: now,
@@ -145,7 +142,6 @@ export class SessionMessageBuilder {
       content,
       contentParams: null,
       messageParams: { tool_call_id: toolCallId },
-      compacted: false,
       visible: !isInvisibleExecution,
       createTime: now,
       updateTime: now,
@@ -173,7 +169,7 @@ export class SessionMessageBuilder {
     thinkingEnabled: boolean,
     model: string
   ): ChatCompletionMessageParam[] {
-    const activeMessages = messages.filter((message) => !message.compacted);
+    const activeMessages = messages;
     const toolPairings = this.pairToolMessages(activeMessages);
     const openAIMessages: ChatCompletionMessageParam[] = [];
 
@@ -316,7 +312,7 @@ export class SessionMessageBuilder {
   // ═══════════════════════════════════════════════════════
 
   getTrailingPendingToolCalls(messages: SessionMessage[]): unknown[] {
-    const activeMessages = messages.filter((message) => !message.compacted);
+    const activeMessages = messages;
     const latestMessage = activeMessages[activeMessages.length - 1];
     if (!latestMessage || latestMessage.role !== "assistant") {
       return [];

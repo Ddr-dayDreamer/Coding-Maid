@@ -223,6 +223,7 @@ export class SessionStorage {
       failReason: typeof value.failReason === "string" ? value.failReason : null,
       usage: (value.usage as ModelUsage) ?? null,
       usagePerModel: this.normalizeUsagePerModel(value),
+      lastUsage: (value.lastUsage as ModelUsage) ?? null,
       activeTokens: typeof value.activeTokens === "number" ? value.activeTokens : 0,
       createTime: typeof value.createTime === "string" ? value.createTime : new Date().toISOString(),
       updateTime: typeof value.updateTime === "string" ? value.updateTime : new Date().toISOString(),

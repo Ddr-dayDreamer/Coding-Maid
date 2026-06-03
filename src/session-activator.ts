@@ -1,13 +1,13 @@
 /**
  * 会话激活器
  *
- * 负责 LLM 主循环（activate）和上下文压缩（compact）。
+ * 负责 LLM 主循环（activate）。
  * 从 session.ts 拆分。
  */
 
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { buildThinkingRequestOptions } from "./common/openai-thinking";
-import { getExtensionRoot, getCompactPrompt, getTools } from "./prompt";
+import { getExtensionRoot, getTools } from "./prompt";
 import type { ToolDefinition } from "./prompt";
 import type { CreateOpenAIClient } from "./tools/executor";
 import type { SessionStorage } from "./session-storage";
@@ -157,8 +157,6 @@ export class SessionActivator {
           }
         }
 
-        // 上下文压缩（暂时禁用 — 后续再启用）
-
         // 运行时注入预设（预设不落盘，仅运行时注入）
         const conversationMessages = this.storage.listSessionMessages(sessionId);
         console.log("[DEBUG] activate iter", iteration, ": conversationMessages count =", conversationMessages.length);
@@ -264,6 +262,7 @@ export class SessionActivator {
           toolCalls,
           usage: accumulateUsage(entry.usage, responseUsage),
           usagePerModel: accumulateUsagePerModel(entry.usagePerModel, model, responseUsage),
+          lastUsage: responseUsage,
           activeTokens: getTotalTokens(responseUsage),
           status: refusal ? "failed" : waitingForUser ? "waiting_for_user" : toolCalls ? "processing" : "completed",
           failReason: refusal ? refusal : entry.failReason,
@@ -330,100 +329,6 @@ export class SessionActivator {
       }
       this.notifier.maybeNotifyTaskCompletion(sessionId, notify, startedAt, this.projectRoot, env);
     }
-  }
-
-  // ═══════════════════════════════════════════════════════
-  //  上下文压缩
-  // ═══════════════════════════════════════════════════════
-
-  async compact(
-    sessionId: string,
-    signal?: AbortSignal,
-    onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void
-  ): Promise<void> {
-    this.throwIfAborted(signal);
-    const { client, model, baseURL, thinkingEnabled, reasoningEffort, params, debugLogEnabled, debugPromptEnabled } =
-      this.createOpenAIClient();
-    if (!client) {
-      return;
-    }
-
-    const sessionMessages = this.storage.listSessionMessages(sessionId).filter((message) => !message.compacted);
-    if (sessionMessages.length === 0) {
-      return;
-    }
-
-    const startIndex = sessionMessages.findIndex((message) => message.role !== "system");
-    if (startIndex === -1) {
-      return;
-    }
-
-    const searchStart = Math.floor(startIndex + ((sessionMessages.length - startIndex) * 2) / 3);
-    let endIndex = -1;
-    for (let i = Math.max(searchStart, startIndex); i < sessionMessages.length; i += 1) {
-      if (sessionMessages[i].role !== "tool") {
-        endIndex = i;
-        break;
-      }
-    }
-    if (endIndex === -1 || endIndex <= startIndex) {
-      return;
-    }
-
-    const compactPrompt = getCompactPrompt(sessionMessages.slice(startIndex, endIndex));
-    if (debugPromptEnabled && onDebugPrompt) {
-      onDebugPrompt([{ role: "system", content: compactPrompt }], -1);
-    }
-
-    const thinkingOptions = thinkingEnabled
-      ? buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort)
-      : {};
-
-    const response = await this.llm.createStream(
-      {
-        model,
-        messages: [{ role: "user", content: compactPrompt }],
-        ...thinkingOptions,
-        ...params,
-      },
-      signal ? { signal } : undefined,
-      sessionId,
-      {
-        enabled: debugLogEnabled,
-        location: "SessionActivator.compact",
-        baseURL,
-        params: { thinkingEnabled, reasoningEffort },
-      }
-    );
-    this.throwIfAborted(signal);
-
-    const rawLlmResponse = response.choices?.[0]?.message?.content;
-    const llmResponse = typeof rawLlmResponse === "string" ? rawLlmResponse : "";
-    const compactedSummary = llmResponse.replace(/<analysis>[\s\S]*?<\/analysis>/gi, "").trim();
-
-    const now = new Date().toISOString();
-    const responseUsage = response.usage ?? null;
-    this.storage.updateSessionEntry(sessionId, (entry) => ({
-      ...entry,
-      usage: accumulateUsage(entry.usage, responseUsage),
-      usagePerModel: accumulateUsagePerModel(entry.usagePerModel, model, responseUsage),
-      activeTokens: getTotalTokens(responseUsage),
-      updateTime: now,
-    }));
-
-    for (let i = startIndex; i < endIndex; i += 1) {
-      sessionMessages[i] = { ...sessionMessages[i], compacted: true, updateTime: now };
-    }
-
-    const summaryMessage = this.messageBuilder.buildSystemMessage(
-      sessionId,
-      `There are earlier parts of the conversation. Here is a summary: \n\n${compactedSummary}`,
-      null,
-      false,
-      { isSummary: true }
-    );
-    sessionMessages.splice(endIndex, 0, summaryMessage);
-    this.storage.saveSessionMessages(sessionId, sessionMessages);
   }
 
   // ═══════════════════════════════════════════════════════

@@ -94,7 +94,7 @@ export class SessionFileHistory {
   }
 
   private isUndoTargetMessage(message: SessionMessage): boolean {
-    return message.role === "user" && message.visible && !message.compacted;
+    return message.role === "user" && message.visible;
   }
 
   // ─── 删除会话（清理 git 分支） ────────────────────────

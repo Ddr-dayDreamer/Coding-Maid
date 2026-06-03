@@ -68,7 +68,6 @@ test("SessionManager preserves structured system content when building OpenAI me
         },
       ],
       messageParams: null,
-      compacted: false,
       visible: false,
       createTime: "2026-01-01T00:00:00.000Z",
       updateTime: "2026-01-01T00:00:00.000Z",
@@ -117,7 +116,6 @@ test("SessionManager filters image content for non-multimodal models", () => {
         },
       ],
       messageParams: null,
-      compacted: false,
       visible: false,
       createTime: "2026-01-01T00:00:00.000Z",
       updateTime: "2026-01-01T00:00:00.000Z",
@@ -206,7 +204,6 @@ test("SessionManager repairs legacy thinking tool calls missing reasoning conten
           },
         ],
       },
-      compacted: false,
       visible: false,
       createTime: "2026-01-01T00:00:00.000Z",
       updateTime: "2026-01-01T00:00:00.000Z",
@@ -245,7 +242,6 @@ test("SessionManager replays normal assistant messages with reasoning content in
       content: "Final answer",
       contentParams: null,
       messageParams: null,
-      compacted: false,
       visible: true,
       createTime: "2026-01-01T00:00:00.000Z",
       updateTime: "2026-01-01T00:00:00.000Z",
@@ -1760,48 +1756,6 @@ test("SessionManager stores usage per model across model changes", async () => {
   assert.equal(session?.usage?.total_tokens, 42);
 });
 
-test("SessionManager resets active tokens to latest post-compaction response usage", async () => {
-  const workspace = createTempDir("deepcode-compact-usage-workspace-");
-  const home = createTempDir("deepcode-compact-usage-home-");
-  setHomeDir(home);
-
-  const responses = [
-    createChatResponse("large", {
-      prompt_tokens: 139_990,
-      completion_tokens: 10,
-      total_tokens: 140_000,
-    }),
-    createChatResponse("summary", {
-      prompt_tokens: 100,
-      completion_tokens: 23,
-      total_tokens: 123,
-    }),
-    createChatResponse("after compact", {
-      prompt_tokens: 5,
-      completion_tokens: 2,
-      total_tokens: 7,
-    }),
-  ];
-  const manager = createMockedClientSessionManager(workspace, responses);
-
-  const sessionId = await manager.createSession({ text: "" });
-  assert.equal(manager.getSession(sessionId)?.activeTokens, 140_000);
-
-  await manager.replySession(sessionId, { text: "" });
-
-  const session = manager.getSession(sessionId);
-  const usage = session?.usage as Record<string, any>;
-  const usagePerModel = session?.usagePerModel?.["test-model"] as Record<string, any>;
-  assert.equal(session?.activeTokens, 7);
-  assert.equal(usage.prompt_tokens, 140_095);
-  assert.equal(usage.completion_tokens, 35);
-  assert.equal(usage.total_tokens, 140_130);
-  assert.equal(usagePerModel.prompt_tokens, 140_095);
-  assert.equal(usagePerModel.completion_tokens, 35);
-  assert.equal(usagePerModel.total_tokens, 140_130);
-  assert.equal(usagePerModel.total_reqs, 3);
-});
-
 test("SessionManager streams chat completions and counts reasoning progress", async () => {
   const workspace = createTempDir("deepcode-stream-workspace-");
   const home = createTempDir("deepcode-stream-home-");
@@ -2249,7 +2203,6 @@ function buildTestMessage(
     content,
     contentParams: null,
     messageParams: null,
-    compacted: false,
     visible: true,
     createTime: "2026-01-01T00:00:00.000Z",
     updateTime: "2026-01-01T00:00:00.000Z",

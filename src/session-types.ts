@@ -57,6 +57,8 @@ export type SessionEntry = {
   failReason: string | null;
   usage: ModelUsage | null;
   usagePerModel: Record<string, ModelUsage> | null;
+  /** 最后一次 LLM 响应的原始 usage（含 prompt_cache_hit/miss） */
+  lastUsage: ModelUsage | null;
   activeTokens: number;
   createTime: string;
   updateTime: string;
@@ -92,7 +94,6 @@ export type SessionMessage = {
   content: string | null;
   contentParams: unknown | null;
   messageParams: unknown | null;
-  compacted: boolean;
   visible: boolean;
   createTime: string;
   updateTime: string;

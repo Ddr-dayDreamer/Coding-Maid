@@ -1,6 +1,7 @@
 <script lang="ts">
   import { appState } from "../lib/state.svelte";
   import { api } from "../lib/api";
+  import ContextMeter from "./ContextMeter.svelte";
 
   let promptText = $state("");
   let sessionDropdownOpen = $state(false);
@@ -166,6 +167,7 @@
       ></textarea>
       <div class="composer-footer">
         <div class="footer-left">
+          <ContextMeter />
           <button class="badge-btn" onclick={() => (appState.currentTab = "presets")}>
             预设: {appState.activePreset}
           </button>
