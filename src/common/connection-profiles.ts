@@ -197,6 +197,31 @@ export function deleteProfile(name: string): boolean {
 }
 
 /**
+ * 重命名一个连接预设（重命名文件 + 更新 JSON 内的 name 字段）
+ */
+export function renameProfile(oldName: string, newName: string): boolean {
+  if (oldName === newName) return true;
+  const oldPath = profilePath(oldName);
+  const newPath = profilePath(newName);
+  if (!fs.existsSync(oldPath)) return false;
+  if (fs.existsSync(newPath)) return false; // 目标已存在
+
+  try {
+    // 读取旧配置，更新 name 字段
+    const raw = fs.readFileSync(oldPath, "utf8");
+    const stored = JSON.parse(raw) as ConnectionProfileStored;
+    stored.name = newName;
+    // 写入新文件
+    fs.writeFileSync(newPath, JSON.stringify(stored, null, 2), "utf8");
+    // 删除旧文件
+    fs.unlinkSync(oldPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 获取当前激活的连接预设
  */
 export function getActiveProfile(cryptoKey: string): ConnectionProfile | null {
@@ -321,4 +346,37 @@ export function ensureInitialConfig(templatesDir: string, cryptoKey: string): vo
 
   // ── 3. 明文 key 自动加密 ────────────────────────────
   migratePlaintextApiKeys(cryptoKey);
+}
+
+/**
+ * 从内置模板创建新的连接预设（不包含 API Key）
+ * @param name 新预设名称
+ * @param cryptoKey 加密密钥
+ * @param templatesDir 模板目录路径
+ */
+export function createProfileFromTemplate(name: string, templatesDir: string, cryptoKey: string): ConnectionProfile {
+  const templatePath = path.join(templatesDir, "buildin_profile.json");
+
+  let base: ConnectionProfile;
+
+  if (fs.existsSync(templatePath)) {
+    const raw = fs.readFileSync(templatePath, "utf8");
+    base = JSON.parse(raw) as ConnectionProfile;
+  } else {
+    base = {
+      name: "default",
+      model: "deepseek-v4-flash",
+      baseURL: "https://api.deepseek.com",
+      thinkingEnabled: true,
+      reasoningEffort: "max",
+      params: { stream: true },
+    };
+  }
+
+  // 使用新名称，清除 API Key（占位符不写入）
+  base.name = name;
+  delete base.apiKey;
+
+  saveProfile(base, cryptoKey);
+  return base;
 }

@@ -7400,9 +7400,10 @@ ${component_stack}
   var root_43 = from_html(`<button><span class="preset-item-name svelte-1mroaqi"> </span> <!></button>`);
   var root_53 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u9884\u8BBE</div>`);
   var root_63 = from_html(`<div class="preset-dropdown svelte-1mroaqi"></div>`);
-  var root_72 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
-  var root_82 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
-  var root_92 = from_html(`<div class="chat-page svelte-1mroaqi"><div class="session-bar svelte-1mroaqi"><button class="session-btn svelte-1mroaqi"><span class="session-title svelte-1mroaqi"> </span> <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <button class="new-chat-btn svelte-1mroaqi" title="\u65B0\u5BF9\u8BDD">+</button> <!></div> <!> <div class="composer svelte-1mroaqi"><div class="input-wrap svelte-1mroaqi"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="3" class="svelte-1mroaqi"></textarea> <div class="composer-footer svelte-1mroaqi"><div class="footer-left svelte-1mroaqi"><!> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div> <button class="badge-btn svelte-1mroaqi"> </button></div> <div class="footer-right"><button class="send-btn svelte-1mroaqi"><!></button></div></div></div></div></div>`);
+  var root_72 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u914D\u7F6E</div>`);
+  var root_82 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
+  var root_92 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
+  var root_102 = from_html(`<div class="chat-page svelte-1mroaqi"><div class="session-bar svelte-1mroaqi"><button class="session-btn svelte-1mroaqi"><span class="session-title svelte-1mroaqi"> </span> <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <button class="new-chat-btn svelte-1mroaqi" title="\u65B0\u5BF9\u8BDD">+</button> <!></div> <!> <div class="composer svelte-1mroaqi"><div class="input-wrap svelte-1mroaqi"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="3" class="svelte-1mroaqi"></textarea> <div class="composer-footer svelte-1mroaqi"><div class="footer-left svelte-1mroaqi"><!> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div></div> <div class="footer-right"><button class="send-btn svelte-1mroaqi"><!></button></div></div></div></div></div>`);
   function ChatPage($$anchor, $$props) {
     push($$props, true);
     let promptText = state("");
@@ -7426,6 +7427,26 @@ ${component_stack}
       set(presetDropdownOpen, false);
       api.send("selectPreset", { name });
       appState.activePreset = name;
+    }
+    let profileDropdownOpen = state(false);
+    let profiles = state(proxy([]));
+    async function toggleProfileDropdown() {
+      if (!get2(profileDropdownOpen) && get2(profiles).length === 0) {
+        try {
+          set(profiles, await api.request("listProfiles"), true);
+        } catch {
+        }
+      }
+      set(profileDropdownOpen, !get2(profileDropdownOpen));
+    }
+    function selectProfile(name) {
+      if (name === appState.activeProfile) {
+        set(profileDropdownOpen, false);
+        return;
+      }
+      set(profileDropdownOpen, false);
+      api.send("selectProfile", { name });
+      appState.activeProfile = name;
     }
     user_effect(() => {
       const text2 = appState.pendingPrompt;
@@ -7479,7 +7500,7 @@ ${component_stack}
       if (days === 1) return "\u6628\u5929";
       return `${d.getMonth() + 1}/${d.getDate()}`;
     }
-    var div = root_92();
+    var div = root_102();
     var div_1 = child(div);
     var button = child(div_1);
     var span = child(button);
@@ -7601,29 +7622,78 @@ ${component_stack}
       });
     }
     reset(div_8);
-    var button_5 = sibling(div_8, 2);
+    var div_11 = sibling(div_8, 2);
+    var button_5 = child(div_11);
     var text_6 = child(button_5);
+    var svg_2 = sibling(text_6);
+    let classes_4;
     reset(button_5);
-    reset(div_7);
-    var div_11 = sibling(div_7, 2);
-    var button_6 = child(div_11);
-    var node_5 = child(button_6);
+    var node_5 = sibling(button_5, 2);
     {
-      var consequent_3 = ($$anchor2) => {
-        var svg_2 = root_72();
-        append($$anchor2, svg_2);
+      var consequent_4 = ($$anchor2) => {
+        var div_12 = root_63();
+        each(
+          div_12,
+          21,
+          () => get2(profiles),
+          (profile) => profile.name,
+          ($$anchor3, profile) => {
+            var button_6 = root_43();
+            let classes_5;
+            var span_5 = child(button_6);
+            var text_7 = child(span_5, true);
+            reset(span_5);
+            var node_6 = sibling(span_5, 2);
+            {
+              var consequent_3 = ($$anchor4) => {
+                var span_6 = root_33();
+                append($$anchor4, span_6);
+              };
+              if_block(node_6, ($$render) => {
+                if (get2(profile).name === appState.activeProfile) $$render(consequent_3);
+              });
+            }
+            reset(button_6);
+            template_effect(() => {
+              classes_5 = set_class(button_6, 1, "preset-item svelte-1mroaqi", null, classes_5, { active: get2(profile).name === appState.activeProfile });
+              set_text(text_7, get2(profile).name);
+            });
+            delegated("click", button_6, () => selectProfile(get2(profile).name));
+            append($$anchor3, button_6);
+          },
+          ($$anchor3) => {
+            var div_13 = root_72();
+            append($$anchor3, div_13);
+          }
+        );
+        reset(div_12);
+        append($$anchor2, div_12);
       };
-      var alternate = ($$anchor2) => {
+      if_block(node_5, ($$render) => {
+        if (get2(profileDropdownOpen)) $$render(consequent_4);
+      });
+    }
+    reset(div_11);
+    reset(div_7);
+    var div_14 = sibling(div_7, 2);
+    var button_7 = child(div_14);
+    var node_7 = child(button_7);
+    {
+      var consequent_5 = ($$anchor2) => {
         var svg_3 = root_82();
         append($$anchor2, svg_3);
       };
-      if_block(node_5, ($$render) => {
-        if (appState.isProcessing) $$render(consequent_3);
+      var alternate = ($$anchor2) => {
+        var svg_4 = root_92();
+        append($$anchor2, svg_4);
+      };
+      if_block(node_7, ($$render) => {
+        if (appState.isProcessing) $$render(consequent_5);
         else $$render(alternate, -1);
       });
     }
-    reset(button_6);
-    reset(div_11);
+    reset(button_7);
+    reset(div_14);
     reset(div_6);
     reset(div_5);
     reset(div_4);
@@ -7634,9 +7704,10 @@ ${component_stack}
         classes = set_class(svg, 0, "session-arrow svelte-1mroaqi", null, classes, { open: get2(sessionDropdownOpen) });
         set_text(text_4, `\u9884\u8BBE: ${appState.activePreset ?? ""} `);
         classes_2 = set_class(svg_1, 0, "preset-arrow svelte-1mroaqi", null, classes_2, { open: get2(presetDropdownOpen) });
-        set_text(text_6, `\u914D\u7F6E: ${appState.activeProfile ?? ""}`);
-        button_6.disabled = $1;
-        set_attribute2(button_6, "title", appState.isProcessing ? "\u4E2D\u65AD" : "\u53D1\u9001");
+        set_text(text_6, `\u914D\u7F6E: ${appState.activeProfile ?? ""} `);
+        classes_4 = set_class(svg_2, 0, "preset-arrow svelte-1mroaqi", null, classes_4, { open: get2(profileDropdownOpen) });
+        button_7.disabled = $1;
+        set_attribute2(button_7, "title", appState.isProcessing ? "\u4E2D\u65AD" : "\u53D1\u9001");
       },
       [
         () => getCurrentSessionSummary(),
@@ -7648,8 +7719,8 @@ ${component_stack}
     delegated("keydown", textarea, handleKeydown);
     bind_value(textarea, () => get2(promptText), ($$value) => set(promptText, $$value));
     delegated("click", button_3, togglePresetDropdown);
-    delegated("click", button_5, () => appState.currentTab = "profiles");
-    delegated("click", button_6, sendPrompt);
+    delegated("click", button_5, toggleProfileDropdown);
+    delegated("click", button_7, sendPrompt);
     append($$anchor, div);
     pop();
   }
@@ -8378,93 +8449,299 @@ ${component_stack}
   }
 
   // resources/webview/components/ProfilePage.svelte
-  var root10 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_113 = from_html(`<p class="hint error svelte-1no2ghb"> </p>`);
-  var root_27 = from_html(`<span class="current svelte-1no2ghb">(\u5F53\u524D)</span>`);
-  var root_36 = from_html(`<div class="profile-card svelte-1no2ghb"><strong> <!></strong></div>`);
-  var root_46 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E</p>`);
-  var root_55 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
-  var root_65 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb">\u5373\u5C06\u63A8\u51FA</span></div> <!></div>`);
+  var root10 = from_html(`<div class="new-profile-bar svelte-1no2ghb"><input class="new-profile-input svelte-1no2ghb" type="text" placeholder="\u8F93\u5165\u914D\u7F6E\u540D\u79F0..."/> <button class="action-btn primary svelte-1no2ghb">\u521B\u5EFA</button> <button class="action-btn svelte-1no2ghb">\u53D6\u6D88</button></div>`);
+  var root_113 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
+  var root_27 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
+  var root_36 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
+  var root_46 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
+  var root_55 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
+  var root_65 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
+  var root_73 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14" class="spin svelte-1no2ghb"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Z"></path></svg>`);
+  var root_83 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Zm2.5 4.15a.75.75 0 0 1 .1 1.06l-3 3.5a.75.75 0 0 1-1.1.04l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.47-2.88a.75.75 0 0 1 1-.13Z"></path></svg>`);
+  var root_93 = from_html(`<div role="button" tabindex="0"><div class="card-info svelte-1no2ghb"><!></div> <div class="card-actions svelte-1no2ghb"><button class="icon-btn svelte-1no2ghb" title="\u91CD\u547D\u540D"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg></button> <button class="icon-btn svelte-1no2ghb" title="\u7F16\u8F91\u914D\u7F6E\u6587\u4EF6"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn test svelte-1no2ghb" title="\u6D4B\u8BD5\u8FDE\u63A5"><!></button> <button class="icon-btn danger svelte-1no2ghb" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
+  var root_103 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
+  var root_114 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb"> </span></div> <!> <!> <div class="list-actions svelte-1no2ghb"><button class="action-btn primary svelte-1no2ghb"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u914D\u7F6E</button></div></div>`);
   function ProfilePage($$anchor, $$props) {
     push($$props, true);
     let profiles = state(proxy([]));
     let loading = state(true);
-    let error = state("");
+    let testingProfile = state(null);
+    let renamingProfile = state(null);
+    let renameInput = state("");
+    let creatingNew = state(false);
+    let newProfileName = state("");
+    let renameInputRef = void 0;
     onMount(async () => {
+      await loadProfiles();
+    });
+    async function loadProfiles() {
+      set(loading, true);
       try {
         set(profiles, await api.request("listProfiles"), true);
-      } catch (e) {
-        set(error, String(e), true);
+      } catch {
+        notify.error("\u52A0\u8F7D\u914D\u7F6E\u5217\u8868\u5931\u8D25");
       } finally {
         set(loading, false);
       }
-    });
-    var div = root_65();
-    var node = sibling(child(div), 2);
-    {
-      var consequent = ($$anchor2) => {
-        var p = root10();
-        append($$anchor2, p);
-      };
-      var consequent_1 = ($$anchor2) => {
-        var p_1 = root_113();
-        var text2 = child(p_1, true);
-        reset(p_1);
-        template_effect(() => set_text(text2, get2(error)));
-        append($$anchor2, p_1);
-      };
-      var alternate = ($$anchor2) => {
-        var div_1 = root_55();
-        each(
-          div_1,
-          21,
-          () => get2(profiles),
-          index,
-          ($$anchor3, profile) => {
-            var div_2 = root_36();
-            var strong = child(div_2);
-            let classes;
-            var text_1 = child(strong);
-            var node_1 = sibling(text_1);
-            {
-              var consequent_2 = ($$anchor4) => {
-                var span = root_27();
-                append($$anchor4, span);
-              };
-              if_block(node_1, ($$render) => {
-                if (get2(profile) === appState.activeProfile) $$render(consequent_2);
-              });
-            }
-            reset(strong);
-            reset(div_2);
-            template_effect(() => {
-              classes = set_class(strong, 1, "", null, classes, { active: get2(profile) === appState.activeProfile });
-              set_text(text_1, `${get2(profile) ?? ""} `);
-            });
-            append($$anchor3, div_2);
-          },
-          ($$anchor3) => {
-            var p_2 = root_46();
-            append($$anchor3, p_2);
-          }
-        );
-        reset(div_1);
-        append($$anchor2, div_1);
-      };
-      if_block(node, ($$render) => {
-        if (get2(loading)) $$render(consequent);
-        else if (get2(error)) $$render(consequent_1, 1);
-        else $$render(alternate, -1);
+    }
+    function handleSelect(name) {
+      if (name === appState.activeProfile) return;
+      api.send("selectProfile", { name });
+      appState.activeProfile = name;
+      notify.success(`\u5DF2\u5207\u6362\u5230\u914D\u7F6E\u300C${name}\u300D`);
+    }
+    async function handleEdit(profile) {
+      api.send("openFile", { filePath: profile.filePath, line: 1 });
+    }
+    function startNew() {
+      set(creatingNew, true);
+      set(newProfileName, "");
+      requestAnimationFrame(() => {
+        const input = document.querySelector(".new-profile-input");
+        input?.focus();
       });
     }
+    async function confirmNew() {
+      const name = get2(newProfileName).trim();
+      if (!name) {
+        set(creatingNew, false);
+        return;
+      }
+      set(creatingNew, false);
+      try {
+        const result = await api.request("createProfile", { name });
+        await loadProfiles();
+        notify.success(`\u5DF2\u521B\u5EFA\u65B0\u914D\u7F6E\u300C${name}\u300D`);
+        if (result) handleEdit(result);
+      } catch {
+        notify.error("\u521B\u5EFA\u914D\u7F6E\u5931\u8D25");
+      }
+    }
+    function cancelNew() {
+      set(creatingNew, false);
+      set(newProfileName, "");
+    }
+    function handleNewKeydown(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        confirmNew();
+      }
+      if (e.key === "Escape") {
+        cancelNew();
+      }
+    }
+    function startRename(name) {
+      set(renamingProfile, name, true);
+      set(renameInput, name, true);
+      requestAnimationFrame(() => {
+        const input = document.querySelector(".rename-input");
+        input?.focus();
+        input?.select();
+      });
+    }
+    async function confirmRename() {
+      const oldName = get2(renamingProfile);
+      const newName = get2(renameInput).trim();
+      set(renamingProfile, null);
+      if (!oldName || !newName || oldName === newName) return;
+      try {
+        await api.request("renameProfile", { oldName, newName });
+        await loadProfiles();
+        if (appState.activeProfile === oldName) {
+          appState.activeProfile = newName;
+        }
+        notify.success(`\u5DF2\u91CD\u547D\u540D\u4E3A\u300C${newName}\u300D`);
+      } catch (e) {
+        notify.error(`\u91CD\u547D\u540D\u5931\u8D25: ${String(e).slice(0, 80)}`);
+      }
+    }
+    function cancelRename() {
+      set(renamingProfile, null);
+    }
+    function handleRenameKeydown(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        confirmRename();
+      }
+      if (e.key === "Escape") {
+        cancelRename();
+      }
+    }
+    async function handleDelete(name) {
+      try {
+        await api.request("deleteProfile", { name });
+        if (appState.activeProfile === name) {
+          appState.activeProfile = "default";
+          notify.success(`\u5DF2\u5207\u6362\u5230\u914D\u7F6E\u300Cdefault\u300D`);
+        }
+        await loadProfiles();
+        notify.success(`\u914D\u7F6E\u300C${name}\u300D\u5DF2\u5220\u9664`);
+      } catch {
+        notify.error("\u5220\u9664\u5931\u8D25");
+      }
+    }
+    async function handleTestConnection(name) {
+      set(testingProfile, name, true);
+      try {
+        const result = await api.request("testConnection", { name });
+        if (result.success) {
+          notify.success(`\u8FDE\u63A5\u6D4B\u8BD5\u901A\u8FC7 \u2713 \u6A21\u578B: ${result.model}`);
+        }
+      } catch (e) {
+        const msg = String(e);
+        notify.error(`\u8FDE\u63A5\u6D4B\u8BD5\u5931\u8D25: ${msg.slice(0, 120)}`);
+      } finally {
+        set(testingProfile, null);
+      }
+    }
+    var div = root_114();
+    var div_1 = child(div);
+    var span = sibling(child(div_1), 2);
+    var text2 = child(span, true);
+    reset(span);
+    reset(div_1);
+    var node = sibling(div_1, 2);
+    {
+      var consequent = ($$anchor2) => {
+        var div_2 = root10();
+        var input_1 = child(div_2);
+        remove_input_defaults(input_1);
+        var button = sibling(input_1, 2);
+        var button_1 = sibling(button, 2);
+        reset(div_2);
+        delegated("keydown", input_1, handleNewKeydown);
+        event("blur", input_1, confirmNew);
+        bind_value(input_1, () => get2(newProfileName), ($$value) => set(newProfileName, $$value));
+        delegated("click", button, confirmNew);
+        delegated("click", button_1, cancelNew);
+        append($$anchor2, div_2);
+      };
+      if_block(node, ($$render) => {
+        if (get2(creatingNew)) $$render(consequent);
+      });
+    }
+    var node_1 = sibling(node, 2);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var p = root_113();
+        append($$anchor2, p);
+      };
+      var consequent_2 = ($$anchor2) => {
+        var p_1 = root_27();
+        append($$anchor2, p_1);
+      };
+      var alternate_2 = ($$anchor2) => {
+        var div_3 = root_103();
+        each(div_3, 21, () => get2(profiles), (profile) => profile.name, ($$anchor3, profile) => {
+          var div_4 = root_93();
+          let classes;
+          var div_5 = child(div_4);
+          var node_2 = child(div_5);
+          {
+            var consequent_3 = ($$anchor4) => {
+              var input_2 = root_36();
+              remove_input_defaults(input_2);
+              delegated("keydown", input_2, handleRenameKeydown);
+              event("blur", input_2, confirmRename);
+              delegated("click", input_2, (e) => e.stopPropagation());
+              bind_value(input_2, () => get2(renameInput), ($$value) => set(renameInput, $$value));
+              append($$anchor4, input_2);
+            };
+            var alternate = ($$anchor4) => {
+              var div_6 = root_65();
+              var node_3 = child(div_6);
+              {
+                var consequent_4 = ($$anchor5) => {
+                  var span_1 = root_46();
+                  append($$anchor5, span_1);
+                };
+                if_block(node_3, ($$render) => {
+                  if (get2(profile).name === appState.activeProfile) $$render(consequent_4);
+                });
+              }
+              var strong = sibling(node_3, 2);
+              var text_1 = child(strong, true);
+              reset(strong);
+              var node_4 = sibling(strong, 2);
+              {
+                var consequent_5 = ($$anchor5) => {
+                  var span_2 = root_55();
+                  append($$anchor5, span_2);
+                };
+                if_block(node_4, ($$render) => {
+                  if (get2(profile).name === appState.activeProfile) $$render(consequent_5);
+                });
+              }
+              reset(div_6);
+              template_effect(() => set_text(text_1, get2(profile).name));
+              delegated("click", div_6, () => handleSelect(get2(profile).name));
+              append($$anchor4, div_6);
+            };
+            if_block(node_2, ($$render) => {
+              if (get2(renamingProfile) === get2(profile).name) $$render(consequent_3);
+              else $$render(alternate, -1);
+            });
+          }
+          reset(div_5);
+          var div_7 = sibling(div_5, 2);
+          var button_2 = child(div_7);
+          var button_3 = sibling(button_2, 2);
+          var button_4 = sibling(button_3, 2);
+          var node_5 = child(button_4);
+          {
+            var consequent_6 = ($$anchor4) => {
+              var svg = root_73();
+              append($$anchor4, svg);
+            };
+            var alternate_1 = ($$anchor4) => {
+              var svg_1 = root_83();
+              append($$anchor4, svg_1);
+            };
+            if_block(node_5, ($$render) => {
+              if (get2(testingProfile) === get2(profile).name) $$render(consequent_6);
+              else $$render(alternate_1, -1);
+            });
+          }
+          reset(button_4);
+          var button_5 = sibling(button_4, 2);
+          reset(div_7);
+          reset(div_4);
+          template_effect(() => {
+            classes = set_class(div_4, 1, "profile-card svelte-1no2ghb", null, classes, { active: get2(profile).name === appState.activeProfile });
+            button_4.disabled = get2(testingProfile) === get2(profile).name;
+          });
+          delegated("click", div_4, () => handleSelect(get2(profile).name));
+          delegated("keydown", div_4, (e) => e.key === "Enter" && handleSelect(get2(profile).name));
+          delegated("click", div_7, (e) => e.stopPropagation());
+          delegated("click", button_2, () => startRename(get2(profile).name));
+          delegated("click", button_3, () => handleEdit(get2(profile)));
+          delegated("click", button_4, () => handleTestConnection(get2(profile).name));
+          delegated("click", button_5, () => handleDelete(get2(profile).name));
+          append($$anchor3, div_4);
+        });
+        reset(div_3);
+        append($$anchor2, div_3);
+      };
+      if_block(node_1, ($$render) => {
+        if (get2(loading)) $$render(consequent_1);
+        else if (get2(profiles).length === 0) $$render(consequent_2, 1);
+        else $$render(alternate_2, -1);
+      });
+    }
+    var div_8 = sibling(node_1, 2);
+    var button_6 = child(div_8);
+    reset(div_8);
     reset(div);
+    template_effect(() => set_text(text2, get2(profiles).length));
+    delegated("click", button_6, startNew);
     append($$anchor, div);
     pop();
   }
+  delegate(["keydown", "click"]);
 
   // resources/webview/components/ToastNotification.svelte
   var root11 = from_html(`<div role="alert"><span class="toast-icon svelte-1fwhj3x"></span> <span class="toast-text svelte-1fwhj3x"> </span> <button class="toast-close svelte-1fwhj3x" aria-label="\u5173\u95ED"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg></button></div>`);
-  var root_114 = from_html(`<div class="toast-container svelte-1fwhj3x"></div>`);
+  var root_115 = from_html(`<div class="toast-container svelte-1fwhj3x"></div>`);
   function ToastNotification($$anchor, $$props) {
     push($$props, true);
     let items2 = user_derived(() => notify.items);
@@ -8481,7 +8758,7 @@ ${component_stack}
     var node = first_child(fragment);
     {
       var consequent = ($$anchor2) => {
-        var div = root_114();
+        var div = root_115();
         each(div, 21, () => get2(items2), (item) => item.id, ($$anchor3, item) => {
           var div_1 = root11();
           var span = child(div_1);

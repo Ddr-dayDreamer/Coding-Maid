@@ -1347,49 +1347,188 @@ textarea.svelte-1mroaqi::placeholder {
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/ProfilePage.esbuild-svelte-fake-css */
 .page.svelte-1no2ghb {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
   padding: 16px;
 }
 .page-header.svelte-1no2ghb {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  padding: 0 0 12px;
 }
-h2.svelte-1no2ghb {
+.page-header.svelte-1no2ghb h2:where(.svelte-1no2ghb) {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
 }
 .badge.svelte-1no2ghb {
   font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 1px 7px;
+  border-radius: 10px;
   background: var(--vscode-badge-background);
   color: var(--vscode-badge-foreground);
 }
 .hint.svelte-1no2ghb {
   color: var(--vscode-descriptionForeground);
   font-size: 13px;
-}
-.hint.error.svelte-1no2ghb {
-  color: var(--vscode-errorForeground);
+  padding: 24px 0;
+  text-align: center;
 }
 .profile-list.svelte-1no2ghb {
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 .profile-card.svelte-1no2ghb {
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
   border-radius: 6px;
-  border: 1px solid var(--vscode-panel-border);
-  background: var(--vscode-editor-background);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.1s, border-color 0.1s;
 }
-.current.svelte-1no2ghb {
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-  margin-left: 6px;
+.profile-card.svelte-1no2ghb:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.profile-card.active.svelte-1no2ghb {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+  border-color: var(--vscode-focusBorder);
+}
+.card-info.svelte-1no2ghb {
+  flex: 1;
+  min-width: 0;
+}
+.card-name.svelte-1no2ghb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.indicator.svelte-1no2ghb {
+  color: var(--vscode-charts-green);
+  font-size: 10px;
+}
+.current-tag.svelte-1no2ghb {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+.card-actions.svelte-1no2ghb {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.icon-btn.svelte-1no2ghb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.1s, background 0.1s;
+}
+.icon-btn.svelte-1no2ghb:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+.icon-btn.danger.svelte-1no2ghb:hover:not(:disabled) {
+  color: var(--vscode-errorForeground);
+}
+.icon-btn.test.svelte-1no2ghb:hover:not(:disabled) {
+  color: var(--vscode-charts-green);
+}
+.icon-btn.svelte-1no2ghb:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+.rename-input.svelte-1no2ghb {
+  width: 100%;
+  padding: 2px 6px;
+  border: 1px solid var(--vscode-focusBorder);
+  border-radius: 3px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+.new-profile-bar.svelte-1no2ghb {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0;
+  align-items: center;
+}
+.new-profile-input.svelte-1no2ghb {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--vscode-focusBorder);
+  border-radius: 4px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  min-width: 0;
+}
+.spin.svelte-1no2ghb {
+  animation: svelte-1no2ghb-spin 1s linear infinite;
+}
+@keyframes svelte-1no2ghb-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.list-actions.svelte-1no2ghb {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--vscode-panel-border);
+  margin-top: 8px;
+}
+.action-btn.svelte-1no2ghb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  background: var(--vscode-button-secondaryBackground, transparent);
+  color: var(--vscode-foreground);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.action-btn.svelte-1no2ghb:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.action-btn.primary.svelte-1no2ghb {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: transparent;
+}
+.action-btn.primary.svelte-1no2ghb:hover {
+  background: var(--vscode-button-hoverBackground);
 }
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/ToastNotification.esbuild-svelte-fake-css */

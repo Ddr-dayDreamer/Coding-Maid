@@ -3,7 +3,7 @@
   import { api } from "../lib/api";
   import ContextMeter from "./ContextMeter.svelte";
   import MessageBoard from "./MessageBoard.svelte";
-  import type { PresetMeta } from "../types";
+  import type { PresetMeta, ProfileMeta } from "../types";
 
   let promptText = $state("");
   let sessionDropdownOpen = $state(false);
@@ -29,6 +29,29 @@
     presetDropdownOpen = false;
     api.send("selectPreset", { name });
     appState.activePreset = name;
+  }
+
+  // ─── 配置选择器状态 ────────────────────────────
+
+  let profileDropdownOpen = $state(false);
+  let profiles = $state<ProfileMeta[]>([]);
+
+  async function toggleProfileDropdown() {
+    if (!profileDropdownOpen && profiles.length === 0) {
+      try {
+        profiles = await api.request<ProfileMeta[]>("listProfiles");
+      } catch {
+        // 静默失败
+      }
+    }
+    profileDropdownOpen = !profileDropdownOpen;
+  }
+
+  function selectProfile(name: string) {
+    if (name === appState.activeProfile) { profileDropdownOpen = false; return; }
+    profileDropdownOpen = false;
+    api.send("selectProfile", { name });
+    appState.activeProfile = name;
   }
 
   // ─── 回退时填入输入框 ───────────────────────────
@@ -176,9 +199,33 @@
               </div>
             {/if}
           </div>
-          <button class="badge-btn" onclick={() => (appState.currentTab = "profiles")}>
-            配置: {appState.activeProfile}
-          </button>
+          <!-- 配置快捷选择器 -->
+          <div class="preset-selector">
+            <button class="badge-btn" onclick={toggleProfileDropdown}>
+              配置: {appState.activeProfile}
+              <svg class="preset-arrow" class:open={profileDropdownOpen} viewBox="0 0 1024 1024" width="10" height="10">
+                <path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"/>
+              </svg>
+            </button>
+            {#if profileDropdownOpen}
+              <div class="preset-dropdown">
+                {#each profiles as profile (profile.name)}
+                  <button
+                    class="preset-item"
+                    class:active={profile.name === appState.activeProfile}
+                    onclick={() => selectProfile(profile.name)}
+                  >
+                    <span class="preset-item-name">{profile.name}</span>
+                    {#if profile.name === appState.activeProfile}
+                      <span class="preset-check">✓</span>
+                    {/if}
+                  </button>
+                {:else}
+                  <div class="preset-empty">暂无配置</div>
+                {/each}
+              </div>
+            {/if}
+          </div>
         </div>
         <div class="footer-right">
           <button

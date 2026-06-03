@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
 import OpenAI from "openai";
 import MarkdownIt from "markdown-it";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
@@ -22,8 +23,10 @@ import {
   loadProfile,
   saveProfile,
   deleteProfile,
+  renameProfile,
   setActiveProfile,
   getActiveProfile,
+  createProfileFromTemplate,
   type ConnectionProfile,
 } from "./common/connection-profiles";
 import { getActivePreset, setActivePreset } from "./common/global-settings";
@@ -44,6 +47,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
   private readonly md: MarkdownIt;
   private readonly sessionManager: SessionManager;
   private readonly debugOutputChannel: vscode.OutputChannel;
+  private readonly templatesDir: string;
 
   /** 消息路由表 */
   private readonly handlers = new Map<string, (message: Record<string, unknown>) => Promise<void>>();
@@ -140,9 +144,14 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     this.registerHandler("saveProfile", this.handleSaveProfile);
     this.registerHandler("deleteProfile", this.handleDeleteProfile);
     this.registerHandler("selectProfile", this.handleSelectProfile);
+    this.registerHandler("testConnection", this.handleTestConnection);
+    this.registerHandler("openProfileFile", this.handleOpenProfileFile);
+    this.registerHandler("createProfile", this.handleCreateProfile);
+    this.registerHandler("renameProfile", this.handleRenameProfile);
 
     this.initCryptoKey();
-    const templatesDir = path.join(this.context.extensionUri.fsPath, "templates");
+    this.templatesDir = path.join(this.context.extensionUri.fsPath, "templates");
+    const templatesDir = this.templatesDir;
     ensureInitialConfig(templatesDir, this.getCryptoKey());
     void this.initializeMcpServers();
   }
@@ -521,8 +530,13 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
   // ═══════════════════════════════════════════════════════
 
   private handleListProfiles = async (message: Record<string, unknown>): Promise<void> => {
-    const profiles = listProfiles();
-    this.respond(message.requestId as string, true, profiles);
+    const names = listProfiles();
+    const profilesDir = path.join(os.homedir(), ".codingmaid", "profiles");
+    const items = names.map((name) => {
+      const safeName = name.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fff]+/g, "_");
+      return { name, filePath: path.join(profilesDir, `${safeName}.json`) };
+    });
+    this.respond(message.requestId as string, true, items);
   };
 
   private handleGetProfile = async (message: Record<string, unknown>): Promise<void> => {
@@ -557,6 +571,96 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     setActiveProfile(name);
     // 重新初始化 MCP 服务器（配置可能变了）
     void this.initializeMcpServers();
+    this.respond(message.requestId as string, true);
+  };
+
+  private handleTestConnection = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少配置名称"); return; }
+
+    const cryptoKey = this.getCryptoKey();
+    const profile = loadProfile(name, cryptoKey);
+    if (!profile) { this.respond(message.requestId as string, false, undefined, `配置 "${name}" 未找到`); return; }
+    if (!profile.apiKey) { this.respond(message.requestId as string, false, undefined, "API Key 未设置"); return; }
+
+    try {
+      const client = new OpenAI({
+        apiKey: profile.apiKey,
+        baseURL: profile.baseURL || undefined,
+      });
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const response = await client.chat.completions.create(
+        {
+          model: profile.model,
+          messages: [{ role: "user", content: "Hi" }],
+          max_tokens: 1,
+          stream: false,
+        },
+        { signal: controller.signal }
+      );
+
+      clearTimeout(timeout);
+
+      this.respond(message.requestId as string, true, {
+        success: true,
+        model: response.model,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.respond(message.requestId as string, false, undefined, msg);
+    }
+  };
+
+  private handleOpenProfileFile = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少配置名称"); return; }
+
+    const profilesDir = path.join(os.homedir(), ".codingmaid", "profiles");
+    const safeName = name.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fff]+/g, "_");
+    const filePath = path.join(profilesDir, `${safeName}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      this.respond(message.requestId as string, false, undefined, `配置文件 "${name}" 不存在`);
+      return;
+    }
+
+    await this.openFileInEditor(filePath, 1);
+    this.respond(message.requestId as string, true);
+  };
+
+  private handleCreateProfile = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "new-profile").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少配置名称"); return; }
+    const cryptoKey = this.getCryptoKey();
+    const profile = createProfileFromTemplate(name, this.templatesDir, cryptoKey);
+    const profilesDir = path.join(os.homedir(), ".codingmaid", "profiles");
+    const safeName = name.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fff]+/g, "_");
+    this.respond(message.requestId as string, true, {
+      name: profile.name,
+      filePath: path.join(profilesDir, `${safeName}.json`),
+    });
+  };
+
+  private handleRenameProfile = async (message: Record<string, unknown>): Promise<void> => {
+    const oldName = String(message.oldName || "").trim();
+    const newName = String(message.newName || "").trim();
+    if (!oldName || !newName) { this.respond(message.requestId as string, false, undefined, "缺少配置名称"); return; }
+    if (oldName === newName) { this.respond(message.requestId as string, true); return; }
+    const success = renameProfile(oldName, newName);
+    if (!success) {
+      this.respond(message.requestId as string, false, undefined, `重命名失败（目标 "${newName}" 可能已存在）`);
+      return;
+    }
+
+    // 如果重命名的是当前激活配置，更新 activeProfile
+    const activeName = getActiveProfile(this.getCryptoKey())?.name;
+    if (activeName === oldName) {
+      setActiveProfile(newName);
+    }
+
     this.respond(message.requestId as string, true);
   };
 

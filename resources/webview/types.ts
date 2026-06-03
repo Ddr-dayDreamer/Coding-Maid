@@ -150,3 +150,10 @@ export interface PresetMeta {
   displayName: string;
   description: string;
 }
+
+// ─── 连接配置类型 ───────────────────────────
+
+export interface ProfileMeta {
+  name: string;
+  filePath: string;
+}
