@@ -258,20 +258,12 @@ export class SessionMessageBuilder {
   }
 
   private renderOpenAIMessageContent(message: SessionMessage): string {
-    if (message.role === "user" && message.content === "/init") {
-      return this.renderInitCommandPrompt();
-    }
     return message.content ?? "";
   }
 
   // ═══════════════════════════════════════════════════════
   //  AGENTS.md 指令加载
   // ═══════════════════════════════════════════════════════
-
-  private renderInitCommandPrompt(): string {
-    const templatePath = path.join(getExtensionRoot(), "templates", "prompts", "init_command.md");
-    return fs.readFileSync(templatePath, "utf8");
-  }
 
   loadProjectAgentInstructions(): { content: string; displayPath: string } | null {
     const candidatePaths = [

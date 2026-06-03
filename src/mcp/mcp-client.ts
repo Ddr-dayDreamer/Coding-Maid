@@ -1,5 +1,7 @@
-import { spawn, type ChildProcess } from "child_process";
-import { createInterface, type Interface } from "readline";
+import { spawn } from "child_process";
+import type { ChildProcess } from "child_process";
+import { createInterface } from "readline";
+import type { Interface } from "readline";
 import * as os from "os";
 import * as path from "path";
 import { killProcessTree } from "../common/process-tree";

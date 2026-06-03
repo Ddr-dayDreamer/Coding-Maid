@@ -15,8 +15,10 @@
 
 import * as crypto from "crypto";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { getExtensionRoot, type ToolDefinition } from "./prompt";
-import { ToolExecutor, type CreateOpenAIClient } from "./tools/executor";
+import { getExtensionRoot } from "./prompt";
+import type { ToolDefinition } from "./prompt";
+import { ToolExecutor } from "./tools/executor";
+import type { CreateOpenAIClient } from "./tools/executor";
 import { McpManager } from "./mcp/mcp-manager";
 import type { McpServerConfig } from "./settings";
 import { killProcessTree } from "./common/process-tree";
@@ -25,10 +27,20 @@ import { SessionStorage } from "./session-storage";
 import { SessionFileHistory } from "./session-file-history";
 import { SessionProcessManager } from "./session-process";
 import { SessionMessageBuilder } from "./session-message-builder";
-import { LlmStreamManager, getCompactPromptTokenThreshold } from "./llm-stream";
+import { LlmStreamManager } from "./llm-stream";
 import { SessionActivator } from "./session-activator";
 import { SessionNotifier } from "./session-notify";
 import { PresetManager } from "./preset-manager";
+import type {
+  SessionMessage,
+  SessionEntry,
+  LlmStreamProgress,
+  UserPromptContent,
+  MessageMeta,
+  SessionManagerOptions,
+  BashTimeoutAdjustment,
+  UndoTarget,
+} from "./session-types";
 
 // ─── 类型 re-export ──────────────────────────────────────
 
@@ -62,11 +74,11 @@ export class SessionManager {
     mcpServers?: Record<string, McpServerConfig>;
   };
   private readonly onAssistantMessage: (
-    message: import("./session-types").SessionMessage,
+    message: SessionMessage,
     shouldConnect: boolean
   ) => void;
-  private readonly onSessionEntryUpdated?: (entry: import("./session-types").SessionEntry) => void;
-  private readonly onLlmStreamProgress?: (progress: import("./session-types").LlmStreamProgress) => void;
+  private readonly onSessionEntryUpdated?: (entry: SessionEntry) => void;
+  private readonly onLlmStreamProgress?: (progress: LlmStreamProgress) => void;
   private readonly onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
   private readonly onMcpStatusChanged?: () => void;
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
@@ -81,7 +93,7 @@ export class SessionManager {
   private readonly activator: SessionActivator;
   private readonly notifier: SessionNotifier;
   private readonly toolExecutor: ToolExecutor;
-  private readonly presetMgr: PresetManager;
+  readonly presetMgr: PresetManager;
 
   /* MCP */
   private readonly mcpManager = new McpManager();
@@ -93,7 +105,7 @@ export class SessionManager {
   /** 由 runActivate 创建，供 interruptSession 中止 LLM 请求 */
   private readonly activationControllers = new Map<string, AbortController>();
 
-  constructor(options: import("./session-types").SessionManagerOptions) {
+  constructor(options: SessionManagerOptions) {
     this.projectRoot = options.projectRoot;
     this.createOpenAIClient = options.createOpenAIClient;
     this.getResolvedSettings = options.getResolvedSettings;
@@ -171,7 +183,7 @@ export class SessionManager {
     sessionId: string,
     content: string,
     visible?: boolean,
-    meta?: import("./session-types").MessageMeta
+    meta?: MessageMeta
   ): void {
     const message = this.messageBuilder.buildSystemMessage(sessionId, content, null, visible, meta);
     if (sessionId) this.storage.appendSessionMessage(sessionId, message);
@@ -182,7 +194,7 @@ export class SessionManager {
   //  用户提示词处理
   // ═══════════════════════════════════════════════════════
 
-  async handleUserPrompt(userPrompt: import("./session-types").UserPromptContent): Promise<void> {
+  async handleUserPrompt(userPrompt: UserPromptContent): Promise<void> {
     console.log("[DEBUG] handleUserPrompt enter", JSON.stringify({ text: userPrompt.text?.slice(0, 50) }));
     const controller = new AbortController();
     this.activePromptController = controller;
@@ -213,7 +225,7 @@ export class SessionManager {
    * 创建会话索引（同步，不触发 LLM）。
    * 消息发送统一由 sendMessage 处理。
    */
-  createSession(userPrompt: import("./session-types").UserPromptContent): string {
+  createSession(userPrompt: UserPromptContent): string {
     this.notifier.reportNewPrompt();
 
     const sessionId = crypto.randomUUID();
@@ -221,7 +233,7 @@ export class SessionManager {
     this.fileHistory.ensureSession(sessionId);
     const now = new Date().toISOString();
     const index = this.storage.loadSessionsIndex();
-    const entry: import("./session-types").SessionEntry = {
+    const entry: SessionEntry = {
       id: sessionId,
       summary: userPrompt.text ? userPrompt.text.slice(0, 100) : "[Image Prompt]",
       assistantReply: null,
@@ -261,7 +273,7 @@ export class SessionManager {
    */
   async sendMessage(
     sessionId: string,
-    userPrompt: import("./session-types").UserPromptContent,
+    userPrompt: UserPromptContent,
     controller?: AbortController
   ): Promise<void> {
     const signal = controller?.signal;
@@ -304,7 +316,7 @@ export class SessionManager {
    */
   async replySession(
     sessionId: string,
-    userPrompt: import("./session-types").UserPromptContent,
+    userPrompt: UserPromptContent,
     controller?: AbortController
   ): Promise<void> {
     const existing = this.getSession(sessionId);
@@ -390,7 +402,7 @@ export class SessionManager {
   //  Bash 超时调整
   // ═══════════════════════════════════════════════════════
 
-  adjustActiveBashTimeout(deltaMs: number): import("./session-types").BashTimeoutAdjustment | null {
+  adjustActiveBashTimeout(deltaMs: number): BashTimeoutAdjustment | null {
     const sessionId = this.activeSessionId;
     if (!sessionId || !Number.isFinite(deltaMs)) return null;
     const session = this.getSession(sessionId);
@@ -422,23 +434,23 @@ export class SessionManager {
   //  查询
   // ═══════════════════════════════════════════════════════
 
-  listSessions(): import("./session-types").SessionEntry[] {
+  listSessions(): SessionEntry[] {
     return this.storage.loadSessionsIndex().entries;
   }
 
-  getSession(sessionId: string): import("./session-types").SessionEntry | null {
+  getSession(sessionId: string): SessionEntry | null {
     return this.storage.loadSessionsIndex().entries.find((e) => e.id === sessionId) ?? null;
   }
 
-  listSessionMessages(sessionId: string): import("./session-types").SessionMessage[] {
+  listSessionMessages(sessionId: string): SessionMessage[] {
     return this.storage.listSessionMessages(sessionId).map((m) => this.messageBuilder.normalizeSessionMessage(m));
   }
 
-  listUndoTargets(sessionId: string): import("./session-types").UndoTarget[] {
+  listUndoTargets(sessionId: string): UndoTarget[] {
     return this.fileHistory.listUndoTargets(sessionId);
   }
 
-  restoreSessionConversation(sessionId: string, messageId: string): import("./session-types").SessionMessage[] {
+  restoreSessionConversation(sessionId: string, messageId: string): SessionMessage[] {
     const keptMessages = this.fileHistory.restoreConversation(sessionId, messageId);
     const now = new Date().toISOString();
     const latestAssistant = [...keptMessages].reverse().find((m) => m.role === "assistant");
@@ -512,7 +524,7 @@ export class SessionManager {
     if (!this.activator.hasController(sessionId)) return { waitingForUser: false };
 
     let waitingForUser = false;
-    const followUpMessages: import("./session-types").SessionMessage[] = [];
+    const followUpMessages: SessionMessage[] = [];
     for (const execution of toolExecutions) {
       if (execution.result.awaitUserResponse === true) waitingForUser = true;
       const toolFunction = this.messageBuilder.findToolFunction(toolCalls, execution.toolCallId);
@@ -544,7 +556,7 @@ export class SessionManager {
    * 删除指定会话：从索引移除 + 删除消息文件
    * @returns 删除后的剩余会话列表
    */
-  deleteSession(sessionId: string): import("./session-types").SessionEntry[] {
+  deleteSession(sessionId: string): SessionEntry[] {
     this.storage.deleteSession(sessionId);
     this.fileHistory.deleteSession(sessionId);
     // 如果删除的是当前活跃会话，清空
@@ -574,7 +586,7 @@ export class SessionManager {
     return base;
   }
 
-  private isContinuePrompt(userPrompt: import("./session-types").UserPromptContent): boolean {
+  private isContinuePrompt(userPrompt: UserPromptContent): boolean {
     return (
       typeof userPrompt.text === "string" &&
       userPrompt.text.trim() === "/continue" &&

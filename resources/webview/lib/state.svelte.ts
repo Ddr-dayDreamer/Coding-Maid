@@ -1,0 +1,75 @@
+/**
+ * 全局状态管理 (Svelte 5 runes)
+ *
+ * 使用 $state rune 实现响应式状态。
+ * 注意：此文件必须使用 .svelte.ts 后缀才能使用 $state。
+ */
+
+import type { SessionSummary, TokenTelemetry, LlmStreamProgressData, SessionMessageData } from "../types";
+
+// ─── Tab 页面 ────────────────────────────────────────────
+
+export type TabId = "chat" | "presets" | "profiles";
+
+// ─── 全局状态 (class-based runes) ────────────────────────
+
+class AppState {
+  /** 当前 Tab */
+  currentTab = $state<TabId>("chat");
+
+  /** 当前会话 ID */
+  currentSessionId = $state<string | null>(null);
+
+  /** 当前会话状态 */
+  currentSessionStatus = $state<string | null>(null);
+
+  /** 所有会话列表 */
+  sessions = $state<SessionSummary[]>([]);
+
+  /** 当前会话的消息列表 */
+  messages = $state<SessionMessageData[]>([]);
+
+  /** Token 用量 */
+  tokenTelemetry = $state<TokenTelemetry | null>(null);
+
+  /** 流式进度 */
+  llmStreamProgress = $state<LlmStreamProgressData | null>(null);
+
+  /** 加载状态 */
+  isLoading = $state(false);
+
+  /** 运行中的进程 */
+  runningProcesses = $state<Record<string, { startTime: string; command: string }> | null>(null);
+
+  /** 提示词输入历史 */
+  inputHistory = $state<string[]>([]);
+
+  /** 最后一个用户提示词 */
+  lastPrompt = $state("");
+
+  /** 当前使用的预设名称 */
+  activePreset = $state("default");
+
+  /** 当前使用的连接配置名称 */
+  activeProfile = $state("default");
+
+  /** 流式输出暂存内容（打字机效果） */
+  streamingContent = $state("");
+
+  /** 是否正在流式输出 */
+  get isStreaming(): boolean {
+    return this.streamingContent !== "";
+  }
+
+  /** 当前 Tab 为聊天页 */
+  get isChatTab(): boolean {
+    return this.currentTab === "chat";
+  }
+
+  /** 是否正在处理 */
+  get isProcessing(): boolean {
+    return this.currentSessionStatus === "processing" || this.currentSessionStatus === "pending";
+  }
+}
+
+export const appState = new AppState();

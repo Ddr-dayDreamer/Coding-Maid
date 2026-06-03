@@ -1,0 +1,611 @@
+<script lang="ts">
+  import { appState } from "../lib/state.svelte";
+  import { api } from "../lib/api";
+
+  let promptText = $state("");
+  let sessionDropdownOpen = $state(false);
+
+  // ─── 发送/中断 ─────────────────────────────────────────
+
+  function sendPrompt() {
+    if (appState.isProcessing) {
+      api.send("interrupt");
+      appState.currentSessionStatus = "interrupted";
+      appState.isLoading = false;
+      return;
+    }
+
+    const text = promptText.trim();
+    if (!text) return;
+
+    promptText = "";
+    api.send("userPrompt", { prompt: text });
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendPrompt();
+    }
+  }
+
+  // ─── 会话选择器 ────────────────────────────────────────
+
+  function toggleDropdown() {
+    sessionDropdownOpen = !sessionDropdownOpen;
+  }
+
+  function closeDropdown() {
+    sessionDropdownOpen = false;
+  }
+
+  function selectSession(sessionId: string) {
+    closeDropdown();
+    api.send("selectSession", { sessionId });
+  }
+
+  function createNewSession() {
+    closeDropdown();
+    api.send("createNewSession");
+  }
+
+  function getCurrentSessionSummary(): string {
+    const current = appState.sessions.find((s) => s.id === appState.currentSessionId);
+    return current?.summary?.slice(0, 80) || "新对话";
+  }
+
+  function formatDate(dateStr: string): string {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (days === 1) return "昨天";
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+
+  // ─── 自动滚动 ──────────────────────────────────────────
+
+  let messagesContainer: HTMLDivElement | undefined = $state();
+  $effect(() => {
+    if (appState.messages.length > 0 || appState.streamingContent) {
+      requestAnimationFrame(() => {
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      });
+    }
+  });
+</script>
+
+<div class="chat-page">
+  <!-- 会话选择器 -->
+  <div class="session-bar">
+    <button class="session-btn" onclick={toggleDropdown}>
+      <span class="session-title">{getCurrentSessionSummary()}</span>
+      <svg class="session-arrow" class:open={sessionDropdownOpen} viewBox="0 0 1024 1024" width="12" height="12">
+        <path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"/>
+      </svg>
+    </button>
+    <button class="new-chat-btn" onclick={createNewSession} title="新对话">+</button>
+
+    {#if sessionDropdownOpen}
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="session-dropdown" role="listbox" onclick={() => {}} onkeydown={() => {}}>
+        {#each appState.sessions as session (session.id)}
+          <button
+            class="session-item"
+            class:active={session.id === appState.currentSessionId}
+            onclick={() => selectSession(session.id)}
+            role="option"
+          >
+            <span class="session-item-title">{session.summary?.slice(0, 50) || "空对话"}</span>
+            <span class="session-item-time">{formatDate(session.createTime)}</span>
+          </button>
+        {:else}
+          <div class="session-empty">暂无历史对话</div>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
+  <!-- 消息列表 -->
+  <div class="messages" bind:this={messagesContainer}>
+    {#each appState.messages as msg}
+      <div class="bubble bubble-{msg.role}">
+        <div class="bubble-avatar">
+          {msg.role === "user" ? "U" : msg.role === "assistant" ? "A" : "S"}
+        </div>
+        <div class="bubble-body">
+          {#if msg.html}
+            <div class="bubble-content html">{@html msg.html}</div>
+          {:else}
+            <div class="bubble-content">{msg.content}</div>
+          {/if}
+        </div>
+      </div>
+    {:else}
+      {#if !appState.isLoading && !appState.streamingContent}
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <p>开始新的对话</p>
+          <p class="empty-hint">输入消息并按 Enter 发送</p>
+        </div>
+      {/if}
+    {/each}
+
+    <!-- 流式输出气泡 -->
+    {#if appState.streamingContent}
+      <div class="bubble bubble-assistant">
+        <div class="bubble-avatar">A</div>
+        <div class="bubble-body">
+          <div class="bubble-content">{appState.streamingContent}<span class="cursor">▊</span></div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- 加载指示器 -->
+    {#if appState.isLoading && !appState.streamingContent}
+      <div class="loading-indicator">
+        <div class="spinner"></div>
+        <span>思考中...</span>
+      </div>
+    {/if}
+  </div>
+
+  <!-- 输入区 -->
+  <div class="composer">
+    <div class="input-wrap">
+      <textarea
+        bind:value={promptText}
+        onkeydown={handleKeydown}
+        placeholder="输入消息... (Shift+Enter 换行)"
+        rows="3"
+      ></textarea>
+      <div class="composer-footer">
+        <div class="footer-left">
+          <button class="badge-btn" onclick={() => (appState.currentTab = "presets")}>
+            预设: {appState.activePreset}
+          </button>
+          <button class="badge-btn" onclick={() => (appState.currentTab = "profiles")}>
+            配置: {appState.activeProfile}
+          </button>
+        </div>
+        <div class="footer-right">
+          <button
+            class="send-btn"
+            onclick={sendPrompt}
+            disabled={!promptText.trim() && !appState.isProcessing}
+            title={appState.isProcessing ? "中断" : "发送"}
+          >
+            {#if appState.isProcessing}
+              <svg viewBox="0 0 16 16" width="16" height="16">
+                <rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"/>
+              </svg>
+            {:else}
+              <svg viewBox="0 0 16 16" width="16" height="16">
+                <path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"/>
+              </svg>
+            {/if}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .chat-page {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ─── 会话选择器 ───────────────────────────────── */
+  .session-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+    background: var(--vscode-sideBar-background);
+  }
+
+  .session-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 4px;
+    text-align: left;
+    min-width: 0;
+  }
+
+  .session-btn:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .session-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-arrow {
+    flex-shrink: 0;
+    transition: transform 0.15s;
+    fill: var(--vscode-descriptionForeground);
+  }
+
+  .session-arrow.open {
+    transform: rotate(180deg);
+  }
+
+  .new-chat-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .new-chat-btn:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .session-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 6px;
+    right: 6px;
+    z-index: 100;
+    background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+
+  .session-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .session-item:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .session-item.active {
+    background: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+  }
+
+  .session-item-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-item-time {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    margin-left: 8px;
+  }
+
+  .session-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+  }
+
+  /* ─── 消息列表 ─────────────────────────────────── */
+  .messages {
+    flex: 1 1 0;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+    height: 0;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--vscode-descriptionForeground);
+    gap: 6px;
+  }
+
+  .empty-icon {
+    font-size: 36px;
+    opacity: 0.4;
+  }
+
+  .empty-state p {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .empty-hint {
+    font-size: 12px !important;
+    opacity: 0.5;
+  }
+
+  /* ─── 气泡 ─────────────────────────────────────── */
+  .bubble {
+    display: flex;
+    gap: 10px;
+    max-width: 88%;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .bubble-user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  .bubble-assistant {
+    align-self: flex-start;
+  }
+
+  .bubble-system, .bubble-tool {
+    align-self: center;
+    max-width: 100%;
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+  }
+
+  .bubble-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .bubble-user .bubble-avatar {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+  }
+
+  .bubble-assistant .bubble-avatar {
+    background: var(--vscode-editorInfoWidget-background, var(--vscode-textBlockQuote-background));
+    color: var(--vscode-foreground);
+  }
+
+  .bubble-system .bubble-avatar,
+  .bubble-tool .bubble-avatar {
+    display: none;
+  }
+
+  .bubble-body {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .bubble-user .bubble-body {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border-bottom-right-radius: 2px;
+  }
+
+  .bubble-assistant .bubble-body {
+    background: var(--vscode-textBlockQuote-background);
+    border-bottom-left-radius: 2px;
+  }
+
+  .bubble-system .bubble-body,
+  .bubble-tool .bubble-body {
+    background: transparent;
+    padding: 2px 8px;
+    text-align: center;
+  }
+
+  .bubble-content {
+    white-space: pre-wrap;
+  }
+
+  .bubble-content :global(pre) {
+    overflow-x: auto;
+    font-size: 12px;
+    padding: 8px;
+    border-radius: 4px;
+    background: var(--vscode-textPreformat-background, var(--vscode-editor-background));
+  }
+
+  .bubble-content :global(code) {
+    font-size: 12px;
+  }
+
+  .bubble-content :global(p) {
+    margin: 4px 0;
+  }
+
+  .bubble-content :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  .bubble-content :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  /* 流式输出光标 */
+  .cursor {
+    animation: blink 1s step-end infinite;
+    opacity: 0.7;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* ─── 加载指示器 ──────────────────────────────── */
+  .loading-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+    margin-left: 38px;
+  }
+
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--vscode-progressBar-background);
+    border-top-color: var(--vscode-focusBorder);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ─── 输入区 ──────────────────────────────────── */
+  .composer {
+    flex-shrink: 0;
+    padding: 6px 12px 12px;
+    background: var(--vscode-sideBar-background);
+    border-top: 1px solid var(--vscode-panel-border);
+  }
+
+  .input-wrap {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-panel-border);
+    background: var(--vscode-input-background);
+    transition: border-color 0.15s;
+  }
+
+  .input-wrap:focus-within {
+    border-color: var(--vscode-focusBorder);
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 56px;
+    max-height: 200px;
+    resize: none;
+    border: none;
+    background: transparent;
+    color: var(--vscode-input-foreground);
+    padding: 10px 12px 4px;
+    font-size: 13px;
+    line-height: 18px;
+    outline: none;
+    font-family: var(--vscode-font-family);
+  }
+
+  textarea::placeholder {
+    color: var(--vscode-input-placeholderForeground);
+  }
+
+  .composer-footer {
+    display: flex;
+    height: 34px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 4px;
+  }
+
+  .footer-left {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .badge-btn {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    cursor: pointer;
+    transition: opacity 0.15s;
+    border: none;
+    font-family: inherit;
+    line-height: 1.6;
+  }
+
+  .badge-btn:hover {
+    opacity: 0.8;
+  }
+
+  .send-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    color: var(--vscode-foreground);
+    transition: background 0.15s;
+  }
+
+  .send-btn:hover:not(:disabled) {
+    background: var(--vscode-button-hoverBackground, var(--vscode-toolbar-hoverBackground));
+  }
+
+  .send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+</style>

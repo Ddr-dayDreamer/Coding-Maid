@@ -1,4 +1,5 @@
-import { McpClient, type McpToolDefinition, type McpPromptDefinition, type McpResourceDefinition } from "./mcp-client";
+import { McpClient } from "./mcp-client";
+import type { McpToolDefinition, McpPromptDefinition, McpResourceDefinition } from "./mcp-client";
 import type { McpServerConfig } from "../settings";
 
 const MCP_STARTUP_TIMEOUT_MS = process.env.CODINGMAID_MCP_TIMEOUT

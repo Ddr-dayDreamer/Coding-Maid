@@ -7,7 +7,7 @@
 
 import * as path from "path";
 import { GitFileHistory } from "./common/file-history";
-import type { SessionMessage, UndoTarget, SessionEntry } from "./session-types";
+import type { SessionMessage, UndoTarget } from "./session-types";
 import type { SessionStorage } from "./session-storage";
 
 // ─── SessionFileHistory ──────────────────────────────────

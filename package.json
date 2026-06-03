@@ -70,56 +70,35 @@
   "scripts": {
     "typecheck": "tsc -p ./ --noEmit",
     "bundle": "esbuild ./src/extension.ts --bundle --platform=node --format=cjs --target=node18 --outfile=out/extension.js --external:vscode --sourcemap --footer:js=\"module.exports = { activate, deactivate };\" --log-override:empty-import-meta=silent",
-    "bundle:webview": "esbuild ./resources/webview/main.ts --bundle --format=iife --target=es2020 --outfile=resources/webview/bundle.js --log-override:empty-import-meta=silent",
+    "bundle:webview": "node ./scripts/build-webview.mjs",
     "compile": "npm run typecheck && npm run bundle && npm run bundle:webview",
     "test": "tsx --test src/tests/*.test.ts",
     "test:single": "tsx --test",
     "watch": "tsc -w -p ./ --noEmit",
     "vscode:prepublish": "npm run compile",
-    "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix",
-    "lint:strict": "eslint src/ --max-warnings 0",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "check": "npm run format:check && npm run lint:strict && npm run typecheck",
-    "fix": "npm run format && npm run lint:fix",
-    "prepare": "husky",
     "build": "node scripts/build.mjs"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
     "@types/ejs": "^3.1.5",
     "@types/markdown-it": "^14.1.1",
     "@types/node": "^20.12.7",
     "@types/vscode": "^1.85.0",
-    "@typescript-eslint/eslint-plugin": "^8.59.3",
-    "@typescript-eslint/parser": "^8.59.3",
     "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.25.12",
-    "eslint": "^9.39.4",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-unicorn": "^64.0.0",
-    "husky": "^9.1.7",
+    "esbuild-svelte": "^0.9.5",
     "ignore": "^5.3.2",
-    "lint-staged": "^17.0.4",
     "markdown-it": "^14.1.1",
     "openai": "^6.35.0",
     "prettier": "^3.8.3",
+    "svelte": "^5.56.1",
+    "svelte-preprocess": "^6.0.5",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.3"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "ejs": "^5.0.2",
     "zod": "^4.4.3"
-  },
-  "lint-staged": {
-    "*.{ts,js,mjs,cjs}": [
-      "prettier --write",
-      "eslint --fix"
-    ],
-    "*.{json,md,css,html}": [
-      "prettier --write"
-    ]
   }
 }

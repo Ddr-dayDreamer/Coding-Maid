@@ -1,33 +1,3 @@
-/*
- * Coding Maid — Webview 样式入口
- *
- * 通过 @import 引入各组件样式，此文件只保留全局重置和 CSS 变量。
- */
-
-/* ─── 组件样式 ──────────────────────────────────────── */
-
-@import url("./webview/components/session-list.css");
-@import url("./webview/components/chat-view.css");
-@import url("./webview/components/composer.css");
-@import url("./webview/components/context-meter.css");
-
-/* ─── CSS 变量 ────────────────────────────────────────── */
-
-:root {
-  --bg: var(--vscode-editor-background);
-  --panel: var(--vscode-sideBar-background);
-  --panel-2: var(--vscode-editor-inactiveSelectionBackground);
-  --muted: var(--vscode-descriptionForeground);
-  --accent: var(--vscode-focusBorder);
-  --accent-2: var(--vscode-button-background);
-  --danger: var(--vscode-errorForeground);
-  --shadow: rgba(0, 0, 0, 0.15);
-  --border-color: var(--vscode-panel-border);
-  --prompt-line-height: 18px;
-  --prompt-min-height: calc(var(--prompt-line-height) * 3 + 20px);
-  --prompt-max-height: calc(var(--prompt-line-height) * 10 + 20px);
-}
-
 /* ─── 全局重置 ────────────────────────────────────────── */
 
 * {
@@ -43,20 +13,20 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background: var(--vscode-editor-background);
   color: var(--vscode-foreground);
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
 }
 
-/* VS Code 有时会给 webview body 添加内边距，强制重置 */
+/* VS Code 有时会给 webview body 添加内边距 */
 body.vscode-body {
   padding: 0 !important;
   margin: 0 !important;
 }
 
-/* App Container */
-.app {
+/* Svelte 挂载点 */
+#app {
   height: 100%;
   display: flex;
   flex-direction: column;

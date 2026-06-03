@@ -7,7 +7,8 @@
 
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { buildThinkingRequestOptions } from "./common/openai-thinking";
-import { getExtensionRoot, getCompactPrompt, getTools, type ToolDefinition } from "./prompt";
+import { getExtensionRoot, getCompactPrompt, getTools } from "./prompt";
+import type { ToolDefinition } from "./prompt";
 import type { CreateOpenAIClient } from "./tools/executor";
 import type { SessionStorage } from "./session-storage";
 import type { SessionMessageBuilder } from "./session-message-builder";

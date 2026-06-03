@@ -26,13 +26,12 @@ export type BackendMessage =
   | { type: "loading"; value: boolean }
   | { type: "llmStreamProgress"; progress: LlmStreamProgressData }
   | { type: "streamChunk"; sessionId?: string; content?: string; reasoningContent?: string }
-  | { type: "skillsList"; skills: SkillInfo[] };
+  };
 
 // 前端 → 后端
 export type FrontendMessage =
   | { type: "ready" }
-  | { type: "requestSkills" }
-  | { type: "userPrompt"; prompt: string; skills?: SkillInfo[]; images?: string[] }
+  | { type: "userPrompt"; prompt: string }
   | { type: "interrupt" }
   | { type: "createNewSession" }
   | { type: "selectSession"; sessionId: string }
@@ -98,12 +97,6 @@ export interface ProcessInfo {
   timeoutMs?: number;
   deadlineAt?: string;
   timedOut?: boolean;
-}
-
-export interface SkillInfo {
-  id: string;
-  name: string;
-  description: string;
 }
 
 export interface LlmStreamProgressData {

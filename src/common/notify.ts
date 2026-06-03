@@ -1,4 +1,5 @@
-import { spawn, type SpawnOptions } from "child_process";
+import { spawn } from "child_process";
+import type { SpawnOptions } from "child_process";
 
 type NotifyChildProcess = {
   once(event: "error", listener: (error: NodeJS.ErrnoException) => void): NotifyChildProcess;

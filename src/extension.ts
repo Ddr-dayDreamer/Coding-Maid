@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import * as os from "os";
 import OpenAI from "openai";
 import MarkdownIt from "markdown-it";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
@@ -16,10 +15,18 @@ import {
 import {
   resolveSettingsWithCryptoKey,
   ensureInitialConfig,
-  type ConnectionProfile,
   type ReasoningEffort,
   type ResolvedCodingMaidSettings,
 } from "./settings";
+import {
+  listProfiles,
+  loadProfile,
+  saveProfile,
+  deleteProfile,
+  setActiveProfile,
+  getActiveProfile,
+  type ConnectionProfile,
+} from "./common/connection-profiles";
 import { setShellIfWindows } from "./common/shell-utils";
 import { generateEncryptionKey } from "./common/crypto-utils";
 
@@ -38,6 +45,9 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
   private readonly sessionManager: SessionManager;
   private readonly debugOutputChannel: vscode.OutputChannel;
 
+  /** 消息路由表 */
+  private readonly handlers = new Map<string, (message: Record<string, unknown>) => Promise<void>>();
+
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.md = new MarkdownIt({
@@ -52,12 +62,8 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       getResolvedSettings: () => this.resolveCurrentSettings(),
       renderMarkdown: (text) => this.md.render(text),
       onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => {
-        if (!this.webviewView) {
-          return;
-        }
-        if (message.visible === false) {
-          return;
-        }
+        if (!this.webviewView) return;
+        if (message.visible === false) return;
         if (message.role !== "tool") {
           const reasoningContent = (message.messageParams as ReasoningMessageParams | null)?.reasoning_content;
           message.html = this.md.render(message.content || reasoningContent || "");
@@ -65,9 +71,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         this.webviewView.webview.postMessage({ type: "appendMessage", message, shouldConnect });
       },
       onSessionEntryUpdated: (entry) => {
-        if (!this.webviewView) {
-          return;
-        }
+        if (!this.webviewView) return;
         this.webviewView.webview.postMessage({
           type: "sessionStatus",
           sessionId: entry.id,
@@ -77,18 +81,11 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         });
       },
       onLlmStreamProgress: (progress: LlmStreamProgress) => {
-        if (!this.webviewView) {
-          return;
-        }
-        this.webviewView.webview.postMessage({
-          type: "llmStreamProgress",
-          progress,
-        });
+        if (!this.webviewView) return;
+        this.webviewView.webview.postMessage({ type: "llmStreamProgress", progress });
       },
       onStreamChunk: (chunk) => {
-        if (!this.webviewView) {
-          return;
-        }
+        if (!this.webviewView) return;
         this.webviewView.webview.postMessage({
           type: "streamChunk",
           sessionId: chunk.sessionId,
@@ -115,8 +112,31 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         this.debugOutputChannel.show(true);
       },
     });
+
+    // 注册消息处理器
+    this.registerHandler("userPrompt", this.handleUserPromptMsg);
+    this.registerHandler("interrupt", async () => this.sessionManager.interruptActiveSession());
+    this.registerHandler("createNewSession", async () => this.createNewSession());
+    this.registerHandler("selectSession", this.handleSelectSession);
+    this.registerHandler("backToList", async () => this.showSessionsList());
+    this.registerHandler("openFile", this.handleOpenFile);
+    this.registerHandler("deleteSession", this.handleDeleteSessionMsg);
+    this.registerHandler("restoreSession", this.handleRestoreSessionMsg);
+
+    // 预设管理
+    this.registerHandler("listPresets", this.handleListPresets);
+    this.registerHandler("getPreset", this.handleGetPreset);
+    this.registerHandler("savePreset", this.handleSavePreset);
+    this.registerHandler("deletePreset", this.handleDeletePreset);
+
+    // 连接配置管理
+    this.registerHandler("listProfiles", this.handleListProfiles);
+    this.registerHandler("getProfile", this.handleGetProfile);
+    this.registerHandler("saveProfile", this.handleSaveProfile);
+    this.registerHandler("deleteProfile", this.handleDeleteProfile);
+    this.registerHandler("selectProfile", this.handleSelectProfile);
+
     this.initCryptoKey();
-    // 统一初始化：settings.json + 连接预设（缺失则从 templates/ 复制）
     const templatesDir = path.join(this.context.extensionUri.fsPath, "templates");
     ensureInitialConfig(templatesDir, this.getCryptoKey());
     void this.initializeMcpServers();
@@ -125,6 +145,14 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
   dispose(): void {
     this.sessionManager.dispose();
     this.debugOutputChannel.dispose();
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  消息路由
+  // ═══════════════════════════════════════════════════════
+
+  private registerHandler(type: string, handler: (msg: Record<string, unknown>) => Promise<void>): void {
+    this.handlers.set(type, handler);
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -137,52 +165,31 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
 
-    // 直接初始化（不依赖 webview 的 ready 消息，因视图复用时 ready 可能不会重新发送）
     this.loadInitialSession().catch((error) => {
       void vscode.window.showErrorMessage(`初始化失败：${error}`);
     });
 
-    webviewView.webview.onDidReceiveMessage(async (message) => {
-      if (message?.type === "userPrompt") {
-        const prompt = String(message.prompt || "").trim();
-        const images = Array.isArray(message.images)
-          ? message.images.filter((image: unknown): image is string => typeof image === "string" && image.length > 0)
-          : [];
-        if (!prompt && images.length === 0) {
-          return;
-        }
-        await this.handlePrompt(prompt, images);
-      } else if (message?.type === "interrupt") {
-        // 中断当前会话
-        this.sessionManager.interruptActiveSession();
-      } else if (message?.type === "createNewSession") {
-        await this.createNewSession();
-      } else if (message?.type === "selectSession") {
-        const sessionId = String(message.sessionId || "").trim();
-        if (sessionId) {
-          this.loadSession(sessionId);
-        }
-      } else if (message?.type === "backToList") {
-        this.showSessionsList();
-      } else if (message?.type === "openFile") {
-        const filePath = String(message.filePath || "").trim();
-        const line = Number(message.line || 1);
-        if (filePath) {
-          await this.openFileInEditor(filePath, line);
-        }
-      } else if (message?.type === "deleteSession") {
-        const sessionId = String(message.sessionId || "").trim();
-        if (sessionId) {
-          await this.handleDeleteSession(sessionId);
-        }
-      } else if (message?.type === "restoreSession") {
-        const sessionId = String(message.sessionId || "").trim();
-        const messageId = String(message.messageId || "").trim();
-        if (sessionId && messageId) {
-          await this.handleRestoreSession(sessionId, messageId);
+    webviewView.webview.onDidReceiveMessage(async (message: Record<string, unknown>) => {
+      const handler = this.handlers.get(message?.type as string);
+      if (!handler) return;
+
+      try {
+        await handler(message);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        // 如果是 requestId 请求，返回错误响应
+        if (message.requestId) {
+          this.respond(message.requestId as string, false, undefined, msg);
+        } else {
+          console.error(`[handler:${message.type}]`, msg);
         }
       }
     });
+  }
+
+  /** 响应前端的 request() 调用 */
+  private respond(requestId: string, ok: boolean, data?: unknown, error?: string): void {
+    this.sendMessage({ type: "response", requestId, ok, data, error });
   }
 
   private async loadInitialSession(): Promise<void> {
@@ -345,22 +352,52 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     this.webviewView.webview.postMessage(message);
   }
 
-  private async handlePrompt(prompt: string, imageUrls?: string[]): Promise<void> {
-    if (!this.webviewView) {
-      return;
-    }
+  // ═══════════════════════════════════════════════════════
+  //  消息处理器
+  // ═══════════════════════════════════════════════════════
+
+  private handleUserPromptMsg = async (message: Record<string, unknown>): Promise<void> => {
+    const prompt = String(message.prompt || "").trim();
+    if (!prompt) return;
+    await this.handlePrompt(prompt);
+  };
+
+  private handleSelectSession = async (message: Record<string, unknown>): Promise<void> => {
+    const sessionId = String(message.sessionId || "").trim();
+    if (sessionId) this.loadSession(sessionId);
+  };
+
+  private handleOpenFile = async (message: Record<string, unknown>): Promise<void> => {
+    const filePath = String(message.filePath || "").trim();
+    const line = Number(message.line || 1);
+    if (filePath) await this.openFileInEditor(filePath, line);
+  };
+
+  private handleDeleteSessionMsg = async (message: Record<string, unknown>): Promise<void> => {
+    const sessionId = String(message.sessionId || "").trim();
+    if (sessionId) await this.handleDeleteSession(sessionId);
+  };
+
+  private handleRestoreSessionMsg = async (message: Record<string, unknown>): Promise<void> => {
+    const sessionId = String(message.sessionId || "").trim();
+    const messageId = String(message.messageId || "").trim();
+    if (sessionId && messageId) await this.handleRestoreSession(sessionId, messageId);
+  };
+
+  private handlePrompt(prompt: string): Promise<void> {
+    return this._handlePromptWithImages(prompt, []);
+  }
+
+  private async _handlePromptWithImages(prompt: string, imageUrls: string[]): Promise<void> {
+    if (!this.webviewView) return;
 
     const webview = this.webviewView.webview;
-    const normalizedImages = Array.isArray(imageUrls) ? imageUrls.filter(Boolean) : [];
-    const displayPrompt = prompt || (normalizedImages.length > 0 ? "粘贴的图像" : "");
-
-    // 先显示用户消息（原始文本，不做 HTML 格式化）
+    const displayPrompt = prompt || (imageUrls.length > 0 ? "粘贴的图像" : "");
     webview.postMessage({ type: "userMessage", content: displayPrompt });
-
     webview.postMessage({ type: "loading", value: true });
 
     try {
-      const userPrompt: UserPromptContent = { text: prompt, imageUrls: normalizedImages };
+      const userPrompt: UserPromptContent = { text: prompt, imageUrls };
       await this.sessionManager.handleUserPrompt(userPrompt);
 
       const activeSessionId = this.sessionManager.getActiveSessionId();
@@ -375,7 +412,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         });
       }
 
-      // 发送更新后的会话列表（可能创建了新会话）
       const sessions = this.sessionManager.listSessions();
       const sessionsList = sessions.map((s) => ({
         id: s.id,
@@ -384,20 +420,89 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         updateTime: s.updateTime,
         status: s.status,
       }));
-      webview.postMessage({
-        type: "showSessionsList",
-        sessions: sessionsList,
-      });
+      webview.postMessage({ type: "showSessionsList", sessions: sessionsList });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      webview.postMessage({
-        type: "assistant",
-        html: this.md.render(`Request failed: ${message}`),
-      });
+      const msg = error instanceof Error ? error.message : String(error);
+      webview.postMessage({ type: "assistant", html: this.md.render(`Request failed: ${msg}`) });
     } finally {
       webview.postMessage({ type: "loading", value: false });
     }
   }
+
+  // ═══════════════════════════════════════════════════════
+  //  预设处理器
+  // ═══════════════════════════════════════════════════════
+
+  private handleListPresets = async (message: Record<string, unknown>): Promise<void> => {
+    const presets = this.sessionManager.presetMgr.listPresets();
+    const data = presets.map((p) => ({ name: p.name, displayName: p.displayName, description: p.description }));
+    this.respond(message.requestId as string, true, data);
+  };
+
+  private handleGetPreset = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少预设名称"); return; }
+    const def = this.sessionManager.presetMgr.loadPreset(name);
+    this.respond(message.requestId as string, true, def);
+  };
+
+  private handleSavePreset = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name || !message.definition) { this.respond(message.requestId as string, false, undefined, "缺少预设名称或定义"); return; }
+    this.sessionManager.presetMgr.savePreset(name, message.definition as any);
+    this.respond(message.requestId as string, true);
+  };
+
+  private handleDeletePreset = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少预设名称"); return; }
+    this.sessionManager.presetMgr.deletePreset(name);
+    this.respond(message.requestId as string, true);
+  };
+
+  // ═══════════════════════════════════════════════════════
+  //  连接配置处理器
+  // ═══════════════════════════════════════════════════════
+
+  private handleListProfiles = async (message: Record<string, unknown>): Promise<void> => {
+    const profiles = listProfiles();
+    this.respond(message.requestId as string, true, profiles);
+  };
+
+  private handleGetProfile = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少配置名称"); return; }
+    const cryptoKey = this.getCryptoKey();
+    const profile = loadProfile(name, cryptoKey);
+    if (!profile) { this.respond(message.requestId as string, false, undefined, `配置 "${name}" 未找到`); return; }
+    // 不返回 apiKey（保密）
+    const { apiKey, ...safe } = profile;
+    this.respond(message.requestId as string, true, safe);
+  };
+
+  private handleSaveProfile = async (message: Record<string, unknown>): Promise<void> => {
+    const profile = message.profile as ConnectionProfile | undefined;
+    if (!profile?.name) { this.respond(message.requestId as string, false, undefined, "缺少配置信息"); return; }
+    const cryptoKey = this.getCryptoKey();
+    saveProfile(profile, cryptoKey);
+    this.respond(message.requestId as string, true);
+  };
+
+  private handleDeleteProfile = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少配置名称"); return; }
+    deleteProfile(name);
+    this.respond(message.requestId as string, true);
+  };
+
+  private handleSelectProfile = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) return;
+    setActiveProfile(name);
+    // 重新初始化 MCP 服务器（配置可能变了）
+    void this.initializeMcpServers();
+    this.respond(message.requestId as string, true);
+  };
 
   private createOpenAIClient(): {
     client: OpenAI | null;
@@ -541,19 +646,16 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
 
     const cssPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "webview.css");
     const cssUri = webview.asWebviewUri(cssPath);
-    const attachmentsJsPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "prompt-attachments.js");
-    const attachmentsJsUri = webview.asWebviewUri(attachmentsJsPath);
-    const iconPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "coding_maid_icon.png");
-    const iconUri = webview.asWebviewUri(iconPath);
     const bundleJsPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "webview", "bundle.js");
+    const bundleCssPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "webview", "bundle.css");
     const bundleJsUri = webview.asWebviewUri(bundleJsPath);
 
     html = html.replace(/\{\{nonce\}\}/g, nonce);
     html = html.replace(/\{\{cspSource\}\}/g, csp);
     html = html.replace(/\{\{cssUri\}\}/g, cssUri.toString());
-    html = html.replace(/\{\{attachmentsJsUri\}\}/g, attachmentsJsUri.toString());
+    const bundleCssUri = webview.asWebviewUri(bundleCssPath);
     html = html.replace(/\{\{bundleJsUri\}\}/g, bundleJsUri.toString());
-    html = html.replace(/\{\{iconUri\}\}/g, iconUri.toString());
+    html = html.replace(/\{\{bundleCssUri\}\}/g, bundleCssUri.toString());
     html = html.replace(/\{\{workspaceRoot\}\}/g, JSON.stringify(this.getWorkspaceRoot()));
 
     return html;
