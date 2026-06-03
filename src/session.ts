@@ -21,6 +21,7 @@ import { ToolExecutor } from "./tools/executor";
 import type { CreateOpenAIClient } from "./tools/executor";
 import { McpManager } from "./mcp/mcp-manager";
 import type { McpServerConfig } from "./settings";
+import { getActivePreset } from "./common/global-settings";
 import { killProcessTree } from "./common/process-tree";
 
 import { SessionStorage } from "./session-storage";
@@ -348,6 +349,7 @@ export class SessionManager {
         onSessionEntryUpdated: (entry) => this.onSessionEntryUpdated?.(entry),
         onDebugPrompt: (msgs, iter) => this.onDebugPrompt?.(msgs, iter),
         presetMgr: this.presetMgr,
+        activePreset: getActivePreset(),
       });
     } finally {
       this.activationControllers.delete(sessionId);
@@ -572,9 +574,12 @@ export class SessionManager {
   private getPromptToolOptions(): { model: string; webSearchEnabled: boolean; availableTools?: string[] } {
     const base = { model: this.getResolvedSettings().model, webSearchEnabled: true };
 
-    // 从当前预设获取 availableTools
+    // 从当前激活的预设获取 availableTools
     try {
-      const preset = this.presetMgr.ensureDefaultPreset();
+      const presetName = getActivePreset();
+      const preset = presetName !== "default"
+        ? this.presetMgr.loadPreset(presetName)
+        : this.presetMgr.ensureDefaultPreset();
       if (preset.availableTools && preset.availableTools.length > 0) {
         return { ...base, availableTools: preset.availableTools };
       }

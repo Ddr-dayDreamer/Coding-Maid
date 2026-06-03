@@ -29,6 +29,8 @@ export type ActivateOptions = {
   onSessionEntryUpdated?: (entry: SessionEntry) => void;
   onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;
   presetMgr: PresetManager;
+  /** 当前激活的预设名称 */
+  activePreset: string;
 };
 
 // ─── SessionActivator ────────────────────────────────────
@@ -164,11 +166,15 @@ export class SessionActivator {
         console.log("[DEBUG] activate: promptToolOptions =", JSON.stringify(promptToolOptions));
         let preset;
         try {
-          preset = opts.presetMgr.ensureDefaultPreset();
+          if (opts.activePreset && opts.activePreset !== "default") {
+            preset = opts.presetMgr.loadPreset(opts.activePreset);
+          } else {
+            preset = opts.presetMgr.ensureDefaultPreset();
+          }
           console.log("[DEBUG] activate: preset loaded, name =", preset.name);
         } catch (e) {
-          console.log("[DEBUG] activate: preset load FAILED:", e);
-          throw e;
+          console.log("[DEBUG] activate: preset load FAILED, fallback to default:", e);
+          preset = opts.presetMgr.ensureDefaultPreset();
         }
         const macroContext = {
           projectRoot: this.projectRoot,

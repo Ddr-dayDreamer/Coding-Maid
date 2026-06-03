@@ -96,9 +96,6 @@ export class PresetManager {
 
   /** 删除预设 */
   deletePreset(name: string): void {
-    if (name === DEFAULT_PRESET_NAME) {
-      throw new Error("Cannot delete the default preset");
-    }
     const dirPath = path.join(this.presetsDir, name);
     if (fs.existsSync(dirPath)) {
       fs.rmSync(dirPath, { recursive: true, force: true });

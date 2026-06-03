@@ -1,9 +1,6 @@
 import {
   type ConnectionProfile,
-  type CodingMaidSettings,
   type ReasoningEffort,
-  type McpServerConfig,
-  loadGlobalSettings,
   getActiveProfile,
   listProfiles,
   loadProfile,
@@ -12,10 +9,16 @@ import {
   setActiveProfile,
   ensureDefaultProfile,
 } from "./common/connection-profiles";
+import {
+  type CodingMaidSettings,
+  type McpServerConfig,
+  loadGlobalSettings,
+} from "./common/global-settings";
 
 // ─── Re-export types for backward compatibility ─────────────────────────────
 
-export type { ReasoningEffort, McpServerConfig } from "./common/connection-profiles";
+export type { ReasoningEffort } from "./common/connection-profiles";
+export type { McpServerConfig } from "./common/global-settings";
 
 /**
  * 解析后的运行时设置 — 由 resolveSettingsWithCryptoKey() 返回。
@@ -35,6 +38,8 @@ export type ResolvedSettings = {
   webSearchTool?: string;
   mcpServers?: Record<string, McpServerConfig>;
   profileName: string;
+  /** 当前激活的预设名称 */
+  activePreset: string;
 };
 
 /**
@@ -61,6 +66,7 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSetting
     notify: globalSettings.notify,
     mcpServers: globalSettings.mcpServers,
     profileName: globalSettings.activeProfile || "default",
+    activePreset: globalSettings.activePreset || "default",
   };
 }
 
@@ -68,11 +74,9 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSetting
 
 export {
   type ConnectionProfile,
-  type CodingMaidSettings,
   type ReasoningEffort as ReasoningEffortAlias,
   PLACEHOLDER_API_KEY,
   isRealApiKey,
-  loadGlobalSettings,
   getActiveProfile,
   listProfiles,
   loadProfile,
@@ -83,3 +87,7 @@ export {
   ensureInitialConfig,
   migratePlaintextApiKeys,
 } from "./common/connection-profiles";
+
+export { loadGlobalSettings } from "./common/global-settings";
+
+export type { CodingMaidSettings } from "./common/global-settings";

@@ -43,6 +43,8 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.currentSessionStatus = msg.status;
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       appState.sessions = msg.sessions;
+      appState.activePreset = msg.activePreset ?? "default";
+      appState.activeProfile = msg.activeProfile ?? "default";
       break;
 
     case "loadSession":
@@ -52,6 +54,8 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       appState.runningProcesses = normalizeProcesses(msg.processes);
       appState.sessions = msg.sessions;
+      appState.activePreset = msg.activePreset ?? "default";
+      appState.activeProfile = msg.activeProfile ?? "default";
       break;
 
     case "showSessionsList":

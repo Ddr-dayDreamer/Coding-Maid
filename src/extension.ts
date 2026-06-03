@@ -26,6 +26,7 @@ import {
   getActiveProfile,
   type ConnectionProfile,
 } from "./common/connection-profiles";
+import { getActivePreset, setActivePreset } from "./common/global-settings";
 import { setShellIfWindows } from "./common/shell-utils";
 import { generateEncryptionKey } from "./common/crypto-utils";
 
@@ -128,6 +129,10 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     this.registerHandler("getPreset", this.handleGetPreset);
     this.registerHandler("savePreset", this.handleSavePreset);
     this.registerHandler("deletePreset", this.handleDeletePreset);
+    this.registerHandler("selectPreset", this.handleSelectPreset);
+    this.registerHandler("getActivePreset", this.handleGetActivePreset);
+    this.registerHandler("exportPreset", this.handleExportPreset);
+    this.registerHandler("importPreset", this.handleImportPreset);
 
     // 连接配置管理
     this.registerHandler("listProfiles", this.handleListProfiles);
@@ -197,6 +202,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       updateTime: s.updateTime,
       status: s.status,
     }));
+    const globalSettings = this.resolveCurrentSettings();
 
     if (sessions.length === 0) {
       // 没有历史会话，显示新对话界面
@@ -205,6 +211,8 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         sessions: sessionsList,
         status: null,
         tokenTelemetry: this.buildTokenTelemetry(null),
+        activePreset: globalSettings.activePreset,
+        activeProfile: globalSettings.profileName,
       });
       return;
     }
@@ -234,6 +242,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       updateTime: s.updateTime,
       status: s.status,
     }));
+    const globalSettings = this.resolveCurrentSettings();
 
     // 发送对话信息到 webview
     this.sendMessage({
@@ -244,6 +253,8 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       processes: this.serializeProcesses(session.processes),
       tokenTelemetry: this.buildTokenTelemetry(session),
       sessions: sessionsList,
+      activePreset: globalSettings.activePreset,
+      activeProfile: globalSettings.profileName,
       messages: messages
         .filter((m) => m.visible)
         .map((m) => ({
@@ -289,6 +300,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       status: s.status,
     }));
     this.sendMessage({ type: "showSessionsList", sessions: sessionsList });
+    const globalSettings = this.resolveCurrentSettings();
 
     // 回到空对话界面
     this.sendMessage({
@@ -296,6 +308,8 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       sessions: sessionsList,
       status: null,
       tokenTelemetry: this.buildTokenTelemetry(null),
+      activePreset: globalSettings.activePreset,
+      activeProfile: globalSettings.profileName,
     });
   }
 
@@ -335,12 +349,15 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       updateTime: s.updateTime,
       status: s.status,
     }));
+    const globalSettings = this.resolveCurrentSettings();
 
     this.sendMessage({
       type: "initializeEmpty",
       sessions: sessionsList,
       status: null,
       tokenTelemetry: this.buildTokenTelemetry(null),
+      activePreset: globalSettings.activePreset,
+      activeProfile: globalSettings.profileName,
     });
   }
 
@@ -457,6 +474,46 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     if (!name) { this.respond(message.requestId as string, false, undefined, "缺少预设名称"); return; }
     this.sessionManager.presetMgr.deletePreset(name);
     this.respond(message.requestId as string, true);
+  };
+
+  private handleSelectPreset = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少预设名称"); return; }
+    setActivePreset(name);
+    this.respond(message.requestId as string, true);
+  };
+
+  private handleGetActivePreset = async (message: Record<string, unknown>): Promise<void> => {
+    const name = getActivePreset();
+    this.respond(message.requestId as string, true, { name });
+  };
+
+  private handleExportPreset = async (message: Record<string, unknown>): Promise<void> => {
+    const name = String(message.name || "").trim();
+    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少预设名称"); return; }
+
+    const defaultUri = vscode.Uri.file(`${name}.json`);
+    const uri = await vscode.window.showSaveDialog({
+      defaultUri,
+      filters: { "Preset JSON": ["json"] },
+      title: "导出预设",
+    });
+    if (!uri) { this.respond(message.requestId as string, true); return; } // 用户取消
+
+    this.sessionManager.presetMgr.exportPreset(name, uri.fsPath);
+    this.respond(message.requestId as string, true);
+  };
+
+  private handleImportPreset = async (message: Record<string, unknown>): Promise<void> => {
+    const uris = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      filters: { "Preset JSON": ["json"] },
+      title: "导入预设",
+    });
+    if (!uris || uris.length === 0) { this.respond(message.requestId as string, true); return; } // 用户取消
+
+    const def = this.sessionManager.presetMgr.importPreset(uris[0].fsPath);
+    this.respond(message.requestId as string, true, def);
   };
 
   // ═══════════════════════════════════════════════════════

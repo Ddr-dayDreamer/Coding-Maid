@@ -235,6 +235,17 @@ https://svelte.dev/e/hydration_failed`);
       throw new Error(`https://svelte.dev/e/hydration_failed`);
     }
   }
+  function props_invalid_value(key2) {
+    if (dev_fallback_default) {
+      const error = new Error(`props_invalid_value
+Cannot do \`bind:${key2}={undefined}\` when \`${key2}\` has a fallback value
+https://svelte.dev/e/props_invalid_value`);
+      error.name = "Svelte error";
+      throw error;
+    } else {
+      throw new Error(`https://svelte.dev/e/props_invalid_value`);
+    }
+  }
   function rune_outside_svelte(rune) {
     if (dev_fallback_default) {
       const error = new Error(`rune_outside_svelte
@@ -297,6 +308,7 @@ https://svelte.dev/e/svelte_boundary_reset_onerror`);
   var EACH_IS_CONTROLLED = 1 << 2;
   var EACH_IS_ANIMATED = 1 << 3;
   var EACH_ITEM_IMMUTABLE = 1 << 4;
+  var PROPS_IS_IMMUTABLE = 1;
   var PROPS_IS_RUNES = 1 << 1;
   var PROPS_IS_UPDATED = 1 << 2;
   var PROPS_IS_BINDABLE = 1 << 3;
@@ -393,6 +405,15 @@ https://svelte.dev/e/hydration_mismatch`,
 https://svelte.dev/e/lifecycle_double_unmount`, bold, normal);
     } else {
       console.warn(`https://svelte.dev/e/lifecycle_double_unmount`);
+    }
+  }
+  function select_multiple_invalid_value() {
+    if (dev_fallback_default) {
+      console.warn(`%c[svelte] select_multiple_invalid_value
+%cThe \`value\` property of a \`<select multiple>\` element should be an array, but it received a non-array value. The selection will be kept as is.
+https://svelte.dev/e/select_multiple_invalid_value`, bold, normal);
+    } else {
+      console.warn(`https://svelte.dev/e/select_multiple_invalid_value`);
     }
   }
   function state_proxy_equality_mismatch(operator) {
@@ -765,7 +786,17 @@ ${component_stack}
 
   // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/client/reactivity/store.js
   var legacy_is_updating_store = false;
+  var is_store_binding = false;
   var IS_UNMOUNTED = Symbol("unmounted");
+  function capture_store_binding(fn) {
+    var previous_is_store_binding = is_store_binding;
+    try {
+      is_store_binding = false;
+      return [fn(), is_store_binding];
+    } finally {
+      is_store_binding = previous_is_store_binding;
+    }
+  }
 
   // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/client/reactivity/batch.js
   var first_batch = null;
@@ -1163,11 +1194,11 @@ ${component_stack}
     var effects = collected_effects = [];
     var render_effects = [];
     var updates = legacy_updates = [];
-    for (const root8 of roots) {
+    for (const root12 of roots) {
       try {
-        __privateMethod(this, _Batch_instances, traverse_fn).call(this, root8, effects, render_effects);
+        __privateMethod(this, _Batch_instances, traverse_fn).call(this, root12, effects, render_effects);
       } catch (e) {
-        reset_all(root8);
+        reset_all(root12);
         if (!__privateMethod(this, _Batch_instances, is_deferred_fn).call(this)) this.discard();
         throw e;
       }
@@ -1240,9 +1271,9 @@ ${component_stack}
    * @param {Effect[]} effects
    * @param {Effect[]} render_effects
    */
-  traverse_fn = function(root8, effects, render_effects) {
-    root8.f ^= CLEAN;
-    var effect2 = root8.first;
+  traverse_fn = function(root12, effects, render_effects) {
+    root12.f ^= CLEAN;
+    var effect2 = root12.first;
     while (effect2 !== null) {
       var flags2 = effect2.f;
       var is_branch = (flags2 & (BRANCH_EFFECT | ROOT_EFFECT)) !== 0;
@@ -1420,8 +1451,8 @@ ${component_stack}
         }
         if (__privateGet(batch, _roots).length > 0 && !__privateGet(batch, _decrement_queued)) {
           batch.apply();
-          for (var root8 of __privateGet(batch, _roots)) {
-            __privateMethod(_a2 = batch, _Batch_instances, traverse_fn).call(_a2, root8, [], []);
+          for (var root12 of __privateGet(batch, _roots)) {
+            __privateMethod(_a2 = batch, _Batch_instances, traverse_fn).call(_a2, root12, [], []);
           }
           __privateSet(batch, _roots, []);
         }
@@ -2890,6 +2921,9 @@ ${component_stack}
     }
     return value;
   }
+  function is(a, b) {
+    return Object.is(get_proxied_value(a), get_proxied_value(b));
+  }
   var ARRAY_MUTATING_METHODS = /* @__PURE__ */ new Set([
     "copyWithin",
     "fill",
@@ -3623,7 +3657,7 @@ ${component_stack}
     }
     return false;
   }
-  function schedule_possible_effect_self_invalidation(signal, effect2, root8 = true) {
+  function schedule_possible_effect_self_invalidation(signal, effect2, root12 = true) {
     var reactions = signal.reactions;
     if (reactions === null) return;
     if (!async_mode_flag && current_sources !== null && current_sources.has(signal)) {
@@ -3639,7 +3673,7 @@ ${component_stack}
           false
         );
       } else if (effect2 === reaction) {
-        if (root8) {
+        if (root12) {
           set_signal_status(reaction, DIRTY);
         } else if ((reaction.f & CLEAN) !== 0) {
           set_signal_status(reaction, MAYBE_DIRTY);
@@ -4354,21 +4388,21 @@ ${component_stack}
           /** @type {DocumentFragment} */
           create_fragment_from_html(wrapped)
         );
-        var root8 = (
+        var root12 = (
           /** @type {Element} */
           get_first_child(fragment)
         );
         if (is_fragment) {
           node = document.createDocumentFragment();
-          while (get_first_child(root8)) {
+          while (get_first_child(root12)) {
             node.appendChild(
               /** @type {TemplateNode} */
-              get_first_child(root8)
+              get_first_child(root12)
             );
           }
         } else {
           node = /** @type {Element} */
-          get_first_child(root8);
+          get_first_child(root12);
         }
       }
       var clone = (
@@ -5608,12 +5642,65 @@ ${component_stack}
     return next_styles;
   }
 
+  // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/client/dom/elements/bindings/select.js
+  function select_option(select, value, mounting = false) {
+    if (select.multiple) {
+      if (value == void 0) {
+        return;
+      }
+      if (!is_array(value)) {
+        return select_multiple_invalid_value();
+      }
+      for (var option of select.options) {
+        option.selected = value.includes(get_option_value(option));
+      }
+      return;
+    }
+    for (option of select.options) {
+      var option_value = get_option_value(option);
+      if (is(option_value, value)) {
+        option.selected = true;
+        return;
+      }
+    }
+    if (!mounting || value !== void 0) {
+      select.selectedIndex = -1;
+    }
+  }
+  function init_select(select) {
+    var observer = new MutationObserver(() => {
+      select_option(select, select.__value);
+    });
+    observer.observe(select, {
+      // Listen to option element changes
+      childList: true,
+      subtree: true,
+      // because of <optgroup>
+      // Listen to option element value attribute changes
+      // (doesn't get notified of select value changes,
+      // because that property is not reflected as an attribute)
+      attributes: true,
+      attributeFilter: ["value"]
+    });
+    teardown(() => {
+      observer.disconnect();
+    });
+  }
+  function get_option_value(option) {
+    if ("__value" in option) {
+      return option.__value;
+    } else {
+      return option.value;
+    }
+  }
+
   // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/client/dom/elements/attributes.js
   var CLASS = Symbol("class");
   var STYLE = Symbol("style");
   var IS_CUSTOM_ELEMENT = Symbol("is custom element");
   var IS_HTML = Symbol("is html");
   var LINK_TAG = IS_XHTML ? "link" : "LINK";
+  var PROGRESS_TAG = IS_XHTML ? "progress" : "PROGRESS";
   function remove_input_defaults(input) {
     if (!hydrating) return;
     var already_removed = false;
@@ -5634,6 +5721,24 @@ ${component_stack}
     input[FORM_RESET_HANDLER] = remove_defaults;
     queue_micro_task(remove_defaults);
     add_form_reset_listener();
+  }
+  function set_value(element2, value) {
+    var attributes = get_attributes(element2);
+    if (attributes.value === (attributes.value = // treat null and undefined the same for the initial value
+    value ?? void 0) || // @ts-expect-error
+    // `progress` elements always need their value set when it's `0`
+    element2.value === value && (value !== 0 || element2.nodeName !== PROGRESS_TAG)) {
+      return;
+    }
+    element2.value = value ?? "";
+  }
+  function set_checked(element2, checked) {
+    var attributes = get_attributes(element2);
+    if (attributes.checked === (attributes.checked = // treat null and undefined the same for the initial value
+    checked ?? void 0)) {
+      return;
+    }
+    element2.checked = checked;
   }
   function set_attribute2(element2, attribute, value, skip_warning) {
     var attributes = get_attributes(element2);
@@ -5901,6 +6006,138 @@ ${component_stack}
       for (const signal of context.l.s) get2(signal);
     }
     props();
+  }
+
+  // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/client/reactivity/props.js
+  function prop(props, key2, flags2, fallback2) {
+    var runes = !legacy_mode_flag || (flags2 & PROPS_IS_RUNES) !== 0;
+    var bindable = (flags2 & PROPS_IS_BINDABLE) !== 0;
+    var lazy = (flags2 & PROPS_IS_LAZY_INITIAL) !== 0;
+    var fallback_value = (
+      /** @type {V} */
+      fallback2
+    );
+    var fallback_dirty = true;
+    var fallback_signal = (
+      /** @type {Derived<V> | undefined} */
+      void 0
+    );
+    var get_fallback = () => {
+      if (lazy && runes) {
+        fallback_signal ?? (fallback_signal = derived(
+          /** @type {() => V} */
+          fallback2
+        ));
+        return get2(fallback_signal);
+      }
+      if (fallback_dirty) {
+        fallback_dirty = false;
+        fallback_value = lazy ? untrack(
+          /** @type {() => V} */
+          fallback2
+        ) : (
+          /** @type {V} */
+          fallback2
+        );
+      }
+      return fallback_value;
+    };
+    let setter;
+    if (bindable) {
+      var is_entry_props = STATE_SYMBOL in props || LEGACY_PROPS in props;
+      setter = get_descriptor(props, key2)?.set ?? (is_entry_props && key2 in props ? (v) => props[key2] = v : void 0);
+    }
+    var initial_value;
+    var is_store_sub = false;
+    if (bindable) {
+      [initial_value, is_store_sub] = capture_store_binding(() => (
+        /** @type {V} */
+        props[key2]
+      ));
+    } else {
+      initial_value = /** @type {V} */
+      props[key2];
+    }
+    if (initial_value === void 0 && fallback2 !== void 0) {
+      initial_value = get_fallback();
+      if (setter) {
+        if (runes) props_invalid_value(key2);
+        setter(initial_value);
+      }
+    }
+    var getter;
+    if (runes) {
+      getter = () => {
+        var value = (
+          /** @type {V} */
+          props[key2]
+        );
+        if (value === void 0) return get_fallback();
+        fallback_dirty = true;
+        return value;
+      };
+    } else {
+      getter = () => {
+        var value = (
+          /** @type {V} */
+          props[key2]
+        );
+        if (value !== void 0) {
+          fallback_value = /** @type {V} */
+          void 0;
+        }
+        return value === void 0 ? fallback_value : value;
+      };
+    }
+    if (runes && (flags2 & PROPS_IS_UPDATED) === 0) {
+      return getter;
+    }
+    if (setter) {
+      var legacy_parent = props.$$legacy;
+      return (
+        /** @type {() => V} */
+        (function(value, mutation) {
+          if (arguments.length > 0) {
+            if (!runes || !mutation || legacy_parent || is_store_sub) {
+              setter(mutation ? getter() : value);
+            }
+            return value;
+          }
+          return getter();
+        })
+      );
+    }
+    var overridden = false;
+    var d = ((flags2 & PROPS_IS_IMMUTABLE) !== 0 ? derived : derived_safe_equal)(() => {
+      overridden = false;
+      return getter();
+    });
+    if (dev_fallback_default) {
+      d.label = key2;
+    }
+    if (bindable) get2(d);
+    var parent_effect = (
+      /** @type {Effect} */
+      active_effect
+    );
+    return (
+      /** @type {() => V} */
+      (function(value, mutation) {
+        if (arguments.length > 0) {
+          const new_value = mutation ? get2(d) : runes && bindable ? proxy(value) : value;
+          set(d, new_value);
+          overridden = true;
+          if (fallback_value !== void 0) {
+            fallback_value = new_value;
+          }
+          return value;
+        }
+        if (is_destroying_effect && overridden || (parent_effect.f & DESTROYED) !== 0) {
+          return d.v;
+        }
+        return get2(d);
+      })
+    );
   }
 
   // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/legacy/legacy-client.js
@@ -7344,28 +7581,30 @@ ${component_stack}
   }
   delegate(["click", "keydown"]);
 
-  // resources/webview/components/PresetPage.svelte
-  var root5 = from_html(`<p class="hint svelte-1bnrgqd">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_19 = from_html(`<p class="hint error svelte-1bnrgqd"> </p>`);
-  var root_24 = from_html(`<div class="preset-card svelte-1bnrgqd"><strong class="svelte-1bnrgqd"> </strong> <p class="svelte-1bnrgqd"> </p></div>`);
-  var root_34 = from_html(`<div class="preset-list svelte-1bnrgqd"></div>`);
-  var root_44 = from_html(`<div class="page svelte-1bnrgqd"><div class="page-header svelte-1bnrgqd"><h2 class="svelte-1bnrgqd">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-1bnrgqd">\u5373\u5C06\u63A8\u51FA</span></div> <!></div>`);
-  function PresetPage($$anchor, $$props) {
+  // resources/webview/components/PresetList.svelte
+  var root5 = from_html(`<p class="hint svelte-199frlg">\u52A0\u8F7D\u4E2D...</p>`);
+  var root_19 = from_html(`<p class="hint svelte-199frlg">\u6682\u65E0\u9884\u8BBE\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
+  var root_24 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
+  var root_34 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
+  var root_44 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
+  var root_54 = from_html(`<div class="list-items svelte-199frlg"></div>`);
+  var root_63 = from_html(`<div class="preset-list-panel svelte-199frlg"><div class="list-header svelte-199frlg"><h2 class="svelte-199frlg">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-199frlg"> </span></div> <!> <div class="list-actions svelte-199frlg"><button class="action-btn primary svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u9884\u8BBE</button> <button class="action-btn svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M2.5 7.25a.75.75 0 0 1 1.5 0v4.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-4.5a.75.75 0 0 1 1.5 0v4.5A1.75 1.75 0 0 1 11.75 13h-7.5A1.75 1.75 0 0 1 2.5 11.75v-4.5Zm6.78-4.97a.75.75 0 0 1 0 1.06L7.81 4.81a.75.75 0 0 1-1.06 0L5.28 3.34a.75.75 0 0 1 1.06-1.06l.66.66V.75a.75.75 0 0 1 1.5 0v2.19l.66-.66a.75.75 0 0 1 .72-.22Z"></path></svg> \u5BFC\u5165</button></div></div>`);
+  function PresetList($$anchor, $$props) {
     push($$props, true);
-    let presets = state(proxy([]));
-    let loading = state(true);
-    let error = state("");
-    onMount(async () => {
-      try {
-        set(presets, await api.request("listPresets"), true);
-      } catch (e) {
-        set(error, String(e), true);
-      } finally {
-        set(loading, false);
-      }
+    let presets = prop($$props, "presets", 19, () => []), activePreset = prop($$props, "activePreset", 3, ""), loading = prop($$props, "loading", 3, false), onselect = prop($$props, "onselect", 3, (_name) => {
+    }), onedit = prop($$props, "onedit", 3, (_name) => {
+    }), onexport = prop($$props, "onexport", 3, (_name) => {
+    }), ondelete = prop($$props, "ondelete", 3, (_name) => {
+    }), onnew = prop($$props, "onnew", 3, () => {
+    }), onimport = prop($$props, "onimport", 3, () => {
     });
-    var div = root_44();
-    var node = sibling(child(div), 2);
+    var div = root_63();
+    var div_1 = child(div);
+    var span = sibling(child(div_1), 2);
+    var text2 = child(span, true);
+    reset(span);
+    reset(div_1);
+    var node = sibling(div_1, 2);
     {
       var consequent = ($$anchor2) => {
         var p = root5();
@@ -7373,50 +7612,714 @@ ${component_stack}
       };
       var consequent_1 = ($$anchor2) => {
         var p_1 = root_19();
-        var text2 = child(p_1, true);
-        reset(p_1);
-        template_effect(() => set_text(text2, get2(error)));
         append($$anchor2, p_1);
       };
       var alternate = ($$anchor2) => {
-        var div_1 = root_34();
-        each(div_1, 21, () => get2(presets), index, ($$anchor3, preset) => {
-          var div_2 = root_24();
-          var strong = child(div_2);
+        var div_2 = root_54();
+        each(div_2, 21, presets, (preset) => preset.name, ($$anchor3, preset) => {
+          var div_3 = root_44();
+          let classes;
+          var div_4 = child(div_3);
+          var div_5 = child(div_4);
+          var node_1 = child(div_5);
+          {
+            var consequent_2 = ($$anchor4) => {
+              var span_1 = root_24();
+              append($$anchor4, span_1);
+            };
+            if_block(node_1, ($$render) => {
+              if (get2(preset).name === activePreset()) $$render(consequent_2);
+            });
+          }
+          var strong = sibling(node_1, 2);
           var text_1 = child(strong, true);
           reset(strong);
-          var p_2 = sibling(strong, 2);
+          var node_2 = sibling(strong, 2);
+          {
+            var consequent_3 = ($$anchor4) => {
+              var span_2 = root_34();
+              append($$anchor4, span_2);
+            };
+            if_block(node_2, ($$render) => {
+              if (get2(preset).name === activePreset()) $$render(consequent_3);
+            });
+          }
+          reset(div_5);
+          var p_2 = sibling(div_5, 2);
           var text_2 = child(p_2, true);
           reset(p_2);
-          reset(div_2);
+          reset(div_4);
+          var div_6 = sibling(div_4, 2);
+          var button = child(div_6);
+          var button_1 = sibling(button, 2);
+          var button_2 = sibling(button_1, 2);
+          reset(div_6);
+          reset(div_3);
           template_effect(() => {
+            classes = set_class(div_3, 1, "list-item svelte-199frlg", null, classes, { active: get2(preset).name === activePreset() });
             set_text(text_1, get2(preset).displayName);
-            set_text(text_2, get2(preset).description);
+            set_text(text_2, get2(preset).description || "\u65E0\u63CF\u8FF0");
           });
+          delegated("click", div_3, () => onselect()(get2(preset).name));
+          delegated("keydown", div_3, (e) => e.key === "Enter" && onselect()(get2(preset).name));
+          delegated("click", div_6, (e) => e.stopPropagation());
+          delegated("click", button, () => onedit()(get2(preset).name));
+          delegated("click", button_1, () => onexport()(get2(preset).name));
+          delegated("click", button_2, () => ondelete()(get2(preset).name));
+          append($$anchor3, div_3);
+        });
+        reset(div_2);
+        append($$anchor2, div_2);
+      };
+      if_block(node, ($$render) => {
+        if (loading()) $$render(consequent);
+        else if (presets().length === 0) $$render(consequent_1, 1);
+        else $$render(alternate, -1);
+      });
+    }
+    var div_7 = sibling(node, 2);
+    var button_3 = child(div_7);
+    var button_4 = sibling(button_3, 2);
+    reset(div_7);
+    reset(div);
+    template_effect(() => set_text(text2, presets().length));
+    delegated("click", button_3, function(...$$args) {
+      onnew()?.apply(this, $$args);
+    });
+    delegated("click", button_4, function(...$$args) {
+      onimport()?.apply(this, $$args);
+    });
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["click", "keydown"]);
+
+  // resources/webview/components/EntryCard.svelte
+  var root6 = from_html(`<option> </option>`);
+  var root_110 = from_html(`<div><div class="entry-header svelte-1y400fn"><div class="entry-drag-order svelte-1y400fn"><button class="move-btn svelte-1y400fn" title="\u4E0A\u79FB"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.47 9.78a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1-1.06 1.06L8 6.06l-3.47 3.47a.75.75 0 0 1-1.06 0Z"></path></svg></button> <span class="entry-index svelte-1y400fn"> </span> <button class="move-btn svelte-1y400fn" title="\u4E0B\u79FB"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.47 5.22a.75.75 0 0 1 1.06 0L8 8.69l3.47-3.47a.75.75 0 0 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.47 6.28a.75.75 0 0 1 0-1.06Z"></path></svg></button></div> <div class="entry-meta svelte-1y400fn"><input class="entry-name-input svelte-1y400fn" type="text" placeholder="\u6761\u76EE\u540D\u79F0"/> <select class="entry-role-select svelte-1y400fn"></select> <label class="toggle-label svelte-1y400fn" title="\u542F\u7528/\u7981\u7528"><input type="checkbox" class="svelte-1y400fn"/> <span class="toggle-switch svelte-1y400fn"></span></label></div> <button class="icon-btn danger svelte-1y400fn" title="\u5220\u9664\u6761\u76EE"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Z"></path></svg></button></div> <div class="entry-content svelte-1y400fn"><textarea class="entry-textarea svelte-1y400fn" placeholder="\u8F93\u5165\u63D0\u793A\u8BCD\u5185\u5BB9\uFF0C\u652F\u6301 tool.xxx\u3001char \u7B49\u5B8F"></textarea></div></div>`);
+  function EntryCard($$anchor, $$props) {
+    push($$props, true);
+    let entry = prop($$props, "entry", 19, () => ({ name: "", role: "system", content: "", enabled: true })), index2 = prop($$props, "index", 3, 0), total = prop($$props, "total", 3, 1), isActive = prop($$props, "isActive", 3, false), onupdate = prop($$props, "onupdate", 3, (_entry) => {
+    }), ondelete = prop($$props, "ondelete", 3, () => {
+    }), onmove = prop($$props, "onmove", 3, (_dir) => {
+    }), onfocus = prop($$props, "onfocus", 3, () => {
+    });
+    const ROLE_OPTIONS = [
+      { value: "system", label: "system" },
+      { value: "user", label: "user" },
+      { value: "assistant", label: "assistant" },
+      { value: "chat_history", label: "chat_history" }
+    ];
+    var div = root_110();
+    let classes;
+    var div_1 = child(div);
+    var div_2 = child(div_1);
+    var button = child(div_2);
+    var span = sibling(button, 2);
+    var text2 = child(span, true);
+    reset(span);
+    var button_1 = sibling(span, 2);
+    reset(div_2);
+    var div_3 = sibling(div_2, 2);
+    var input = child(div_3);
+    remove_input_defaults(input);
+    var select = sibling(input, 2);
+    each(select, 21, () => ROLE_OPTIONS, index, ($$anchor2, opt) => {
+      var option = root6();
+      var text_1 = child(option, true);
+      reset(option);
+      var option_value = {};
+      template_effect(() => {
+        set_text(text_1, get2(opt).label);
+        if (option_value !== (option_value = get2(opt).value)) {
+          option.value = (option.__value = get2(opt).value) ?? "";
+        }
+      });
+      append($$anchor2, option);
+    });
+    reset(select);
+    var select_value;
+    init_select(select);
+    var label = sibling(select, 2);
+    var input_1 = child(label);
+    remove_input_defaults(input_1);
+    next(2);
+    reset(label);
+    reset(div_3);
+    var button_2 = sibling(div_3, 2);
+    reset(div_1);
+    var div_4 = sibling(div_1, 2);
+    var textarea = child(div_4);
+    remove_textarea_child(textarea);
+    set_attribute2(textarea, "rows", 4);
+    reset(div_4);
+    reset(div);
+    template_effect(() => {
+      classes = set_class(div, 1, "entry-card svelte-1y400fn", null, classes, { active: isActive() });
+      button.disabled = index2() === 0;
+      set_text(text2, index2() + 1);
+      button_1.disabled = index2() === total() - 1;
+      set_value(input, entry().name ?? "");
+      if (select_value !== (select_value = entry().role)) {
+        select.value = (select.__value = entry().role) ?? "", select_option(select, entry().role);
+      }
+      set_checked(input_1, entry().enabled);
+      set_value(textarea, entry().content ?? "");
+    });
+    delegated("click", button, () => onmove()(-1));
+    delegated("click", button_1, () => onmove()(1));
+    delegated("input", input, (e) => onupdate()({ ...entry(), name: e.target.value }));
+    delegated("change", select, (e) => onupdate()({ ...entry(), role: e.target.value }));
+    delegated("change", input_1, (e) => onupdate()({ ...entry(), enabled: e.target.checked }));
+    delegated("click", button_2, function(...$$args) {
+      ondelete()?.apply(this, $$args);
+    });
+    delegated("input", textarea, (e) => onupdate()({ ...entry(), content: e.target.value }));
+    event("focus", textarea, function(...$$args) {
+      onfocus()?.apply(this, $$args);
+    });
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["click", "input", "change"]);
+
+  // resources/webview/components/MacroPanel.svelte
+  var root7 = from_html(`<span class="macro-hint svelte-11xah9r">\uFF08\u8BF7\u5148\u9009\u4E2D\u4E00\u4E2A\u6761\u76EE\uFF09</span>`);
+  var root_111 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
+  var root_25 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
+  var root_35 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
+  var root_45 = from_html(`<div class="macro-section svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F <!></button> <!></div>`);
+  function MacroPanel($$anchor, $$props) {
+    push($$props, true);
+    "use strict";
+    let disabled = prop($$props, "disabled", 3, false), oninsert = prop($$props, "oninsert", 3, (_macro) => {
+    });
+    let open = state(false);
+    const MACROS = [
+      {
+        group: "\u5DE5\u5177\u6587\u6863",
+        items: [
+          "{{tool.bash}}",
+          "{{tool.read}}",
+          "{{tool.write}}",
+          "{{tool.edit}}",
+          "{{tool.AskUserQuestion}}",
+          "{{tool.UpdatePlan}}",
+          "{{tool.WebSearch}}"
+        ]
+      },
+      {
+        group: "\u6280\u80FD\u7CFB\u7EDF",
+        items: ["{{skill.agent-drift-guard}}", "{{skill.plan-and-execute}}"]
+      },
+      {
+        group: "\u8FD0\u884C\u65F6",
+        items: ["{{runtime_context}}", "{{agents_md}}"]
+      },
+      {
+        group: "\u53D8\u91CF",
+        items: [
+          "{{char}}",
+          "{{user}}",
+          "{{model}}",
+          "{{date}}",
+          "{{time}}",
+          "{{workspace}}"
+        ]
+      }
+    ];
+    var div = root_45();
+    var button = child(div);
+    var svg = child(button);
+    let classes;
+    var node = sibling(svg, 2);
+    {
+      var consequent = ($$anchor2) => {
+        var span = root7();
+        append($$anchor2, span);
+      };
+      if_block(node, ($$render) => {
+        if (disabled()) $$render(consequent);
+      });
+    }
+    reset(button);
+    var node_1 = sibling(button, 2);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var div_1 = root_35();
+        each(div_1, 21, () => MACROS, index, ($$anchor3, group) => {
+          var div_2 = root_25();
+          var span_1 = child(div_2);
+          var text2 = child(span_1, true);
+          reset(span_1);
+          var div_3 = sibling(span_1, 2);
+          each(div_3, 21, () => get2(group).items, index, ($$anchor4, macro) => {
+            var button_1 = root_111();
+            var code = child(button_1);
+            var text_1 = child(code, true);
+            reset(code);
+            reset(button_1);
+            template_effect(() => {
+              button_1.disabled = disabled();
+              set_text(text_1, get2(macro));
+            });
+            delegated("click", button_1, () => oninsert()(get2(macro)));
+            append($$anchor4, button_1);
+          });
+          reset(div_3);
+          reset(div_2);
+          template_effect(() => set_text(text2, get2(group).group));
           append($$anchor3, div_2);
         });
         reset(div_1);
         append($$anchor2, div_1);
       };
-      if_block(node, ($$render) => {
-        if (get2(loading)) $$render(consequent);
-        else if (get2(error)) $$render(consequent_1, 1);
-        else $$render(alternate, -1);
+      if_block(node_1, ($$render) => {
+        if (get2(open)) $$render(consequent_1);
       });
     }
     reset(div);
+    template_effect(() => classes = set_class(svg, 0, "svelte-11xah9r", null, classes, { rotated: get2(open) }));
+    delegated("click", button, () => set(open, !get2(open)));
     append($$anchor, div);
+    pop();
+  }
+  delegate(["click"]);
+
+  // resources/webview/components/PresetEditor.svelte
+  var root8 = from_html(`<button> </button>`);
+  var root_112 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
+  var root_26 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u6807\u8BC6\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u663E\u793A\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u63CF\u8FF0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">char \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">user \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
+  function PresetEditor($$anchor, $$props) {
+    push($$props, true);
+    let definition = prop($$props, "definition", 19, () => ({
+      name: "",
+      description: "",
+      availableTools: [
+        "bash",
+        "read",
+        "write",
+        "edit",
+        "AskUserQuestion",
+        "UpdatePlan",
+        "WebSearch"
+      ],
+      entries: []
+    })), presetName = prop($$props, "presetName", 3, ""), onsave = prop($$props, "onsave", 3, (_name, _def) => {
+    }), oncancel = prop($$props, "oncancel", 3, () => {
+    });
+    let editName = state(proxy(presetName()));
+    let editDef = state(proxy(deepClone(definition())));
+    let activeEntryIndex = state(null);
+    user_effect(() => {
+      set(editName, presetName());
+      set(editDef, deepClone(definition()), true);
+    });
+    function deepClone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+    const ALL_TOOLS = [
+      { id: "bash", label: "Bash" },
+      { id: "read", label: "Read" },
+      { id: "write", label: "Write" },
+      { id: "edit", label: "Edit" },
+      { id: "AskUserQuestion", label: "AskUser" },
+      { id: "UpdatePlan", label: "Plan" },
+      { id: "WebSearch", label: "Search" }
+    ];
+    function addEntry() {
+      get2(editDef).entries = [
+        ...get2(editDef).entries,
+        { name: "\u65B0\u6761\u76EE", role: "system", content: "", enabled: true }
+      ];
+      set(activeEntryIndex, get2(editDef).entries.length - 1);
+    }
+    function updateEntry(index2, entry) {
+      const entries = [...get2(editDef).entries];
+      entries[index2] = entry;
+      get2(editDef).entries = entries;
+    }
+    function deleteEntry(index2) {
+      get2(editDef).entries = get2(editDef).entries.filter((_, i) => i !== index2);
+      if (get2(activeEntryIndex) === index2) set(activeEntryIndex, null);
+    }
+    function moveEntry(index2, direction) {
+      const entries = [...get2(editDef).entries];
+      const target = index2 + direction;
+      if (target < 0 || target >= entries.length) return;
+      [entries[index2], entries[target]] = [entries[target], entries[index2]];
+      get2(editDef).entries = entries;
+      set(activeEntryIndex, target);
+    }
+    function insertMacro(macro) {
+      if (get2(activeEntryIndex) === null) return;
+      const entry = { ...get2(editDef).entries[get2(activeEntryIndex)] };
+      entry.content += macro;
+      updateEntry(get2(activeEntryIndex), entry);
+    }
+    function toggleTool(toolId) {
+      const current = get2(editDef).availableTools;
+      if (current.includes(toolId)) {
+        get2(editDef).availableTools = current.filter((t) => t !== toolId);
+      } else {
+        get2(editDef).availableTools = [...current, toolId];
+      }
+    }
+    function handleSave() {
+      onsave()(get2(editName), get2(editDef));
+    }
+    var div = root_26();
+    var div_1 = child(div);
+    var button = child(div_1);
+    var h2 = sibling(button, 2);
+    var text2 = child(h2, true);
+    reset(h2);
+    reset(div_1);
+    var div_2 = sibling(div_1, 2);
+    var div_3 = child(div_2);
+    var input = sibling(child(div_3), 2);
+    remove_input_defaults(input);
+    reset(div_3);
+    var div_4 = sibling(div_3, 2);
+    var input_1 = sibling(child(div_4), 2);
+    remove_input_defaults(input_1);
+    reset(div_4);
+    var div_5 = sibling(div_4, 2);
+    var input_2 = sibling(child(div_5), 2);
+    remove_input_defaults(input_2);
+    reset(div_5);
+    var div_6 = sibling(div_5, 2);
+    var div_7 = child(div_6);
+    var input_3 = sibling(child(div_7), 2);
+    remove_input_defaults(input_3);
+    reset(div_7);
+    var div_8 = sibling(div_7, 2);
+    var input_4 = sibling(child(div_8), 2);
+    remove_input_defaults(input_4);
+    reset(div_8);
+    reset(div_6);
+    var div_9 = sibling(div_6, 2);
+    var div_10 = sibling(child(div_9), 2);
+    each(div_10, 21, () => ALL_TOOLS, index, ($$anchor2, tool) => {
+      var button_1 = root8();
+      let classes;
+      var text_1 = child(button_1, true);
+      reset(button_1);
+      template_effect(
+        ($0) => {
+          classes = set_class(button_1, 1, "chip svelte-1yfq08f", null, classes, $0);
+          set_text(text_1, get2(tool).label);
+        },
+        [
+          () => ({
+            active: get2(editDef).availableTools.includes(get2(tool).id)
+          })
+        ]
+      );
+      delegated("click", button_1, () => toggleTool(get2(tool).id));
+      append($$anchor2, button_1);
+    });
+    reset(div_10);
+    reset(div_9);
+    reset(div_2);
+    var div_11 = sibling(div_2, 2);
+    var div_12 = child(div_11);
+    var label = child(div_12);
+    var text_2 = child(label);
+    reset(label);
+    var button_2 = sibling(label, 2);
+    reset(div_12);
+    var div_13 = sibling(div_12, 2);
+    var node = child(div_13);
+    each(node, 17, () => get2(editDef).entries, index, ($$anchor2, entry, i) => {
+      {
+        let $0 = user_derived(() => get2(activeEntryIndex) === i);
+        EntryCard($$anchor2, {
+          get entry() {
+            return get2(entry);
+          },
+          index: i,
+          get total() {
+            return get2(editDef).entries.length;
+          },
+          get isActive() {
+            return get2($0);
+          },
+          onupdate: (e) => updateEntry(i, e),
+          ondelete: () => deleteEntry(i),
+          onmove: (d) => moveEntry(i, d),
+          onfocus: () => set(activeEntryIndex, i, true)
+        });
+      }
+    });
+    var node_1 = sibling(node, 2);
+    {
+      var consequent = ($$anchor2) => {
+        var p = root_112();
+        append($$anchor2, p);
+      };
+      if_block(node_1, ($$render) => {
+        if (get2(editDef).entries.length === 0) $$render(consequent);
+      });
+    }
+    reset(div_13);
+    reset(div_11);
+    var node_2 = sibling(div_11, 2);
+    {
+      let $0 = user_derived(() => get2(activeEntryIndex) === null);
+      MacroPanel(node_2, {
+        get disabled() {
+          return get2($0);
+        },
+        oninsert: insertMacro
+      });
+    }
+    var div_14 = sibling(node_2, 2);
+    var button_3 = child(div_14);
+    var button_4 = sibling(button_3, 2);
+    reset(div_14);
+    reset(div);
+    template_effect(() => {
+      set_text(text2, presetName() ? `\u7F16\u8F91: ${presetName()}` : "\u65B0\u5EFA\u9884\u8BBE");
+      set_value(input, get2(editName));
+      set_value(input_1, get2(editDef).name);
+      set_value(input_2, get2(editDef).description);
+      set_value(input_3, get2(editDef).char ?? "");
+      set_value(input_4, get2(editDef).user ?? "");
+      set_text(text_2, `\u9884\u8BBE\u6761\u76EE\uFF08${get2(editDef).entries.length ?? ""}\uFF09`);
+    });
+    delegated("click", button, function(...$$args) {
+      oncancel()?.apply(this, $$args);
+    });
+    delegated("input", input, (e) => set(editName, e.target.value, true));
+    delegated("input", input_1, (e) => set(editDef, { ...get2(editDef), name: e.target.value }, true));
+    delegated("input", input_2, (e) => set(editDef, { ...get2(editDef), description: e.target.value }, true));
+    delegated("input", input_3, (e) => set(editDef, { ...get2(editDef), char: e.target.value }, true));
+    delegated("input", input_4, (e) => set(editDef, { ...get2(editDef), user: e.target.value }, true));
+    delegated("click", button_2, addEntry);
+    delegated("click", button_3, handleSave);
+    delegated("click", button_4, function(...$$args) {
+      oncancel()?.apply(this, $$args);
+    });
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["click", "input"]);
+
+  // resources/webview/components/PresetPage.svelte
+  var root9 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M4.47 3.47a.75.75 0 0 1 1.06 0L8 5.94l2.47-2.47a.75.75 0 1 1 1.06 1.06L9.06 7l2.47 2.47a.75.75 0 1 1-1.06 1.06L8 8.06l-2.47 2.47a.75.75 0 0 1-1.06-1.06L6.94 7 4.47 4.53a.75.75 0 0 1 0-1.06Z"></path></svg>`);
+  var root_113 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path></svg>`);
+  var root_27 = from_html(`<div><!> </div>`);
+  var root_36 = from_html(`<div class="page svelte-1bnrgqd"><!></div> <!>`, 1);
+  function PresetPage($$anchor, $$props) {
+    push($$props, true);
+    let presets = state(proxy([]));
+    let loading = state(true);
+    let mode = state("list");
+    let editName = state("");
+    let editDefinition = state(null);
+    let notification = state(null);
+    let notifTimer = null;
+    function showNotif(type, text2) {
+      set(notification, { type, text: text2 }, true);
+      if (notifTimer) clearTimeout(notifTimer);
+      notifTimer = setTimeout(
+        () => {
+          set(notification, null);
+        },
+        4e3
+      );
+    }
+    onMount(async () => {
+      await loadPresets();
+    });
+    async function loadPresets() {
+      set(loading, true);
+      try {
+        set(presets, await api.request("listPresets"), true);
+      } catch (e) {
+        showNotif("error", "\u52A0\u8F7D\u9884\u8BBE\u5217\u8868\u5931\u8D25");
+      } finally {
+        set(loading, false);
+      }
+    }
+    function handleSelect(name) {
+      if (name === appState.activePreset) return;
+      api.send("selectPreset", { name });
+      appState.activePreset = name;
+      showNotif("success", `\u5DF2\u5207\u6362\u5230\u9884\u8BBE\u300C${name}\u300D`);
+    }
+    async function handleEdit(name) {
+      try {
+        const def = await api.request("getPreset", { name });
+        set(editName, name, true);
+        set(editDefinition, def, true);
+        set(mode, "edit");
+      } catch (e) {
+        showNotif("error", "\u52A0\u8F7D\u9884\u8BBE\u5931\u8D25");
+      }
+    }
+    function handleNew() {
+      set(editName, "");
+      set(
+        editDefinition,
+        {
+          name: "\u65B0\u9884\u8BBE",
+          description: "",
+          char: "",
+          user: "",
+          availableTools: [
+            "bash",
+            "read",
+            "write",
+            "edit",
+            "AskUserQuestion",
+            "UpdatePlan",
+            "WebSearch"
+          ],
+          entries: []
+        },
+        true
+      );
+      set(mode, "new");
+    }
+    async function handleSave(name, def) {
+      try {
+        const saveName = name.trim() || def.name.trim().replace(/[^a-zA-Z0-9_\-\u4e00-\u9fff]/g, "_") || "untitled";
+        await api.request("savePreset", { name: saveName, definition: def });
+        await loadPresets();
+        set(mode, "list");
+        showNotif("success", `\u9884\u8BBE\u300C${def.name}\u300D\u5DF2\u4FDD\u5B58`);
+      } catch (e) {
+        showNotif("error", "\u4FDD\u5B58\u9884\u8BBE\u5931\u8D25");
+      }
+    }
+    function handleCancel() {
+      set(mode, "list");
+    }
+    async function handleExport(name) {
+      try {
+        await api.request("exportPreset", { name });
+      } catch (e) {
+        const msg = String(e);
+        if (!msg.includes("\u53D6\u6D88") && !msg.includes("cancelled")) {
+          showNotif("error", "\u5BFC\u51FA\u5931\u8D25");
+        }
+      }
+    }
+    async function handleDelete(name) {
+      try {
+        await api.request("deletePreset", { name });
+        if (appState.activePreset === name) {
+          appState.activePreset = "default";
+          showNotif("success", `\u5DF2\u5207\u6362\u5230\u9884\u8BBE\u300Cdefault\u300D`);
+        }
+        await loadPresets();
+        showNotif("success", `\u9884\u8BBE\u300C${name}\u300D\u5DF2\u5220\u9664`);
+      } catch (e) {
+        showNotif("error", "\u5220\u9664\u5931\u8D25");
+      }
+    }
+    async function handleImport() {
+      try {
+        const result = await api.request("importPreset");
+        await loadPresets();
+        showNotif("success", `\u9884\u8BBE\u300C${result.displayName}\u300D\u5DF2\u5BFC\u5165`);
+      } catch (e) {
+        const msg = String(e);
+        if (!msg.includes("\u53D6\u6D88") && !msg.includes("cancelled")) {
+          showNotif("error", "\u5BFC\u5165\u5931\u8D25");
+        }
+      }
+    }
+    var fragment = root_36();
+    var div = first_child(fragment);
+    var node = child(div);
+    {
+      var consequent = ($$anchor2) => {
+        PresetList($$anchor2, {
+          get presets() {
+            return get2(presets);
+          },
+          get activePreset() {
+            return appState.activePreset;
+          },
+          get loading() {
+            return get2(loading);
+          },
+          onselect: handleSelect,
+          onedit: handleEdit,
+          onexport: handleExport,
+          ondelete: handleDelete,
+          onnew: handleNew,
+          onimport: handleImport
+        });
+      };
+      var consequent_1 = ($$anchor2) => {
+        PresetEditor($$anchor2, {
+          get definition() {
+            return get2(editDefinition);
+          },
+          get presetName() {
+            return get2(editName);
+          },
+          onsave: handleSave,
+          oncancel: handleCancel
+        });
+      };
+      if_block(node, ($$render) => {
+        if (get2(mode) === "list") $$render(consequent);
+        else if (get2(editDefinition)) $$render(consequent_1, 1);
+      });
+    }
+    reset(div);
+    var node_1 = sibling(div, 2);
+    {
+      var consequent_3 = ($$anchor2) => {
+        var div_1 = root_27();
+        let classes;
+        var node_2 = child(div_1);
+        {
+          var consequent_2 = ($$anchor3) => {
+            var svg = root9();
+            append($$anchor3, svg);
+          };
+          var alternate = ($$anchor3) => {
+            var svg_1 = root_113();
+            append($$anchor3, svg_1);
+          };
+          if_block(node_2, ($$render) => {
+            if (get2(notification).type === "error") $$render(consequent_2);
+            else $$render(alternate, -1);
+          });
+        }
+        var text_1 = sibling(node_2);
+        reset(div_1);
+        template_effect(() => {
+          classes = set_class(div_1, 1, "notification svelte-1bnrgqd", null, classes, {
+            error: get2(notification).type === "error",
+            success: get2(notification).type === "success"
+          });
+          set_text(text_1, ` ${get2(notification).text ?? ""}`);
+        });
+        append($$anchor2, div_1);
+      };
+      if_block(node_1, ($$render) => {
+        if (get2(notification)) $$render(consequent_3);
+      });
+    }
+    append($$anchor, fragment);
     pop();
   }
 
   // resources/webview/components/ProfilePage.svelte
-  var root6 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_110 = from_html(`<p class="hint error svelte-1no2ghb"> </p>`);
-  var root_25 = from_html(`<span class="current svelte-1no2ghb">(\u5F53\u524D)</span>`);
-  var root_35 = from_html(`<div class="profile-card svelte-1no2ghb"><strong> <!></strong></div>`);
-  var root_45 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E</p>`);
-  var root_54 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
-  var root_63 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb">\u5373\u5C06\u63A8\u51FA</span></div> <!></div>`);
+  var root10 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
+  var root_114 = from_html(`<p class="hint error svelte-1no2ghb"> </p>`);
+  var root_28 = from_html(`<span class="current svelte-1no2ghb">(\u5F53\u524D)</span>`);
+  var root_37 = from_html(`<div class="profile-card svelte-1no2ghb"><strong> <!></strong></div>`);
+  var root_46 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E</p>`);
+  var root_55 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
+  var root_64 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb">\u5373\u5C06\u63A8\u51FA</span></div> <!></div>`);
   function ProfilePage($$anchor, $$props) {
     push($$props, true);
     let profiles = state(proxy([]));
@@ -7431,36 +8334,36 @@ ${component_stack}
         set(loading, false);
       }
     });
-    var div = root_63();
+    var div = root_64();
     var node = sibling(child(div), 2);
     {
       var consequent = ($$anchor2) => {
-        var p = root6();
+        var p = root10();
         append($$anchor2, p);
       };
       var consequent_1 = ($$anchor2) => {
-        var p_1 = root_110();
+        var p_1 = root_114();
         var text2 = child(p_1, true);
         reset(p_1);
         template_effect(() => set_text(text2, get2(error)));
         append($$anchor2, p_1);
       };
       var alternate = ($$anchor2) => {
-        var div_1 = root_54();
+        var div_1 = root_55();
         each(
           div_1,
           21,
           () => get2(profiles),
           index,
           ($$anchor3, profile) => {
-            var div_2 = root_35();
+            var div_2 = root_37();
             var strong = child(div_2);
             let classes;
             var text_1 = child(strong);
             var node_1 = sibling(text_1);
             {
               var consequent_2 = ($$anchor4) => {
-                var span = root_25();
+                var span = root_28();
                 append($$anchor4, span);
               };
               if_block(node_1, ($$render) => {
@@ -7476,7 +8379,7 @@ ${component_stack}
             append($$anchor3, div_2);
           },
           ($$anchor3) => {
-            var p_2 = root_45();
+            var p_2 = root_46();
             append($$anchor3, p_2);
           }
         );
@@ -7495,11 +8398,11 @@ ${component_stack}
   }
 
   // resources/webview/App.svelte
-  var root7 = from_html(`<div class="app svelte-w8ccf7"><!> <!></div>`);
+  var root11 = from_html(`<div class="app svelte-w8ccf7"><!> <!></div>`);
   function App($$anchor, $$props) {
     push($$props, false);
     init();
-    var div = root7();
+    var div = root11();
     var node = child(div);
     TabBar(node, {});
     var node_1 = sibling(node, 2);
@@ -7551,6 +8454,8 @@ ${component_stack}
         appState.currentSessionStatus = msg.status;
         appState.tokenTelemetry = msg.tokenTelemetry ?? null;
         appState.sessions = msg.sessions;
+        appState.activePreset = msg.activePreset ?? "default";
+        appState.activeProfile = msg.activeProfile ?? "default";
         break;
       case "loadSession":
         appState.messages = msg.messages.filter((m) => m.visible !== false);
@@ -7559,6 +8464,8 @@ ${component_stack}
         appState.tokenTelemetry = msg.tokenTelemetry ?? null;
         appState.runningProcesses = normalizeProcesses(msg.processes);
         appState.sessions = msg.sessions;
+        appState.activePreset = msg.activePreset ?? "default";
+        appState.activeProfile = msg.activeProfile ?? "default";
         break;
       case "showSessionsList":
         appState.sessions = msg.sessions;

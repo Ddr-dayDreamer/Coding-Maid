@@ -2,6 +2,14 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { encrypt, decrypt, isEncrypted } from "./crypto-utils";
+import {
+  type CodingMaidSettings,
+  type McpServerConfig,
+  loadGlobalSettings,
+  saveGlobalSettings,
+  SETTINGS_FILE,
+  CODING_MAID_DIR,
+} from "./global-settings";
 
 // ─── 占位符常量 ─────────────────────────────────────────────────────────────
 
@@ -74,54 +82,14 @@ export type ConnectionProfile = {
   params?: Record<string, unknown>;
 };
 
-export type McpServerConfig = {
-  command: string;
-  args?: string[];
-  env?: Record<string, string>;
-};
-
-/**
- * 全局设置（不含连接预设）
- */
-export type CodingMaidSettings = {
-  activeProfile: string;
-  notify?: string;
-  presetsDir?: string;
-  debugLogEnabled?: boolean;
-  debugPromptEnabled?: boolean;
-  mcpServers?: Record<string, McpServerConfig>;
-};
-
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
-const CODING_MAID_DIR = path.join(os.homedir(), ".codingmaid");
 const PROFILES_DIR = path.join(CODING_MAID_DIR, "profiles");
-const SETTINGS_FILE = path.join(CODING_MAID_DIR, "settings.json");
 
-function ensureDirs(): void {
+function ensureProfileDir(): void {
   if (!fs.existsSync(PROFILES_DIR)) {
     fs.mkdirSync(PROFILES_DIR, { recursive: true });
   }
-}
-
-// ─── Global Settings ─────────────────────────────────────────────────────────
-
-export function loadGlobalSettings(): CodingMaidSettings {
-  ensureDirs();
-  try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const raw = fs.readFileSync(SETTINGS_FILE, "utf8");
-      return JSON.parse(raw) as CodingMaidSettings;
-    }
-  } catch {
-    // fall through to defaults
-  }
-  return { activeProfile: "default" };
-}
-
-export function saveGlobalSettings(settings: CodingMaidSettings): void {
-  ensureDirs();
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), "utf8");
 }
 
 // ─── Profile CRUD ────────────────────────────────────────────────────────────
@@ -130,7 +98,7 @@ export function saveGlobalSettings(settings: CodingMaidSettings): void {
  * 列出所有可用的连接预设名称
  */
 export function listProfiles(): string[] {
-  ensureDirs();
+  ensureProfileDir();
   try {
     const entries = fs.readdirSync(PROFILES_DIR, { withFileTypes: true });
     return entries
@@ -152,7 +120,7 @@ function profilePath(name: string): string {
  * 读取一个连接预设（返回明文 API Key，需提供加密密钥）
  */
 export function loadProfile(name: string, cryptoKey: string): ConnectionProfile | null {
-  ensureDirs();
+  ensureProfileDir();
   const filePath = profilePath(name);
   if (!fs.existsSync(filePath)) {
     return null;
@@ -196,7 +164,7 @@ export function loadProfile(name: string, cryptoKey: string): ConnectionProfile 
  * 保存一个连接预设（自动加密 API Key）
  */
 export function saveProfile(profile: ConnectionProfile, cryptoKey: string): void {
-  ensureDirs();
+  ensureProfileDir();
 
   const stored: ConnectionProfileStored = {
     name: profile.name,
@@ -305,7 +273,7 @@ export function migratePlaintextApiKeys(cryptoKey: string): void {
  * 由 extension.ts 在启动时调用。
  */
 export function ensureInitialConfig(templatesDir: string, cryptoKey: string): void {
-  ensureDirs();
+  ensureProfileDir();
 
   // ── 1. settings.json ────────────────────────────────
   if (!fs.existsSync(SETTINGS_FILE)) {

@@ -2,7 +2,14 @@
 
 // 后端 → 前端
 export type BackendMessage =
-  | { type: "initializeEmpty"; sessions: SessionSummary[]; status: string | null; tokenTelemetry?: TokenTelemetry }
+  | {
+      type: "initializeEmpty";
+      sessions: SessionSummary[];
+      status: string | null;
+      tokenTelemetry?: TokenTelemetry;
+      activePreset?: string;
+      activeProfile?: string;
+    }
   | {
       type: "loadSession";
       sessionId: string;
@@ -11,6 +18,8 @@ export type BackendMessage =
       messages: SessionMessageData[];
       tokenTelemetry?: TokenTelemetry;
       processes?: ProcessInfo[];
+      activePreset?: string;
+      activeProfile?: string;
     }
   | { type: "showSessionsList"; sessions: SessionSummary[] }
   | {
@@ -25,8 +34,7 @@ export type BackendMessage =
   | { type: "appendMessage"; message: SessionMessageData; shouldConnect: boolean }
   | { type: "loading"; value: boolean }
   | { type: "llmStreamProgress"; progress: LlmStreamProgressData }
-  | { type: "streamChunk"; sessionId?: string; content?: string; reasoningContent?: string }
-  };
+  | { type: "streamChunk"; sessionId?: string; content?: string; reasoningContent?: string };
 
 // 前端 → 后端
 export type FrontendMessage =
@@ -115,4 +123,30 @@ export interface LlmStreamProgressData {
   formattedTokens?: string;
   requestId?: string;
   sessionId: string;
+}
+
+// ─── 预设类型 ────────────────────────────────────────────
+
+export type PresetEntryRole = "system" | "user" | "assistant" | "chat_history";
+
+export interface PresetEntry {
+  name: string;
+  role: PresetEntryRole;
+  content: string;
+  enabled: boolean;
+}
+
+export interface PresetDefinition {
+  name: string;
+  description: string;
+  char?: string;
+  user?: string;
+  availableTools: string[];
+  entries: PresetEntry[];
+}
+
+export interface PresetMeta {
+  name: string;
+  displayName: string;
+  description: string;
 }
