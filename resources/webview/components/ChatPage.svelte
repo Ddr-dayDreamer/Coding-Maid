@@ -2,9 +2,20 @@
   import { appState } from "../lib/state.svelte";
   import { api } from "../lib/api";
   import ContextMeter from "./ContextMeter.svelte";
+  import MessageBoard from "./MessageBoard.svelte";
 
   let promptText = $state("");
   let sessionDropdownOpen = $state(false);
+
+  // ─── 回退时填入输入框 ───────────────────────────
+
+  $effect(() => {
+    const text = appState.pendingPrompt;
+    if (text) {
+      promptText = text;
+      appState.pendingPrompt = "";
+    }
+  });
 
   // ─── 发送/中断 ─────────────────────────────────────────
 
@@ -64,19 +75,6 @@
     if (days === 1) return "昨天";
     return `${d.getMonth() + 1}/${d.getDate()}`;
   }
-
-  // ─── 自动滚动 ──────────────────────────────────────────
-
-  let messagesContainer: HTMLDivElement | undefined = $state();
-  $effect(() => {
-    if (appState.messages.length > 0 || appState.streamingContent) {
-      requestAnimationFrame(() => {
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-      });
-    }
-  });
 </script>
 
 <div class="chat-page">
@@ -113,48 +111,7 @@
   </div>
 
   <!-- 消息列表 -->
-  <div class="messages" bind:this={messagesContainer}>
-    {#each appState.messages as msg}
-      <div class="bubble bubble-{msg.role}">
-        <div class="bubble-avatar">
-          {msg.role === "user" ? "U" : msg.role === "assistant" ? "A" : "S"}
-        </div>
-        <div class="bubble-body">
-          {#if msg.html}
-            <div class="bubble-content html">{@html msg.html}</div>
-          {:else}
-            <div class="bubble-content">{msg.content}</div>
-          {/if}
-        </div>
-      </div>
-    {:else}
-      {#if !appState.isLoading && !appState.streamingContent}
-        <div class="empty-state">
-          <div class="empty-icon">💬</div>
-          <p>开始新的对话</p>
-          <p class="empty-hint">输入消息并按 Enter 发送</p>
-        </div>
-      {/if}
-    {/each}
-
-    <!-- 流式输出气泡 -->
-    {#if appState.streamingContent}
-      <div class="bubble bubble-assistant">
-        <div class="bubble-avatar">A</div>
-        <div class="bubble-body">
-          <div class="bubble-content">{appState.streamingContent}<span class="cursor">▊</span></div>
-        </div>
-      </div>
-    {/if}
-
-    <!-- 加载指示器 -->
-    {#if appState.isLoading && !appState.streamingContent}
-      <div class="loading-indicator">
-        <div class="spinner"></div>
-        <span>思考中...</span>
-      </div>
-    {/if}
-  </div>
+  <MessageBoard />
 
   <!-- 输入区 -->
   <div class="composer">
@@ -334,188 +291,6 @@
     text-align: center;
     color: var(--vscode-descriptionForeground);
     font-size: 12px;
-  }
-
-  /* ─── 消息列表 ─────────────────────────────────── */
-  .messages {
-    flex: 1 1 0;
-    overflow-y: auto;
-    padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-height: 0;
-    height: 0;
-  }
-
-  .empty-state {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--vscode-descriptionForeground);
-    gap: 6px;
-  }
-
-  .empty-icon {
-    font-size: 36px;
-    opacity: 0.4;
-  }
-
-  .empty-state p {
-    margin: 0;
-    font-size: 14px;
-  }
-
-  .empty-hint {
-    font-size: 12px !important;
-    opacity: 0.5;
-  }
-
-  /* ─── 气泡 ─────────────────────────────────────── */
-  .bubble {
-    display: flex;
-    gap: 10px;
-    max-width: 88%;
-    animation: fadeIn 0.2s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .bubble-user {
-    align-self: flex-end;
-    flex-direction: row-reverse;
-  }
-
-  .bubble-assistant {
-    align-self: flex-start;
-  }
-
-  .bubble-system, .bubble-tool {
-    align-self: center;
-    max-width: 100%;
-    font-size: 12px;
-    color: var(--vscode-descriptionForeground);
-  }
-
-  .bubble-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    font-size: 11px;
-    font-weight: 700;
-    flex-shrink: 0;
-    margin-top: 4px;
-  }
-
-  .bubble-user .bubble-avatar {
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-  }
-
-  .bubble-assistant .bubble-avatar {
-    background: var(--vscode-editorInfoWidget-background, var(--vscode-textBlockQuote-background));
-    color: var(--vscode-foreground);
-  }
-
-  .bubble-system .bubble-avatar,
-  .bubble-tool .bubble-avatar {
-    display: none;
-  }
-
-  .bubble-body {
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 13px;
-    line-height: 1.5;
-    min-width: 0;
-    word-break: break-word;
-  }
-
-  .bubble-user .bubble-body {
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border-bottom-right-radius: 2px;
-  }
-
-  .bubble-assistant .bubble-body {
-    background: var(--vscode-textBlockQuote-background);
-    border-bottom-left-radius: 2px;
-  }
-
-  .bubble-system .bubble-body,
-  .bubble-tool .bubble-body {
-    background: transparent;
-    padding: 2px 8px;
-    text-align: center;
-  }
-
-  .bubble-content {
-    white-space: pre-wrap;
-  }
-
-  .bubble-content :global(pre) {
-    overflow-x: auto;
-    font-size: 12px;
-    padding: 8px;
-    border-radius: 4px;
-    background: var(--vscode-textPreformat-background, var(--vscode-editor-background));
-  }
-
-  .bubble-content :global(code) {
-    font-size: 12px;
-  }
-
-  .bubble-content :global(p) {
-    margin: 4px 0;
-  }
-
-  .bubble-content :global(p:first-child) {
-    margin-top: 0;
-  }
-
-  .bubble-content :global(p:last-child) {
-    margin-bottom: 0;
-  }
-
-  /* 流式输出光标 */
-  .cursor {
-    animation: blink 1s step-end infinite;
-    opacity: 0.7;
-  }
-
-  @keyframes blink {
-    50% { opacity: 0; }
-  }
-
-  /* ─── 加载指示器 ──────────────────────────────── */
-  .loading-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 0;
-    color: var(--vscode-descriptionForeground);
-    font-size: 12px;
-    margin-left: 38px;
-  }
-
-  .spinner {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid var(--vscode-progressBar-background);
-    border-top-color: var(--vscode-focusBorder);
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
   }
 
   /* ─── 输入区 ──────────────────────────────────── */

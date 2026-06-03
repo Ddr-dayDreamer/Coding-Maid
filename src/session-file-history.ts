@@ -123,7 +123,18 @@ export class SessionFileHistory {
 
   restoreConversation(sessionId: string, messageId: string): SessionMessage[] {
     const messages = this.storage.listSessionMessages(sessionId);
-    const targetIndex = messages.findIndex((message) => message.id === messageId);
+    let targetIndex = messages.findIndex((message) => message.id === messageId);
+
+    // 如果精确 ID 找不到（前端临时 ID 场景），降级到最后一个用户消息
+    if (targetIndex === -1) {
+      for (let index = messages.length - 1; index >= 0; index -= 1) {
+        if (messages[index]?.role === "user") {
+          targetIndex = index;
+          break;
+        }
+      }
+    }
+
     if (targetIndex === -1) {
       throw new Error("Selected message was not found in this session.");
     }

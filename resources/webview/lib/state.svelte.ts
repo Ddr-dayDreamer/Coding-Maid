@@ -47,6 +47,9 @@ class AppState {
   /** 最后一个用户提示词 */
   lastPrompt = $state("");
 
+  /** 回退时暂存的消息内容，供 ChatPage 填入输入框 */
+  pendingPrompt = $state("");
+
   /** 当前使用的预设名称 */
   activePreset = $state("default");
 

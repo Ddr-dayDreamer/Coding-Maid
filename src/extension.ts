@@ -300,6 +300,9 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async handleRestoreSession(sessionId: string, messageId: string): Promise<void> {
+    // 先中断当前处理（如果有），避免与 LLM 循环竞争
+    this.sessionManager.interruptSession(sessionId);
+
     // 先恢复文件（需要在截断对话之前找到消息的 checkpointHash）
     try {
       this.sessionManager.restoreSessionCode(sessionId, messageId);
