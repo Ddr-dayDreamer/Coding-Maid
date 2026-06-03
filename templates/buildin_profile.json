@@ -1,0 +1,11 @@
+{
+  "name": "default",
+  "model": "deepseek-v4-flash",
+  "baseURL": "https://api.deepseek.com",
+  "thinkingEnabled": true,
+  "reasoningEffort": "max",
+  "apiKey": "place_your_api_key_here",
+  "params": {
+    "stream": true
+  }
+}

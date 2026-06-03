@@ -15,11 +15,7 @@ import {
 } from "./session";
 import {
   resolveSettingsWithCryptoKey,
-  ensureDefaultProfile,
-  saveProfile,
-  loadProfile,
-  listProfiles,
-  setActiveProfile,
+  ensureInitialConfig,
   type ConnectionProfile,
   type ReasoningEffort,
   type ResolvedCodingMaidSettings,
@@ -120,7 +116,9 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       },
     });
     this.initCryptoKey();
-    ensureDefaultProfile(this.getCryptoKey());
+    // 统一初始化：settings.json + 连接预设（缺失则从 templates/ 复制）
+    const templatesDir = path.join(this.context.extensionUri.fsPath, "templates");
+    ensureInitialConfig(templatesDir, this.getCryptoKey());
     void this.initializeMcpServers();
   }
 
@@ -474,48 +472,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     return serialized;
   }
 
-  /**
-   * 弹出输入框让用户设置 API Key
-   */
-  async promptSetApiKey(): Promise<void> {
-    const cryptoKey = this.getCryptoKey();
-    const profiles = listProfiles();
-    let targetProfile = profiles[0] || "default";
-
-    if (profiles.length > 1) {
-      const picked = await vscode.window.showQuickPick(profiles, {
-        placeHolder: "选择要设置 API Key 的连接预设",
-      });
-      if (!picked) {
-        return;
-      }
-      targetProfile = picked;
-    }
-
-    const apiKey = await vscode.window.showInputBox({
-      prompt: `输入 ${targetProfile} 的 API Key`,
-      password: true,
-      placeHolder: "sk-...",
-      ignoreFocusOut: true,
-    });
-
-    if (apiKey === undefined || apiKey.trim() === "") {
-      return;
-    }
-
-    // 读取当前预设，更新 API Key 后保存（自动加密）
-    const current = loadProfile(targetProfile, cryptoKey) ?? {
-      name: targetProfile,
-      model: "deepseek-v4-pro",
-      baseURL: "https://api.deepseek.com",
-    };
-    current.apiKey = apiKey.trim();
-    saveProfile(current, cryptoKey);
-    setActiveProfile(targetProfile);
-
-    void vscode.window.showInformationMessage(`Coding Maid: ${targetProfile} 的 API Key 已设置（AES-256 加密存储）`);
-  }
-
   private getWebviewHtml(webview: vscode.Webview): string {
     const nonce = getNonce();
     const csp = webview.cspSource;
@@ -575,19 +531,6 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("codingmaid.openView", async () => {
       await vscode.commands.executeCommand("workbench.view.extension.codingmaid");
       await vscode.commands.executeCommand("codingmaid.chatView.focus");
-    })
-  );
-
-  // 设置 API Key 命令
-  context.subscriptions.push(
-    vscode.commands.registerCommand("codingmaid.setApiKey", async () => {
-      const provider = context.subscriptions.find((s) => s instanceof CodingMaidViewProvider) as
-        | CodingMaidViewProvider
-        | undefined;
-      if (!provider) {
-        return;
-      }
-      await provider.promptSetApiKey();
     })
   );
 }

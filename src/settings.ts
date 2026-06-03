@@ -116,6 +116,8 @@ export {
   type ConnectionProfile,
   type CodingMaidSettings,
   type ReasoningEffort as ReasoningEffortAlias,
+  PLACEHOLDER_API_KEY,
+  isRealApiKey,
   loadGlobalSettings,
   getActiveProfile,
   listProfiles,
@@ -124,4 +126,6 @@ export {
   deleteProfile,
   setActiveProfile,
   ensureDefaultProfile,
+  ensureInitialConfig,
+  migratePlaintextApiKeys,
 } from "./common/connection-profiles";

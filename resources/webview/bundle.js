@@ -241,8 +241,7 @@
     }
     $.contextMeter.style.display = "";
     const percent = getTokenUsagePercent(telemetry);
-    const degrees = Math.round(percent * 3.6);
-    $.contextMeterRing.style.background = `conic-gradient(var(--accent) ${degrees}deg, transparent ${degrees}deg)`;
+    $.contextMeterRing.style.setProperty("--context-percent", `${percent}%`);
     const tooltip = renderTooltip(telemetry, percent);
     $.contextMeterTooltip.innerHTML = tooltip;
   }
@@ -267,6 +266,16 @@
       parts.push(`<div>Prompt: ${formatTokenCount(usage.prompt_tokens || 0)}</div>`);
       parts.push(`<div>\u8865\u5168: ${formatTokenCount(usage.completion_tokens || 0)}</div>`);
       parts.push(`<div>\u603B\u8BA1: ${formatTokenCount(usage.total_tokens || 0)}</div>`);
+      const hit = usage.prompt_cache_hit_tokens;
+      const miss = usage.prompt_cache_miss_tokens;
+      if (hit !== void 0 || miss !== void 0) {
+        const totalCache = (hit || 0) + (miss || 0);
+        const rate = totalCache > 0 ? (((hit || 0) / totalCache) * 100).toFixed(1) : "--";
+        parts.push(`<hr style="margin:4px 0;border:none;border-top:1px solid var(--border-color)">`);
+        parts.push(`<div>\u7F13\u5B58\u547D\u4E2D: ${formatTokenCount(hit || 0)}</div>`);
+        parts.push(`<div>\u7F13\u5B58\u672A\u547D\u4E2D: ${formatTokenCount(miss || 0)}</div>`);
+        parts.push(`<div>\u547D\u4E2D\u7387: ${rate}%</div>`);
+      }
     }
     return parts.join("");
   }

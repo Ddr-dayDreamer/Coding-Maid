@@ -77,7 +77,13 @@ export interface TokenTelemetry {
   activeTokens: number;
   model: string;
   thinkingEnabled: boolean;
-  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    prompt_cache_hit_tokens?: number;
+    prompt_cache_miss_tokens?: number;
+  };
   usagePerModel?: Record<string, { prompt_tokens: number; completion_tokens: number; total_tokens: number }>;
 }
 

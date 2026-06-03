@@ -11,8 +11,8 @@ export function updateContextMeter(telemetry: TokenTelemetry | null | undefined)
   $.contextMeter.style.display = "";
 
   const percent = getTokenUsagePercent(telemetry);
-  const degrees = Math.round(percent * 3.6);
-  $.contextMeterRing.style.background = `conic-gradient(var(--accent) ${degrees}deg, transparent ${degrees}deg)`;
+  // 设置 CSS 变量让浏览器渲染环形（保留 radial-gradient 中心孔洞）
+  $.contextMeterRing.style.setProperty("--context-percent", `${percent}%`);
 
   // 更新 tooltip
   const tooltip = renderTooltip(telemetry, percent);
@@ -44,6 +44,17 @@ function renderTooltip(telemetry: TokenTelemetry, percent: number): string {
     parts.push(`<div>Prompt: ${formatTokenCount(usage.prompt_tokens || 0)}</div>`);
     parts.push(`<div>补全: ${formatTokenCount(usage.completion_tokens || 0)}</div>`);
     parts.push(`<div>总计: ${formatTokenCount(usage.total_tokens || 0)}</div>`);
+
+    const hit = usage.prompt_cache_hit_tokens;
+    const miss = usage.prompt_cache_miss_tokens;
+    if (hit !== undefined || miss !== undefined) {
+      const totalCache = (hit || 0) + (miss || 0);
+      const rate = totalCache > 0 ? (((hit || 0) / totalCache) * 100).toFixed(1) : "--";
+      parts.push(`<hr style="margin:4px 0;border:none;border-top:1px solid var(--border-color)">`);
+      parts.push(`<div>缓存命中: ${formatTokenCount(hit || 0)}</div>`);
+      parts.push(`<div>缓存未命中: ${formatTokenCount(miss || 0)}</div>`);
+      parts.push(`<div>命中率: ${rate}%</div>`);
+    }
   }
 
   return parts.join("");

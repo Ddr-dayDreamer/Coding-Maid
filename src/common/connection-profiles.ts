@@ -3,6 +3,22 @@ import * as path from "path";
 import * as os from "os";
 import { encrypt, decrypt, isEncrypted } from "./crypto-utils";
 
+// ─── 占位符常量 ─────────────────────────────────────────────────────────────
+
+/**
+ * 模板中 apiKey 的占位文本，会被自动识别并跳过（不加密、不写入）。
+ * 用户在此位置填入真实 key 后，启动时会自动加密并写入 apiKeyEncrypted。
+ */
+export const PLACEHOLDER_API_KEY = "place_your_api_key_here";
+
+/**
+ * 判断一个明文 apiKey 是否为真实的 key（非空、非占位符）
+ */
+export function isRealApiKey(key: string | undefined | null): boolean {
+  if (!key || key.trim() === "") return false;
+  return key.trim() !== PLACEHOLDER_API_KEY;
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type ReasoningEffort = "high" | "max";
@@ -184,9 +200,9 @@ export function saveProfile(profile: ConnectionProfile, cryptoKey: string): void
     params: profile.params,
   };
 
-  // 加密 API Key（如果提供了明文）
-  if (profile.apiKey) {
-    stored.apiKeyEncrypted = encrypt(profile.apiKey, cryptoKey);
+  // 加密 API Key（跳过空值和占位符）
+  if (isRealApiKey(profile.apiKey)) {
+    stored.apiKeyEncrypted = encrypt(profile.apiKey!, cryptoKey);
   }
 
   const filePath = profilePath(profile.name);
@@ -242,4 +258,92 @@ export function ensureDefaultProfile(cryptoKey: string): void {
 
   saveProfile(defaultProfile, cryptoKey);
   setActiveProfile("default");
+}
+
+/**
+ * 扫描所有连接预设，将明文 apiKey 自动加密为 apiKeyEncrypted。
+ * 支持用户在 JSON 中直接填写真实 key，启动时自动完成加密迁移。
+ */
+export function migratePlaintextApiKeys(cryptoKey: string): void {
+  const profiles = listProfiles();
+  for (const name of profiles) {
+    const filePath = profilePath(name);
+    try {
+      const raw = fs.readFileSync(filePath, "utf8");
+      const stored = JSON.parse(raw) as ConnectionProfileStored;
+
+      // 已有加密 key 或没有明文 key → 跳过
+      if (stored.apiKeyEncrypted || !stored.apiKey) continue;
+
+      // 占位符 → 清理明文，不留痕迹
+      if (!isRealApiKey(stored.apiKey)) {
+        delete stored.apiKey;
+        fs.writeFileSync(filePath, JSON.stringify(stored, null, 2), "utf8");
+        continue;
+      }
+
+      // 真实 key → 加密写入
+      stored.apiKeyEncrypted = encrypt(stored.apiKey, cryptoKey);
+      delete stored.apiKey;
+      fs.writeFileSync(filePath, JSON.stringify(stored, null, 2), "utf8");
+      console.log(`[Coding Maid] Auto-encrypted API key in profile "${name}"`);
+    } catch (err) {
+      console.error(`[Coding Maid] Failed to migrate profile "${name}":`, err);
+    }
+  }
+}
+
+/**
+ * 统一初始化：检测用户的 settings.json 和连接预设，缺失则从模板复制。
+ * 由 extension.ts 在启动时调用。
+ */
+export function ensureInitialConfig(templatesDir: string, cryptoKey: string): void {
+  ensureDirs();
+
+  // ── 1. settings.json ────────────────────────────────
+  if (!fs.existsSync(SETTINGS_FILE)) {
+    const templatePath = path.join(templatesDir, "buildin_settings.json");
+    try {
+      if (fs.existsSync(templatePath)) {
+        fs.copyFileSync(templatePath, SETTINGS_FILE);
+        console.log("[Coding Maid] Created default settings.json from template");
+      } else {
+        // 模板不存在则 fallback 最小配置
+        saveGlobalSettings({ activeProfile: "default" });
+      }
+    } catch (err) {
+      console.error("[Coding Maid] Failed to create settings.json:", err);
+    }
+  }
+
+  // ── 2. 连接预设 ─────────────────────────────────────
+  const existingProfiles = listProfiles();
+  if (existingProfiles.length === 0) {
+    const templatePath = path.join(templatesDir, "buildin_profile.json");
+    try {
+      if (fs.existsSync(templatePath)) {
+        const raw = fs.readFileSync(templatePath, "utf8");
+        const profile = JSON.parse(raw) as ConnectionProfile;
+        // 模板中的 apiKey 只是占位指引，不写入实际配置
+        delete profile.apiKey;
+        saveProfile(profile, cryptoKey);
+        setActiveProfile(profile.name);
+        console.log("[Coding Maid] Created default profile from template");
+      } else {
+        // 模板不存在则 fallback 硬编码默认值
+        const profile: ConnectionProfile = {
+          name: "default",
+          model: "deepseek-v4-pro",
+          baseURL: "https://api.deepseek.com",
+        };
+        saveProfile(profile, cryptoKey);
+        setActiveProfile("default");
+      }
+    } catch (err) {
+      console.error("[Coding Maid] Failed to create default profile:", err);
+    }
+  }
+
+  // ── 3. 明文 key 自动加密 ────────────────────────────
+  migratePlaintextApiKeys(cryptoKey);
 }
