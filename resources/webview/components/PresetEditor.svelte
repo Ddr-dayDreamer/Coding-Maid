@@ -100,7 +100,9 @@
   // ─── 保存 ──────────────────────────────────────────
 
   function handleSave() {
-    onsave(editName, editDef);
+    // deepClone 至关重要：editDef 是 $state proxy，
+    // 直接传入会被 vscode.postMessage 的 structured clone 拒绝
+    onsave(editName, deepClone(editDef));
   }
 </script>
 

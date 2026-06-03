@@ -4,6 +4,7 @@
   import ChatPage from "./components/ChatPage.svelte";
   import PresetPage from "./components/PresetPage.svelte";
   import ProfilePage from "./components/ProfilePage.svelte";
+  import ToastNotification from "./components/ToastNotification.svelte";
 </script>
 
 <div class="app">
@@ -16,6 +17,8 @@
   {:else if appState.currentTab === "profiles"}
     <ProfilePage />
   {/if}
+
+  <ToastNotification />
 </div>
 
 <style>

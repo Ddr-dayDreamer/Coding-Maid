@@ -3,9 +3,33 @@
   import { api } from "../lib/api";
   import ContextMeter from "./ContextMeter.svelte";
   import MessageBoard from "./MessageBoard.svelte";
+  import type { PresetMeta } from "../types";
 
   let promptText = $state("");
   let sessionDropdownOpen = $state(false);
+
+  // ─── 预设选择器状态 ──────────────────────────────
+
+  let presetDropdownOpen = $state(false);
+  let presets = $state<PresetMeta[]>([]);
+
+  async function togglePresetDropdown() {
+    if (!presetDropdownOpen && presets.length === 0) {
+      try {
+        presets = await api.request<PresetMeta[]>("listPresets");
+      } catch {
+        // 静默失败，下拉为空
+      }
+    }
+    presetDropdownOpen = !presetDropdownOpen;
+  }
+
+  function selectPreset(name: string) {
+    if (name === appState.activePreset) { presetDropdownOpen = false; return; }
+    presetDropdownOpen = false;
+    api.send("selectPreset", { name });
+    appState.activePreset = name;
+  }
 
   // ─── 回退时填入输入框 ───────────────────────────
 
@@ -125,9 +149,33 @@
       <div class="composer-footer">
         <div class="footer-left">
           <ContextMeter />
-          <button class="badge-btn" onclick={() => (appState.currentTab = "presets")}>
-            预设: {appState.activePreset}
-          </button>
+          <!-- 预设快捷选择器 -->
+          <div class="preset-selector">
+            <button class="badge-btn" onclick={togglePresetDropdown}>
+              预设: {appState.activePreset}
+              <svg class="preset-arrow" class:open={presetDropdownOpen} viewBox="0 0 1024 1024" width="10" height="10">
+                <path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"/>
+              </svg>
+            </button>
+            {#if presetDropdownOpen}
+              <div class="preset-dropdown">
+                {#each presets as preset (preset.name)}
+                  <button
+                    class="preset-item"
+                    class:active={preset.name === appState.activePreset}
+                    onclick={() => selectPreset(preset.name)}
+                  >
+                    <span class="preset-item-name">{preset.displayName}</span>
+                    {#if preset.name === appState.activePreset}
+                      <span class="preset-check">✓</span>
+                    {/if}
+                  </button>
+                {:else}
+                  <div class="preset-empty">暂无预设</div>
+                {/each}
+              </div>
+            {/if}
+          </div>
           <button class="badge-btn" onclick={() => (appState.currentTab = "profiles")}>
             配置: {appState.activeProfile}
           </button>
@@ -351,17 +399,93 @@
     font-size: 11px;
     padding: 2px 8px;
     border-radius: 4px;
-    background: var(--vscode-badge-background);
-    color: var(--vscode-badge-foreground);
+    background: transparent;
+    color: var(--vscode-foreground);
+    border: 1px solid var(--vscode-panel-border);
     cursor: pointer;
-    transition: opacity 0.15s;
-    border: none;
+    transition: border-color 0.15s, background 0.15s;
     font-family: inherit;
     line-height: 1.6;
+    display: flex;
+    align-items: center;
+    gap: 3px;
   }
 
   .badge-btn:hover {
-    opacity: 0.8;
+    border-color: var(--vscode-focusBorder);
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  /* ─── 预设快捷选择器 ─────────────────────────── */
+  .preset-selector {
+    position: relative;
+  }
+
+  .preset-arrow {
+    fill: currentColor;
+    transition: transform 0.15s;
+  }
+
+  .preset-arrow.open {
+    transform: rotate(180deg);
+  }
+
+  .preset-dropdown {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    z-index: 100;
+    min-width: 180px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+    padding: 4px 0;
+  }
+
+  .preset-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .preset-item:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .preset-item.active {
+    background: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+  }
+
+  .preset-item-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .preset-check {
+    flex-shrink: 0;
+    margin-left: 8px;
+    font-weight: 600;
+  }
+
+  .preset-empty {
+    padding: 12px;
+    text-align: center;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
   }
 
   .send-btn {
