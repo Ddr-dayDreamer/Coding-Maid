@@ -10,7 +10,7 @@
   "categories": [
     "Other"
   ],
-  "icon": "resources/deepcoding_icon.png",
+  "icon": "resources/coding_maid_icon.png",
   "activationEvents": [
     "onCommand:codingmaid.setApiKey"
   ],
@@ -29,11 +29,11 @@
   "contributes": {
     "commands": [
       {
-        "command": "deepcode.openView",
-        "title": "Open Deep Code Mod",
+        "command": "codingmaid.openView",
+        "title": "Open Coding Maid",
         "icon": {
-          "light": "resources/deepcoding_icon.svg",
-          "dark": "resources/deepcoding_icon.svg"
+          "light": "resources/coding_maid_icon.png",
+          "dark": "resources/coding_maid_icon.png"
         }
       },
       {
@@ -44,18 +44,18 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "deepcode",
-          "title": "Deep Code",
-          "icon": "resources/deepcoding_icon.png"
+          "id": "codingmaid",
+          "title": "Coding Maid",
+          "icon": "resources/coding_maid_icon.png"
         }
       ]
     },
     "views": {
-      "deepcode": [
+      "codingmaid": [
         {
-          "id": "deepcode.chatView",
-          "name": "Deep Code Mod",
-          "icon": "resources/deepcoding_icon.png",
+          "id": "codingmaid.chatView",
+          "name": "Coding Maid",
+          "icon": "resources/coding_maid_icon.png",
           "type": "webview"
         }
       ]
@@ -63,7 +63,7 @@
     "menus": {
       "editor/title": [
         {
-          "command": "deepcode.openView",
+          "command": "codingmaid.openView",
           "group": "navigation@100"
         }
       ]
@@ -97,7 +97,8 @@
   "scripts": {
     "typecheck": "tsc -p ./ --noEmit",
     "bundle": "esbuild ./src/extension.ts --bundle --platform=node --format=cjs --target=node18 --outfile=out/extension.js --external:vscode --sourcemap --footer:js=\"module.exports = { activate, deactivate };\" --log-override:empty-import-meta=silent",
-    "compile": "npm run typecheck && npm run bundle",
+    "bundle:webview": "esbuild ./resources/webview/main.ts --bundle --format=iife --target=es2020 --outfile=resources/webview/bundle.js --log-override:empty-import-meta=silent",
+    "compile": "npm run typecheck && npm run bundle && npm run bundle:webview",
     "test": "tsx --test src/tests/*.test.ts",
     "test:single": "tsx --test",
     "watch": "tsc -w -p ./ --noEmit",

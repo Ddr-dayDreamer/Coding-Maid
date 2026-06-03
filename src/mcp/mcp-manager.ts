@@ -1,8 +1,8 @@
 import { McpClient, type McpToolDefinition, type McpPromptDefinition, type McpResourceDefinition } from "./mcp-client";
 import type { McpServerConfig } from "../settings";
 
-const MCP_STARTUP_TIMEOUT_MS = process.env.DEEPCODE_MCP_TIMEOUT
-  ? parseInt(process.env.DEEPCODE_MCP_TIMEOUT, 10)
+const MCP_STARTUP_TIMEOUT_MS = process.env.CODINGMAID_MCP_TIMEOUT
+  ? parseInt(process.env.CODINGMAID_MCP_TIMEOUT, 10)
   : 30_000;
 const MCP_CALL_TOOL_TIMEOUT_MS = 60_000;
 

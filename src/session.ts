@@ -67,6 +67,7 @@ export class SessionManager {
   ) => void;
   private readonly onSessionEntryUpdated?: (entry: import("./session-types").SessionEntry) => void;
   private readonly onLlmStreamProgress?: (progress: import("./session-types").LlmStreamProgress) => void;
+  private readonly onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
   private readonly onMcpStatusChanged?: () => void;
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
   private readonly onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;
@@ -99,6 +100,7 @@ export class SessionManager {
     this.onAssistantMessage = options.onAssistantMessage;
     this.onSessionEntryUpdated = options.onSessionEntryUpdated;
     this.onLlmStreamProgress = options.onLlmStreamProgress;
+    this.onStreamChunk = options.onStreamChunk;
     this.onMcpStatusChanged = options.onMcpStatusChanged;
     this.onProcessStdout = options.onProcessStdout;
     this.onDebugPrompt = options.onDebugPrompt;
@@ -122,6 +124,7 @@ export class SessionManager {
     );
 
     this.llm.onProgress = (progress) => this.onLlmStreamProgress?.(progress);
+    this.llm.onChunk = (chunk) => this.onStreamChunk?.(chunk);
     this.llm.onDebugPrompt = (messages, iteration) => this.onDebugPrompt?.(messages, iteration);
     this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
   }

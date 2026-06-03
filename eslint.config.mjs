@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["node_modules/", "out/", "dist/", "*.vsix", ".vscode-test/"],
+    ignores: ["node_modules/", "out/", "dist/", "*.vsix", ".vscode-test/", "resources/webview/bundle.js"],
   },
 
   eslint.configs.recommended,
@@ -11,7 +11,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
 
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "resources/webview/**/*.ts"],
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "warn",

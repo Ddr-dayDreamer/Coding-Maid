@@ -2,8 +2,8 @@ import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
-const FILE_HISTORY_AUTHOR_NAME = "DeepCode Checkpoint";
-const FILE_HISTORY_AUTHOR_EMAIL = "deepcode-checkpoint@localhost";
+const FILE_HISTORY_AUTHOR_NAME = "Coding Maid Checkpoint";
+const FILE_HISTORY_AUTHOR_EMAIL = "codingmaid-checkpoint@localhost";
 
 export class GitFileHistory {
   constructor(

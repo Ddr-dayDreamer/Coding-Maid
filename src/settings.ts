@@ -18,14 +18,11 @@ import { defaultsToThinkingMode } from "./common/model-capabilities";
 
 export type { ReasoningEffort, McpServerConfig } from "./common/connection-profiles";
 
-/** @deprecated 使用 ConnectionProfile 替代 */
-export type DeepcodingSettings = Record<string, never>;
-
 /**
  * 解析后的设置。
  * 仍保留此类型兼容旧代码，但推荐直接使用 ConnectionProfile。
  */
-export type ResolvedDeepcodingSettings = {
+export type ResolvedCodingMaidSettings = {
   env: Record<string, string>;
   apiKey?: string;
   baseURL: string;
@@ -45,7 +42,7 @@ export type ResolvedDeepcodingSettings = {
 /**
  * 根据加密密钥解析当前激活的连接预设 + 全局设置
  */
-export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedDeepcodingSettings & { profileName: string } {
+export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedCodingMaidSettings & { profileName: string } {
   const globalSettings = loadGlobalSettings();
   const profile = getActiveProfile(cryptoKey);
 
@@ -77,11 +74,11 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedDeepcod
  * 现在简化实现：忽略旧参数，直接从连接预设读取。
  */
 export function resolveSettingsSources(
-  _userSettings: DeepcodingSettings | null | undefined,
-  _projectSettings: DeepcodingSettings | null | undefined,
+  _userSettings: CodingMaidSettings | null | undefined,
+  _projectSettings: CodingMaidSettings | null | undefined,
   defaults: { model: string; baseURL: string },
   _processEnv?: Record<string, string | undefined>
-): ResolvedDeepcodingSettings {
+): ResolvedCodingMaidSettings {
   // Fallback: 尝试从预设读取，如果没加密密钥则返回默认值
   try {
     const globalSettings = loadGlobalSettings();

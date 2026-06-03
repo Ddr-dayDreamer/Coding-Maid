@@ -93,7 +93,7 @@ export class SessionActivator {
       opts.onAssistantMessage(
         this.messageBuilder.buildAssistantMessage(
           sessionId,
-          "OpenAI API key not found. Please configure ~/.deepcode/settings.json or ./.deepcode/settings.json.",
+          "OpenAI API key not found. Please configure ~/.codingmaid/settings.json or ./.codingmaid/settings.json.",
           null
         ),
         false

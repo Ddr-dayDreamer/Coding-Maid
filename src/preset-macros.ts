@@ -192,9 +192,9 @@ ${JSON.stringify(env, null, 2)}
   /** 读取 AGENTS.md 指令 */
   private readAgentsMd(projectRoot: string): string {
     const candidates = [
-      path.join(projectRoot, ".deepcode", "AGENTS.md"),
+      path.join(projectRoot, ".codingmaid", "AGENTS.md"),
       path.join(projectRoot, "AGENTS.md"),
-      path.join(os.homedir(), ".deepcode", "AGENTS.md"),
+      path.join(os.homedir(), ".codingmaid", "AGENTS.md"),
     ];
 
     for (const candidatePath of candidates) {

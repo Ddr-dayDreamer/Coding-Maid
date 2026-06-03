@@ -10,7 +10,7 @@ import type { SessionEntry } from "./session-types";
 import type { SessionStorage } from "./session-storage";
 import type { CreateOpenAIClient } from "./tools/executor";
 
-const DEFAULT_NEW_PROMPT_API_URL = "https://deepcode.vegamo.cn/api/plugin/new";
+const DEFAULT_NEW_PROMPT_API_URL = "https://codingmaid.vegamo.cn/api/plugin/new";
 const NEW_PROMPT_REPORT_TIMEOUT_MS = 3000;
 
 export class SessionNotifier {

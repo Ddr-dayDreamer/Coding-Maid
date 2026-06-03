@@ -45,7 +45,7 @@ export class SessionStorage {
     sessionsIndexPath: string;
   } {
     const projectCode = this.getProjectCode(this.projectRoot);
-    const projectDir = path.join(os.homedir(), ".deepcode", "projects", projectCode);
+    const projectDir = path.join(os.homedir(), ".codingmaid", "projects", projectCode);
     const sessionsIndexPath = path.join(projectDir, "sessions-index.json");
     return { projectCode, projectDir, sessionsIndexPath };
   }

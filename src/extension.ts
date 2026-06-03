@@ -22,7 +22,7 @@ import {
   setActiveProfile,
   type ConnectionProfile,
   type ReasoningEffort,
-  type ResolvedDeepcodingSettings,
+  type ResolvedCodingMaidSettings,
 } from "./settings";
 import { setShellIfWindows } from "./common/shell-utils";
 import { generateEncryptionKey } from "./common/crypto-utils";
@@ -33,8 +33,8 @@ type ReasoningMessageParams = {
   reasoning_content?: string;
 };
 
-class DeepcodingViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "deepcode.chatView";
+class CodingMaidViewProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = "codingmaid.chatView";
 
   private readonly context: vscode.ExtensionContext;
   private webviewView: vscode.WebviewView | undefined;
@@ -49,7 +49,7 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
       linkify: false,
       breaks: true,
     });
-    this.debugOutputChannel = vscode.window.createOutputChannel("Deep Code Mod Debug", "log");
+    this.debugOutputChannel = vscode.window.createOutputChannel("Coding Maid Debug", "log");
     this.sessionManager = new SessionManager({
       projectRoot: this.getWorkspaceRoot(),
       createOpenAIClient: () => this.createOpenAIClient(),
@@ -89,11 +89,22 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
           progress,
         });
       },
+      onStreamChunk: (chunk) => {
+        if (!this.webviewView) {
+          return;
+        }
+        this.webviewView.webview.postMessage({
+          type: "streamChunk",
+          sessionId: chunk.sessionId,
+          content: chunk.content,
+          reasoningContent: chunk.reasoningContent,
+        });
+      },
       onDebugPrompt: (messages: ChatCompletionMessageParam[], iteration: number) => {
         this.debugOutputChannel.clear();
         this.debugOutputChannel.appendLine("=".repeat(80));
         this.debugOutputChannel.appendLine(
-          `[Deep Code Mod Debug] Iteration: ${iteration === -1 ? "COMPACT" : iteration}`
+          `[Coding Maid Debug] Iteration: ${iteration === -1 ? "COMPACT" : iteration}`
         );
         this.debugOutputChannel.appendLine("=".repeat(80));
         for (const msg of messages) {
@@ -436,7 +447,7 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private resolveCurrentSettings(): ResolvedDeepcodingSettings {
+  private resolveCurrentSettings(): ResolvedCodingMaidSettings {
     const cryptoKey = this.getCryptoKey();
     return resolveSettingsWithCryptoKey(cryptoKey);
   }
@@ -509,25 +520,23 @@ class DeepcodingViewProvider implements vscode.WebviewViewProvider {
     const nonce = getNonce();
     const csp = webview.cspSource;
 
-    // 读取 HTML 模板文件
     const htmlPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "webview.html");
     let html = fs.readFileSync(htmlPath.fsPath, "utf8");
 
-    // 获取 CSS 文件 URI
     const cssPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "webview.css");
     const cssUri = webview.asWebviewUri(cssPath);
     const attachmentsJsPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "prompt-attachments.js");
     const attachmentsJsUri = webview.asWebviewUri(attachmentsJsPath);
-
-    // 获取 Logo 文件 URI
-    const iconPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "deepcoding_icon.png");
+    const iconPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "coding_maid_icon.png");
     const iconUri = webview.asWebviewUri(iconPath);
+    const bundleJsPath = vscode.Uri.joinPath(this.context.extensionUri, "resources", "webview", "bundle.js");
+    const bundleJsUri = webview.asWebviewUri(bundleJsPath);
 
-    // 替换占位符
     html = html.replace(/\{\{nonce\}\}/g, nonce);
     html = html.replace(/\{\{cspSource\}\}/g, csp);
     html = html.replace(/\{\{cssUri\}\}/g, cssUri.toString());
     html = html.replace(/\{\{attachmentsJsUri\}\}/g, attachmentsJsUri.toString());
+    html = html.replace(/\{\{bundleJsUri\}\}/g, bundleJsUri.toString());
     html = html.replace(/\{\{iconUri\}\}/g, iconUri.toString());
     html = html.replace(/\{\{workspaceRoot\}\}/g, JSON.stringify(this.getWorkspaceRoot()));
 
@@ -559,21 +568,21 @@ export function activate(context: vscode.ExtensionContext): void {
     void vscode.window.showErrorMessage(message);
   }
 
-  const provider = new DeepcodingViewProvider(context);
+  const provider = new CodingMaidViewProvider(context);
   context.subscriptions.push(provider);
-  context.subscriptions.push(vscode.window.registerWebviewViewProvider(DeepcodingViewProvider.viewType, provider));
+  context.subscriptions.push(vscode.window.registerWebviewViewProvider(CodingMaidViewProvider.viewType, provider));
   context.subscriptions.push(
-    vscode.commands.registerCommand("deepcode.openView", async () => {
-      await vscode.commands.executeCommand("workbench.view.extension.deepcode");
-      await vscode.commands.executeCommand("deepcode.chatView.focus");
+    vscode.commands.registerCommand("codingmaid.openView", async () => {
+      await vscode.commands.executeCommand("workbench.view.extension.codingmaid");
+      await vscode.commands.executeCommand("codingmaid.chatView.focus");
     })
   );
 
   // 设置 API Key 命令
   context.subscriptions.push(
     vscode.commands.registerCommand("codingmaid.setApiKey", async () => {
-      const provider = context.subscriptions.find((s) => s instanceof DeepcodingViewProvider) as
-        | DeepcodingViewProvider
+      const provider = context.subscriptions.find((s) => s instanceof CodingMaidViewProvider) as
+        | CodingMaidViewProvider
         | undefined;
       if (!provider) {
         return;

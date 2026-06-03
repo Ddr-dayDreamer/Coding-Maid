@@ -72,8 +72,20 @@ deepcode/
 │       ├── ask-user-question-handler.ts
 │       └── state.ts                 # Read/snippet tracking for tool safety
 ├── resources/
-│   ├── webview.html                 # [TODO: 需拆分] ~1500行，单文件过大
+│   ├── webview.html                 # ~70 行 HTML 骨架
 │   ├── webview.css                  # Webview styles
+│   ├── webview/                     # TypeScript 模块源码（esbuild → bundle.js）
+│   │   ├── main.ts                  # 入口，消息路由
+│   │   ├── types.ts                 # 前后端共享消息类型
+│   │   ├── state.ts                 # DOM 缓存 + 全局状态
+│   │   ├── bundle.js                # 编译产物
+│   │   ├── components/
+│   │   │   ├── chat-view.ts         # 消息气泡渲染
+│   │   │   ├── composer.ts          # 输入框 + 发送/中断
+│   │   │   ├── context-meter.ts     # Token 用量环
+│   │   │   └── session-list.ts      # 会话下拉框
+│   │   └── utils/
+│   │       └── formatting.ts        # 日期/路径格式化
 │   └── deepcoding_icon.png
 ├── docs/
 │   └── guide.md
@@ -169,13 +181,28 @@ Responsible for:
 
 ### Webview Frontend
 
-**Location**: `resources/webview.html`
+**Location**: `resources/webview/`（TypeScript 模块，esbuild 打包为 `bundle.js`）
 
 Responsible for:
 
 - Rendering chat bubbles for user, assistant, system, and tool messages
 - Managing session selection, prompt history, and loading state
-- Rendering skill selection UI and AskUserQuestion forms
+- Rendering AskUserQuestion forms
+
+**模块结构**：
+
+| 模块             | 文件                                            | 职责                                  |
+| ---------------- | ----------------------------------------------- | ------------------------------------- |
+| main.ts          | `resources/webview/main.ts`                     | 入口，消息路由，初始化                |
+| types.ts         | `resources/webview/types.ts`                    | 前后端共享消息协议类型                |
+| state.ts         | `resources/webview/state.ts`                    | DOM 缓存 + 全局状态变量               |
+| chat-view.ts     | `resources/webview/components/chat-view.ts`     | 消息气泡渲染，折叠/展开，连接线       |
+| composer.ts      | `resources/webview/components/composer.ts`      | 输入框，发送/中断，自动调整，历史导航 |
+| context-meter.ts | `resources/webview/components/context-meter.ts` | Token 用量环可视化                    |
+| session-list.ts  | `resources/webview/components/session-list.ts`  | 会话下拉框，搜索，日期分组            |
+| formatting.ts    | `resources/webview/utils/formatting.ts`         | 日期/路径格式化工具                   |
+
+HTML 模板 `resources/webview.html` 仅 67 行骨架，不含任何 JavaScript 逻辑。
 
 ---
 
@@ -375,12 +402,12 @@ From `package.json`:
 
 ### ⚠️ 已知缺失功能
 
-| 功能                 | 说明                                                                                                                                                                                          | 状态      |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| **删除会话**         | 后端无 `deleteSession` 方法，前端无删除按钮。需新增 `deleteSession` 消息类型 + UI 确认对话框                                                                                                  | ❌ 待实现 |
-| **Webview 拆分**     | `resources/webview.html` ~1500 行单文件，修改风险高。需拆分为 `webview/` 目录：`app.js`（主逻辑）、`session-list.js`（会话列表）、`chat-view.js`（聊天视图）、`skill-picker.js`（技能选择）等 | ❌ 待实现 |
-| **会话重命名**       | 会话自动取前 100 字符做标题，无手动重命名                                                                                                                                                     | ❌ 待实现 |
-| **Webview 类型定义** | 前后端消息类型无共享定义，`webview.html` 中硬编码字符串，易出错                                                                                                                               | ❌ 待实现 |
+| 功能                 | 说明                                                                                                  | 状态      |
+| -------------------- | ----------------------------------------------------------------------------------------------------- | --------- |
+| **删除会话**         | 后端无 `deleteSession` 方法，前端无删除按钮。需新增 `deleteSession` 消息类型 + UI 确认对话框          | ❌ 待实现 |
+| **Webview 拆分**     | `resources/webview.html` ~1500 行→67 行骨架，逻辑拆至 `resources/webview/` 7 个 TS 模块，esbuild 打包 | ✅ 已完成 |
+| **会话重命名**       | 会话自动取前 100 字符做标题，无手动重命名                                                             | ❌ 待实现 |
+| **Webview 类型定义** | `resources/webview/types.ts` 前后端消息协议共享类型定义                                               | ✅ 已完成 |
 
 ---
 

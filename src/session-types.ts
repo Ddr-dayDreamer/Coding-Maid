@@ -130,6 +130,7 @@ export type SessionManagerOptions = {
   onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
   onSessionEntryUpdated?: (entry: SessionEntry) => void;
   onLlmStreamProgress?: (progress: LlmStreamProgress) => void;
+  onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
   onMcpStatusChanged?: () => void;
   onProcessStdout?: (pid: number, chunk: string) => void;
   onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;

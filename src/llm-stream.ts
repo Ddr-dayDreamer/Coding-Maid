@@ -113,9 +113,19 @@ export type StreamResult = {
 
 // ─── LlmStreamManager ────────────────────────────────────
 
+export type StreamChunk = {
+  /** 本次回复的 sessionId */
+  sessionId?: string;
+  /** 增量文本内容 */
+  content?: string;
+  /** 增量推理内容 */
+  reasoningContent?: string;
+};
+
 export class LlmStreamManager {
   private readonly createClient: CreateOpenAIClient;
   public onProgress?: (progress: LlmStreamProgress) => void;
+  public onChunk?: (chunk: StreamChunk) => void;
   public onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;
 
   constructor(createClient: CreateOpenAIClient) {
@@ -306,6 +316,14 @@ export class LlmStreamManager {
           if (typeof delta.refusal === "string") {
             refusal = `${refusal ?? ""}${delta.refusal}`;
             trackText(delta.refusal);
+          }
+
+          // 向前端推送流式增量
+          if (typeof contentDelta === "string" && contentDelta.length > 0) {
+            this.onChunk?.({ sessionId, content: contentDelta });
+          }
+          if (typeof reasoningDelta === "string" && reasoningDelta.length > 0) {
+            this.onChunk?.({ sessionId, reasoningContent: reasoningDelta });
           }
 
           const rawToolCalls = delta.tool_calls;

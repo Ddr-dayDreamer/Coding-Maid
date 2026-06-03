@@ -276,8 +276,8 @@ export class SessionMessageBuilder {
   loadProjectAgentInstructions(): { content: string; displayPath: string } | null {
     const candidatePaths = [
       {
-        absolutePath: path.join(this.projectRoot, ".deepcode", "AGENTS.md"),
-        displayPath: "./.deepcode/AGENTS.md",
+        absolutePath: path.join(this.projectRoot, ".codingmaid", "AGENTS.md"),
+        displayPath: "./.codingmaid/AGENTS.md",
       },
       {
         absolutePath: path.join(this.projectRoot, "AGENTS.md"),
@@ -304,7 +304,7 @@ export class SessionMessageBuilder {
       return projectInstructions.content;
     }
 
-    return this.readNonEmptyFile(path.join(os.homedir(), ".deepcode", "AGENTS.md"));
+    return this.readNonEmptyFile(path.join(os.homedir(), ".codingmaid", "AGENTS.md"));
   }
 
   private readNonEmptyFile(filePath: string): string | null {
