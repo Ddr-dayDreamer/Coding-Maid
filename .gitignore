@@ -5,3 +5,4 @@ out/
 .idea
 deploy.ps1
 rfc
+resources/webview/bundle.js

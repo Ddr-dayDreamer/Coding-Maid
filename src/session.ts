@@ -242,6 +242,10 @@ export class SessionManager {
     const { kept, dropped } = this.storage.trimSessionsIndex(index);
     this.storage.saveSessionsIndex(kept);
     this.storage.removeSessionMessages(dropped);
+    // 清理被丢弃会话的 file-history git 分支
+    for (const droppedId of dropped) {
+      this.fileHistory.deleteSession(droppedId);
+    }
 
     this.activeSessionId = sessionId;
     return sessionId;
@@ -285,6 +289,8 @@ export class SessionManager {
     // 增量保存：只追加用户消息，预设由 SessionActivator 运行时注入
     const newUserMsg = this.messageBuilder.buildUserMessage(sessionId, userPrompt);
     this.storage.appendSessionMessage(sessionId, newUserMsg);
+    // 将真实消息（含 checkpointHash）发回前端，替换本地创建的假气泡
+    this.onAssistantMessage(newUserMsg, false);
     console.log("[DEBUG] sendMessage: user msg appended, calling runActivate");
 
     this.activeSessionId = sessionId;
@@ -528,6 +534,24 @@ export class SessionManager {
     }
     for (const m of followUpMessages) this.storage.appendSessionMessage(sessionId, m);
     return { waitingForUser };
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  删除会话
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * 删除指定会话：从索引移除 + 删除消息文件
+   * @returns 删除后的剩余会话列表
+   */
+  deleteSession(sessionId: string): import("./session-types").SessionEntry[] {
+    this.storage.deleteSession(sessionId);
+    this.fileHistory.deleteSession(sessionId);
+    // 如果删除的是当前活跃会话，清空
+    if (this.activeSessionId === sessionId) {
+      this.activeSessionId = null;
+    }
+    return this.listSessions();
   }
 
   // ═══════════════════════════════════════════════════════

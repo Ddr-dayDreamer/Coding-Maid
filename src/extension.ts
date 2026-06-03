@@ -137,11 +137,13 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
 
+    // 直接初始化（不依赖 webview 的 ready 消息，因视图复用时 ready 可能不会重新发送）
+    this.loadInitialSession().catch((error) => {
+      void vscode.window.showErrorMessage(`初始化失败：${error}`);
+    });
+
     webviewView.webview.onDidReceiveMessage(async (message) => {
-      if (message?.type === "ready") {
-        // webview 已准备好，发送初始数据
-        this.loadInitialSession();
-      } else if (message?.type === "userPrompt") {
+      if (message?.type === "userPrompt") {
         const prompt = String(message.prompt || "").trim();
         const images = Array.isArray(message.images)
           ? message.images.filter((image: unknown): image is string => typeof image === "string" && image.length > 0)
@@ -167,6 +169,17 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         const line = Number(message.line || 1);
         if (filePath) {
           await this.openFileInEditor(filePath, line);
+        }
+      } else if (message?.type === "deleteSession") {
+        const sessionId = String(message.sessionId || "").trim();
+        if (sessionId) {
+          await this.handleDeleteSession(sessionId);
+        }
+      } else if (message?.type === "restoreSession") {
+        const sessionId = String(message.sessionId || "").trim();
+        const messageId = String(message.messageId || "").trim();
+        if (sessionId && messageId) {
+          await this.handleRestoreSession(sessionId, messageId);
         }
       }
     });
@@ -231,6 +244,8 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       messages: messages
         .filter((m) => m.visible)
         .map((m) => ({
+          id: m.id,
+          sessionId: m.sessionId,
           role: m.role,
           content: m.content,
           html:
@@ -238,6 +253,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
               ? this.md.render(m.content || (m.messageParams as ReasoningMessageParams | null)?.reasoning_content || "")
               : undefined,
           meta: m.meta,
+          checkpointHash: m.checkpointHash,
         })),
     });
   }
@@ -254,6 +270,50 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         status: s.status,
       })),
     });
+  }
+
+  private async handleDeleteSession(sessionId: string): Promise<void> {
+    // 前端已做内联确认，此处直接执行删除
+    this.sessionManager.deleteSession(sessionId);
+
+    // 通知前端更新会话列表
+    const sessions = this.sessionManager.listSessions();
+    const sessionsList = sessions.map((s) => ({
+      id: s.id,
+      summary: s.summary || "Untitled",
+      createTime: s.createTime,
+      updateTime: s.updateTime,
+      status: s.status,
+    }));
+    this.sendMessage({ type: "showSessionsList", sessions: sessionsList });
+
+    // 回到空对话界面
+    this.sendMessage({
+      type: "initializeEmpty",
+      sessions: sessionsList,
+      status: null,
+      tokenTelemetry: this.buildTokenTelemetry(null),
+    });
+  }
+
+  private async handleRestoreSession(sessionId: string, messageId: string): Promise<void> {
+    // 先恢复文件（需要在截断对话之前找到消息的 checkpointHash）
+    try {
+      this.sessionManager.restoreSessionCode(sessionId, messageId);
+    } catch {
+      // 文件恢复失败不阻塞，仅回退对话
+    }
+
+    // 再截断对话消息
+    try {
+      this.sessionManager.restoreSessionConversation(sessionId, messageId);
+    } catch {
+      void vscode.window.showErrorMessage("回退失败：找不到目标消息");
+      return;
+    }
+
+    // 重新加载会话
+    this.loadSession(sessionId);
   }
 
   private async createNewSession(): Promise<void> {

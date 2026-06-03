@@ -212,16 +212,17 @@ The extension uses VS Code's Webview API for bidirectional communication between
 
 ### Frontend -> Backend Message Types
 
-| Type                | Payload                                    | Description                                          |
-| ------------------- | ------------------------------------------ | ---------------------------------------------------- |
-| `ready`             | `{}`                                       | Webview signals it is ready to receive initial state |
-| `requestSkills`     | `{}`                                       | Request the currently available skill list           |
-| `userPrompt`        | `{ prompt: string, skills?: SkillInfo[] }` | Submit a prompt with optional selected skills        |
-| `interrupt`         | `{}`                                       | Interrupt the active session                         |
-| `createNewSession`  | `{}`                                       | Start a new session                                  |
-| `selectSession`     | `{ sessionId: string }`                    | Load a specific session                              |
-| `backToList`        | `{}`                                       | Return to the session list view                      |
-| ~~`deleteSession`~~ | ~~`{ sessionId: string }`~~                | **❌ 尚未实现** — 删除指定会话                       |
+| Type               | Payload                                    | Description                                          |
+| ------------------ | ------------------------------------------ | ---------------------------------------------------- |
+| `ready`            | `{}`                                       | Webview signals it is ready to receive initial state |
+| `requestSkills`    | `{}`                                       | Request the currently available skill list           |
+| `userPrompt`       | `{ prompt: string, skills?: SkillInfo[] }` | Submit a prompt with optional selected skills        |
+| `interrupt`        | `{}`                                       | Interrupt the active session                         |
+| `createNewSession` | `{}`                                       | Start a new session                                  |
+| `selectSession`    | `{ sessionId: string }`                    | Load a specific session                              |
+| `backToList`       | `{}`                                       | Return to the session list view                      |
+| `deleteSession`    | `{ sessionId: string }`                    | 删除指定会话（前端内联确认后发送）                   |
+| `restoreSession`   | `{ sessionId: string, messageId: string }` | 回退到指定消息节点（截断对话 + 恢复文件）            |
 
 ### Backend -> Frontend Message Types
 
@@ -239,8 +240,12 @@ The extension uses VS Code's Webview API for bidirectional communication between
 
 ### Communication Flow Overview
 
-1. Webview sends `ready`
-2. Backend replies with the latest session or an empty state
+> **初始化不依赖 `ready` 消息**：`resolveWebviewView` 中设置完 `webview.html` 后
+> 立即调用 `loadInitialSession()`。`ready` 仍由前端发送，但后端忽略它。
+> 原因：VS Code 视图复用时 `ready` 可能不会重新发送，导致初始化永不触发。
+
+1. `resolveWebviewView` → 设置 HTML → **立即调用 `loadInitialSession()`**
+2. 后端读取 `sessions-index.json`，发送 `loadSession` 或 `initializeEmpty`
 3. Webview requests skills with `requestSkills`
 4. User submits a prompt through `userPrompt`
 5. Backend posts `userMessage`, sets `loading`, and hands off to `SessionManager`
@@ -774,3 +779,49 @@ Deep Code is a VS Code AI assistant extension with:
 | `~/.agents/skills/`         | `~/.codingmaid/skills/`       | 统一 skill 路径    |
 | `./.agents/skills/`         | （移除）                      | 只保留用户级路径   |
 | `./.deepcode/skills/`       | （移除）                      | 兼容路径，不再支持 |
+
+---
+
+## 调试指南
+
+### 调试日志系统
+
+日志写入 `~/.codingmaid/logs/debug.log`（JSONL 格式），通过 `codingmaid.debugLogEnabled` 设置控制：
+
+```typescript
+import { logDebug } from "./common/debug-logger";
+
+// 写入一行到 debug.log
+logDebug("函数名", "描述信息", { sessionId, 变量名: value });
+```
+
+开启方式（`settings.json` 或 VS Code 设置面板）：
+
+```json
+{
+  "codingmaid.debugLogEnabled": true
+}
+```
+
+日志路径：`~/.codingmaid/logs/debug.log`（每行一个 JSON 对象）。
+
+### API 错误日志
+
+自动记录到 `~/.codingmaid/logs/error.log`，保留最近 20 条。无需手动开启。
+
+### 调试原则
+
+1. **先确认代码路径是否执行**：在怀疑没跑到的函数第一行加 `vscode.window.showInformationMessage()`，这个一定会显示
+2. **再逐层深入**：路径确认后，用 `logDebug` 记录变量值
+3. **修完清理**：临时的 `showInformationMessage` 和 `console.log` 用完即删
+
+### 历史坑
+
+| 问题                 | 根因                                                                       | 解决                                                              |
+| -------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `ready` 消息收不到   | VS Code 视图复用时不重发 `ready`                                           | `resolveWebviewView` 中直接初始化，不依赖 `ready`                 |
+| 初始化后会话列表为空 | `handleLoadSession` 用 `state.allSessions`（永远 `[]`）而非 `msg.sessions` | 改为 `updateSessionDropdown(msg.sessions)`                        |
+| 回退按钮点击无效     | `sessionId` 未映射到前端 → `data-session-id="undefined"`                   | `loadSession` 消息映射加 `sessionId: m.sessionId`                 |
+| 回退按钮不显示       | 前端本地创建的用户消息无 `checkpointHash`                                  | `sendMessage` 中调用 `onAssistantMessage` 把真实消息发回前端      |
+| 回退按钮不显示（2）  | `handleAppendMessage` 条件 `message.checkpointHash && ...` 太严格          | 去掉 `checkpointHash` 判断，按钮直接加                            |
+| 回退执行失败         | `restoreSessionConversation` 先截断消息，`restoreSessionCode` 找不到目标   | 交换顺序：先 `restoreSessionCode` 再 `restoreSessionConversation` |

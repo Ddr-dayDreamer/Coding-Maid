@@ -39,6 +39,19 @@ function init(): void {
   // 监听后端消息
   window.addEventListener("message", handleMessage);
 
+  // 事件代理：回退按钮点击（避免闭包问题）
+  $.messages.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const btn = target.closest(".bubble-undo-btn") as HTMLElement | null;
+    if (!btn) return;
+
+    const sessionId = btn.dataset.sessionId;
+    const messageId = btn.dataset.messageId;
+    if (sessionId && messageId) {
+      vscode.postMessage({ type: "restoreSession", sessionId, messageId });
+    }
+  });
+
   // 报告就绪
   vscode.postMessage({ type: "ready" });
 }
@@ -119,7 +132,7 @@ function handleLoadSession(msg: BackendMessage & { type: "loadSession" }): void 
   state.currentRunningProcesses = normalizeProcesses(msg.processes);
 
   updateSessionTitle(msg.summary || "Chat");
-  updateSessionDropdown(state.allSessions);
+  updateSessionDropdown(msg.sessions);
   updateContextMeter(state.currentTokenTelemetry);
   hideEmptyNewChat();
 
@@ -193,6 +206,38 @@ function handleAppendMessage(msg: BackendMessage & { type: "appendMessage" }): v
   clearStreamState();
 
   const message = msg.message;
+
+  // 用户消息：后端返回了真实数据（含 checkpointHash），更新前端已有气泡
+  if (message.role === "user") {
+    // 找到最后一个用户气泡，更新其 dataset（使用后端真实 id 和 checkpointHash）
+    const bubbles = $.messages.querySelectorAll(".bubble-user");
+    const lastUserBubble = bubbles[bubbles.length - 1] as HTMLElement | undefined;
+    if (lastUserBubble) {
+      lastUserBubble.dataset.messageId = message.id;
+      // 补上回退按钮（只要还没有就加，按钮点击由后端验证 checkpointHash）
+      if (!lastUserBubble.querySelector(".bubble-undo-btn")) {
+        const body = lastUserBubble.querySelector(".bubble-body");
+        if (body) {
+          const undoBtn = document.createElement("button");
+          undoBtn.className = "bubble-undo-btn";
+          undoBtn.dataset.sessionId = message.sessionId;
+          undoBtn.dataset.messageId = message.id;
+          undoBtn.textContent = "↩ 回退到此";
+          undoBtn.title = "回退到此消息，撤消后续的对话和文件变更";
+          undoBtn.addEventListener("click", function (this: HTMLElement) {
+            vscode.postMessage({
+              type: "restoreSession",
+              sessionId: this.dataset.sessionId || "",
+              messageId: this.dataset.messageId || "",
+            });
+          });
+          body.appendChild(undoBtn);
+        }
+      }
+    }
+    return;
+  }
+
   renderMessage(message, msg.shouldConnect);
 
   // 如果是 tool message 且是 AskUserQuestion → 渲染表单

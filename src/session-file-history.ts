@@ -97,6 +97,16 @@ export class SessionFileHistory {
     return message.role === "user" && message.visible && !message.compacted;
   }
 
+  // ─── 删除会话（清理 git 分支） ────────────────────────
+
+  /**
+   * 删除会话对应的 file-history git 分支。
+   * 在会话索引条目和消息文件删除后调用，避免 git 数据残留。
+   */
+  deleteSession(sessionId: string): void {
+    this.getFileHistory().deleteSessionBranch(sessionId);
+  }
+
   // ─── Undo 功能 ─────────────────────────────────────────
 
   listUndoTargets(sessionId: string): UndoTarget[] {

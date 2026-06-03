@@ -72,6 +72,34 @@
   margin-top: 4px;
 }
 
+/* ─── 回退按钮 ──────────────────────────────────────── */
+
+.bubble-undo-btn {
+  display: none;
+  margin-top: 8px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: var(--vscode-font-family);
+  color: var(--vscode-textLink-foreground);
+  background: transparent;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  user-select: none;
+}
+
+.bubble-user:hover .bubble-undo-btn {
+  display: inline-block;
+}
+
+.bubble-undo-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  border-color: var(--vscode-textLink-foreground);
+}
+
 .bubble-system {
   background: transparent;
   border-color: transparent;

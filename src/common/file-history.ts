@@ -128,6 +128,22 @@ export class GitFileHistory {
     this.runGit(["update-ref", branchRef, checkpointHash], { includeWorkTree: false });
   }
 
+  /**
+   * 删除会话对应的 git 分支，清理 checkpoint 数据。
+   * 静默处理 — 仓库不存在或分支不存在时不报错。
+   */
+  deleteSessionBranch(sessionId: string): void {
+    const branchRef = this.getSessionBranchRef(sessionId);
+    if (!branchRef || !fs.existsSync(this.gitDir)) {
+      return;
+    }
+    try {
+      this.runGit(["update-ref", "-d", branchRef], { includeWorkTree: false });
+    } catch {
+      // 分支不存在或删除失败时静默忽略
+    }
+  }
+
   private getSessionBranchRef(sessionId: string): string | null {
     if (!/^[A-Za-z0-9._-]+$/.test(sessionId)) {
       return null;

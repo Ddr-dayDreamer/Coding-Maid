@@ -3,6 +3,10 @@
   "displayName": "Coding Maid",
   "description": "你专属的编程女仆，提供**完全提示词控制**的agent工具",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ddr-dayDreamer/Coding-Maid.git"
+  },
   "publisher": "ddr",
   "engines": {
     "vscode": "^1.85.0"
@@ -12,7 +16,7 @@
   ],
   "icon": "resources/coding_maid_icon.png",
   "activationEvents": [
-    "onCommand:codingmaid.setApiKey"
+    "onView:codingmaid.chatView"
   ],
   "main": "./out/extension.js",
   "files": [
@@ -22,8 +26,6 @@
     "templates/prompts/**",
     "templates/skills/**",
     "README.md",
-    "README_cn.md",
-    "README_en.md",
     "LICENSE"
   ],
   "contributes": {
@@ -82,7 +84,7 @@
     "check": "npm run format:check && npm run lint:strict && npm run typecheck",
     "fix": "npm run format && npm run lint:fix",
     "prepare": "husky",
-    "build": "pnpm run compile && pnpm vsce package --no-dependencies --baseContentUrl . --baseImagesUrl ."
+    "build": "node scripts/build.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

@@ -37,7 +37,9 @@ export type FrontendMessage =
   | { type: "createNewSession" }
   | { type: "selectSession"; sessionId: string }
   | { type: "backToList" }
-  | { type: "openFile"; filePath: string; line: number };
+  | { type: "openFile"; filePath: string; line: number }
+  | { type: "deleteSession"; sessionId: string }
+  | { type: "restoreSession"; sessionId: string; messageId: string };
 
 // ─── 数据类型 ────────────────────────────────────────────
 
@@ -62,6 +64,8 @@ export interface SessionMessageData {
   visible?: boolean;
   createTime?: string;
   updateTime?: string;
+  /** 文件历史 checkpoint hash，有此值表示可回退 */
+  checkpointHash?: string;
   meta?: {
     asThinking?: boolean;
     skill?: string;

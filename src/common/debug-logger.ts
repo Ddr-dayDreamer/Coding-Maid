@@ -33,6 +33,44 @@ export function logOpenAIChatCompletionDebug(entry: OpenAIChatCompletionDebugEnt
   }
 }
 
+/**
+ * 通用调试日志条目
+ */
+export type DebugLogEntry = {
+  timestamp: string;
+  location: string;
+  sessionId?: string;
+  message: string;
+  data?: unknown;
+};
+
+/**
+ * 通用调试日志（受 codingmaid.debugLogEnabled 控制）
+ *
+ * 用法：
+ * ```ts
+ * import { logDebug } from "./common/debug-logger";
+ * logDebug("handleRestoreSession", "消息已找到", { sessionId, messageId });
+ * ```
+ *
+ * 输出的 JSONL 在 ~/.codingmaid/logs/debug.log，每行一条。
+ */
+export function logDebug(location: string, message: string, data?: Record<string, unknown>): void {
+  const entry: DebugLogEntry = {
+    timestamp: new Date().toISOString(),
+    location,
+    sessionId: data?.sessionId as string | undefined,
+    message,
+    data,
+  };
+  logOpenAIChatCompletionDebug({
+    timestamp: entry.timestamp,
+    location: entry.location,
+    sessionId: entry.sessionId,
+    request: { message: entry.message, ...(entry.data ?? {}) },
+  });
+}
+
 export function getDebugLogPath(): string {
   return path.join(os.homedir(), ".codingmaid", "logs", DEBUG_LOG_FILE);
 }

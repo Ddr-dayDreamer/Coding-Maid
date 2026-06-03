@@ -196,6 +196,18 @@ export class SessionStorage {
     }
   }
 
+  /**
+   * 删除单个会话：从索引中移除条目 + 删除消息文件
+   */
+  deleteSession(sessionId: string): void {
+    // 1. 从索引中移除
+    const index = this.loadSessionsIndex();
+    index.entries = index.entries.filter((entry) => entry.id !== sessionId);
+    this.saveSessionsIndex(index);
+    // 2. 删除消息文件
+    this.removeSessionMessages([sessionId]);
+  }
+
   // ─── 序列化/反序列化 ───────────────────────────────────
 
   private normalizeSessionEntry(entry: unknown): SessionEntry {

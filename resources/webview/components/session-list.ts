@@ -104,7 +104,14 @@ function renderFilteredSessions(sessions: SessionSummary[], query: string): stri
         : escaped(s.summary);
       html += `<div class="session-item ${isActive ? "active" : ""}" data-session-id="${s.id}">
         <div class="session-item-summary">${highlighted || "空对话"}</div>
-        <div class="session-item-time">${formatSessionTime(s.createTime)}</div>
+        <div class="session-item-right">
+          <span class="session-item-time">${formatSessionTime(s.createTime)}</span>
+          <button class="session-item-delete" title="删除会话" data-session-id="${s.id}">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M6.5 1.5h3a.5.5 0 0 1 .5.5v1H6V2a.5.5 0 0 1 .5-.5zM5 2v1H2.5a.5.5 0 0 0 0 1h.55l.66 8.25a1.5 1.5 0 0 0 1.5 1.35h5.58a1.5 1.5 0 0 0 1.5-1.35l.66-8.25h.55a.5.5 0 0 0 0-1H11V2a1.5 1.5 0 0 0-1.5-1.5h-3A1.5 1.5 0 0 0 5 2zm.72 10.5a.5.5 0 0 1-.5-.44L4.62 5h6.76l-.6 7.06a.5.5 0 0 1-.5.44H5.72z"/>
+            </svg>
+          </button>
+        </div>
       </div>`;
     }
   }
@@ -115,6 +122,10 @@ function renderFilteredSessions(sessions: SessionSummary[], query: string): stri
 function bindSessionClickHandlers(): void {
   $.sessionDropdown.querySelectorAll(".session-item").forEach((el) => {
     el.addEventListener("click", (e) => {
+      // 如果点击的是删除按钮或其子元素，不触发选中
+      const target = e.target as HTMLElement;
+      if (target.closest(".session-item-delete")) return;
+
       e.stopPropagation();
       const sessionId = (el as HTMLElement).dataset.sessionId;
       if (sessionId) {
@@ -123,6 +134,51 @@ function bindSessionClickHandlers(): void {
       }
     });
   });
+
+  // 删除按钮事件 — 内联确认
+  $.sessionDropdown.querySelectorAll(".session-item-delete").forEach((btn) => {
+    let resetTimer: ReturnType<typeof setTimeout> | null = null;
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const el = btn as HTMLElement;
+      const sessionId = el.dataset.sessionId;
+      if (!sessionId) return;
+
+      // 已处于确认状态 → 真的删除
+      if (el.dataset.confirming === "true") {
+        if (resetTimer) clearTimeout(resetTimer);
+        el.dataset.confirming = "false";
+        el.classList.remove("confirming");
+        restoreDeleteIcon(el);
+        // 关闭下拉、发送删除请求
+        closeDropdown();
+        vscode.postMessage({ type: "deleteSession", sessionId });
+        return;
+      }
+
+      // 第一次点击 → 进入确认状态
+      el.dataset.confirming = "true";
+      el.classList.add("confirming");
+      el.innerHTML = "确认删除？";
+
+      // 3 秒无操作自动复原
+      if (resetTimer) clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => {
+        el.dataset.confirming = "false";
+        el.classList.remove("confirming");
+        restoreDeleteIcon(el);
+        resetTimer = null;
+      }, 3000);
+    });
+  });
+}
+
+/** 恢复删除按钮的垃圾桶图标 */
+function restoreDeleteIcon(el: HTMLElement): void {
+  el.innerHTML = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+    <path d="M6.5 1.5h3a.5.5 0 0 1 .5.5v1H6V2a.5.5 0 0 1 .5-.5zM5 2v1H2.5a.5.5 0 0 0 0 1h.55l.66 8.25a1.5 1.5 0 0 0 1.5 1.35h5.58a1.5 1.5 0 0 0 1.5-1.35l.66-8.25h.55a.5.5 0 0 0 0-1H11V2a1.5 1.5 0 0 0-1.5-1.5h-3A1.5 1.5 0 0 0 5 2zm.72 10.5a.5.5 0 0 1-.5-.44L4.62 5h6.76l-.6 7.06a.5.5 0 0 1-.5.44H5.72z"/>
+  </svg>`;
 }
 
 function escapeRegExp(string: string): string {

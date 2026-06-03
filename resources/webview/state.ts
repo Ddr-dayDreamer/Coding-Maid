@@ -40,7 +40,6 @@ export const state = {
   currentSessionStatus: null as string | null,
   allSessions: [] as SessionSummary[],
   lastMessageRole: null as string | null,
-  currentThinkingBubble: null as HTMLElement | null,
   currentRunningProcesses: null as Record<string, { startTime: string; command: string }> | null,
   currentLlmStreamProgress: null as LlmStreamProgressData | null,
   currentTokenTelemetry: null as TokenTelemetry | null,

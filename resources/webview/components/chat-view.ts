@@ -1,4 +1,4 @@
-import { $, state } from "../state";
+import { $, state, vscode } from "../state";
 import type { SessionMessageData } from "../types";
 import { formatDisplayPath } from "../utils/formatting";
 
@@ -21,11 +21,12 @@ export function addMessageBubble(msg: SessionMessageData, shouldConnect?: boolea
   const isCollapsible = role === "system" || (role === "assistant" && meta.asThinking === true) || role === "tool";
   const isThinking = role === "assistant" && meta.asThinking === true;
   const isSkillBubble = !!(role === "system" && meta.skill);
-  const defaultExpanded = isThinking && state.currentThinkingBubble === null;
+  const defaultExpanded = false;
 
-  // 头像点
+  // 头像点（用户消息右对齐，不画连接线）
+  const showConnect = shouldConnect && role !== "user";
   const dot = document.createElement("div");
-  dot.className = `bubble-dot${shouldConnect ? " connect-to-prev" : ""}`;
+  dot.className = `bubble-dot${showConnect ? " connect-to-prev" : ""}`;
   bubble.appendChild(dot);
 
   // 内容区域
@@ -43,6 +44,24 @@ export function addMessageBubble(msg: SessionMessageData, shouldConnect?: boolea
     contentDiv.className = "bubble-normal-content";
     if (role === "user") {
       contentDiv.textContent = content;
+      // 有 checkpoint 的用户消息 → 显示回退按钮
+      if (msg.checkpointHash) {
+        const undoBtn = document.createElement("button");
+        undoBtn.className = "bubble-undo-btn";
+        undoBtn.dataset.sessionId = msg.sessionId;
+        undoBtn.dataset.messageId = msg.id;
+        undoBtn.textContent = "↩ 回退到此";
+        undoBtn.title = "回退到此消息，撤消后续的对话和文件变更";
+        // 直接绑定点击（用 function 而非箭头函数，this = 按钮元素）
+        undoBtn.addEventListener("click", function (this: HTMLElement) {
+          vscode.postMessage({
+            type: "restoreSession",
+            sessionId: this.dataset.sessionId || "",
+            messageId: this.dataset.messageId || "",
+          });
+        });
+        body.appendChild(undoBtn);
+      }
     } else {
       // assistant 的 HTML 是后端预渲染的 → 优先使用 msg.html
       contentDiv.innerHTML = msg.html ?? content;
@@ -52,11 +71,6 @@ export function addMessageBubble(msg: SessionMessageData, shouldConnect?: boolea
 
   $.messages.appendChild(bubble);
   state.lastMessageRole = role;
-
-  // 如果是 thinking 且默认展开，记录
-  if (isThinking && defaultExpanded) {
-    state.currentThinkingBubble = bubble;
-  }
 
   // 滚动到底部
   scrollToBottom();
@@ -92,9 +106,7 @@ function renderCollapsibleContent(
   if (isSkillBubble) {
     title.textContent = `🧠 ${meta.skill as string}`;
   } else if (isThinking) {
-    // 从 HTML 中提取纯文本作为标题预览
-    const plainText = extractPlainText(content);
-    title.textContent = plainText.slice(0, 80) || "思考中...";
+    title.textContent = "思考中...";
   } else if (role === "tool") {
     const paramsMd = meta.paramsMd as string;
     title.textContent = `🔧 ${paramsMd || "工具调用"}`;
@@ -131,18 +143,8 @@ function renderCollapsibleContent(
     const isNowExpanded = contentDiv.style.display !== "none";
     contentDiv.style.display = isNowExpanded ? "none" : "block";
     toggle.textContent = isNowExpanded ? "▶" : "▼";
-    if (!isNowExpanded && isThinking) {
-      state.currentThinkingBubble = null;
-    }
     requestAnimationFrame(() => updateAllConnectionLines());
   });
-}
-
-/** 从 HTML 字符串中提取纯文本（用于标题预览） */
-function extractPlainText(html: string): string {
-  const tmp = document.createElement("div");
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || "";
 }
 
 // ─── 工具内容渲染 ────────────────────────────────────────
@@ -299,7 +301,6 @@ export function clearMessages(): void {
   streamReasoningContent = "";
   $.messages.innerHTML = "";
   state.lastMessageRole = null;
-  state.currentThinkingBubble = null;
   state.currentRunningProcesses = null;
   state.currentLlmStreamProgress = null;
 }

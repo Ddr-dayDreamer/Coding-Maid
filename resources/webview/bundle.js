@@ -2,7 +2,7 @@
 (() => {
   // resources/webview/state.ts
   var vscode = acquireVsCodeApi();
-  var $ = {
+  var $2 = {
     app: document.querySelector(".app"),
     messages: document.getElementById("messages"),
     inputWrap: document.querySelector(".input-wrap"),
@@ -20,19 +20,18 @@
     contextMeter: document.getElementById("contextMeter"),
     contextMeterRing: document.getElementById("contextMeterRing"),
     contextMeterTooltip: document.getElementById("contextMeterTooltip"),
-    chatContainer: document.getElementById("chatContainer"),
+    chatContainer: document.getElementById("chatContainer")
   };
   var state = {
     currentSessionId: null,
     currentSessionStatus: null,
     allSessions: [],
     lastMessageRole: null,
-    currentThinkingBubble: null,
     currentRunningProcesses: null,
     currentLlmStreamProgress: null,
     currentTokenTelemetry: null,
-    promptMinRows: Number($.promptInput?.getAttribute("rows")) || 3,
-    promptMaxRows: 10,
+    promptMinRows: Number($2.promptInput?.getAttribute("rows")) || 3,
+    promptMaxRows: 10
   };
   var history = {
     inputHistory: [],
@@ -40,7 +39,7 @@
     draftBeforeHistory: null,
     pendingUserPrompt: null,
     lastRecordText: "",
-    lastRecordAt: 0,
+    lastRecordAt: 0
   };
 
   // resources/webview/utils/formatting.ts
@@ -89,18 +88,18 @@
 
   // resources/webview/components/composer.ts
   function initComposer() {
-    $.promptInput.addEventListener("input", onInput);
-    $.promptInput.addEventListener("keydown", onKeyDown);
-    $.sendButton.addEventListener("click", onSendClick);
+    $2.promptInput.addEventListener("input", onInput);
+    $2.promptInput.addEventListener("keydown", onKeyDown);
+    $2.sendButton.addEventListener("click", onSendClick);
     const savedState = vscode.getState();
     if (savedState?.promptText) {
-      $.promptInput.value = savedState.promptText || "";
+      $2.promptInput.value = savedState.promptText || "";
       autoResize();
       updateSendIconState2();
     }
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
-        vscode.setState({ promptText: $.promptInput.value });
+        vscode.setState({ promptText: $2.promptInput.value });
       }
     });
     updateSendIconState2();
@@ -116,12 +115,12 @@
       sendPrompt();
       return;
     }
-    if (e.key === "ArrowUp" && $.promptInput.selectionStart === 0 && $.promptInput.selectionEnd === 0) {
+    if (e.key === "ArrowUp" && $2.promptInput.selectionStart === 0 && $2.promptInput.selectionEnd === 0) {
       e.preventDefault();
       navigateHistory(-1);
       return;
     }
-    if (e.key === "ArrowDown" && $.promptInput.selectionStart === $.promptInput.value.length) {
+    if (e.key === "ArrowDown" && $2.promptInput.selectionStart === $2.promptInput.value.length) {
       e.preventDefault();
       navigateHistory(1);
       return;
@@ -140,30 +139,30 @@
       setLoading(false);
       return;
     }
-    const text = $.promptInput.value.trim();
+    const text = $2.promptInput.value.trim();
     const imageUrls = getAttachedImageUrls();
-    if ((!text && imageUrls.length === 0) || $.sendButton.disabled) return;
-    $.promptInput.value = "";
+    if (!text && imageUrls.length === 0 || $2.sendButton.disabled) return;
+    $2.promptInput.value = "";
     vscode.setState({ promptText: "" });
     autoResize();
     updateSendIconState2();
     vscode.postMessage({
       type: "userPrompt",
       prompt: text,
-      images: imageUrls.length > 0 ? imageUrls : void 0,
+      images: imageUrls.length > 0 ? imageUrls : void 0
     });
     history.pendingUserPrompt = text || (imageUrls.length > 0 ? "\u7C98\u8D34\u7684\u56FE\u50CF" : "");
     attachmentManager?.clear();
     updateSendIconState2();
   }
   function getLineHeight() {
-    const computed = window.getComputedStyle($.promptInput);
+    const computed = window.getComputedStyle($2.promptInput);
     const fontSize = parseFloat(computed.fontSize) || 16;
     const lineHeight = parseFloat(computed.lineHeight) || fontSize * 1.2;
     return lineHeight;
   }
   function getVerticalSize() {
-    const computed = window.getComputedStyle($.promptInput);
+    const computed = window.getComputedStyle($2.promptInput);
     const paddingTop = parseFloat(computed.paddingTop) || 0;
     const paddingBottom = parseFloat(computed.paddingBottom) || 0;
     const borderTop = parseFloat(computed.borderTopWidth) || 0;
@@ -173,24 +172,24 @@
   function autoResize() {
     const lineHeight = getLineHeight();
     const vertical = getVerticalSize();
-    $.promptInput.style.height = "0";
-    const scrollHeight = $.promptInput.scrollHeight;
+    $2.promptInput.style.height = "0";
+    const scrollHeight = $2.promptInput.scrollHeight;
     const minHeight = lineHeight * state.promptMinRows + vertical;
     const maxHeight = lineHeight * state.promptMaxRows + vertical;
     const clamped = Math.max(minHeight, Math.min(scrollHeight, maxHeight));
-    $.promptInput.style.height = `${clamped}px`;
+    $2.promptInput.style.height = `${clamped}px`;
   }
   function updateSendIconState2() {
-    const hasText = $.promptInput.value.trim().length > 0;
+    const hasText = $2.promptInput.value.trim().length > 0;
     const hasImages = getAttachedImageUrls().length > 0;
     const disabled = !hasText && !hasImages;
-    $.sendButton.disabled = disabled;
-    $.sendButton.classList.toggle("disabled", disabled);
+    $2.sendButton.disabled = disabled;
+    $2.sendButton.classList.toggle("disabled", disabled);
   }
   function setLoading(isLoading) {
-    $.loading.classList.toggle("active", isLoading);
-    $.sendIcon.classList.toggle("hidden", isLoading);
-    $.stopIcon.classList.toggle("hidden", !isLoading);
+    $2.loading.classList.toggle("active", isLoading);
+    $2.sendIcon.classList.toggle("hidden", isLoading);
+    $2.stopIcon.classList.toggle("hidden", !isLoading);
   }
   var attachmentManager = null;
   function getAttachedImageUrls() {
@@ -199,33 +198,33 @@
   function initAttachmentManager() {
     if (typeof window.createPromptAttachmentManager === "function") {
       attachmentManager = window.createPromptAttachmentManager({
-        promptInput: $.promptInput,
-        inputWrap: $.inputWrap,
-        toolsLine: $.toolsLine,
+        promptInput: $2.promptInput,
+        inputWrap: $2.inputWrap,
+        toolsLine: $2.toolsLine,
         onAttachmentChange: () => {
           updateSendIconState2();
-        },
+        }
       });
     }
   }
   function navigateHistory(direction) {
     if (history.inputHistory.length === 0) return;
     if (history.cursor === -1) {
-      history.draftBeforeHistory = $.promptInput.value;
+      history.draftBeforeHistory = $2.promptInput.value;
     }
     const newCursor = history.cursor + direction;
     if (newCursor < -1 || newCursor >= history.inputHistory.length) return;
     history.cursor = newCursor;
     if (newCursor === -1) {
-      $.promptInput.value = history.draftBeforeHistory || "";
+      $2.promptInput.value = history.draftBeforeHistory || "";
       history.draftBeforeHistory = null;
     } else {
-      $.promptInput.value = history.inputHistory[history.inputHistory.length - 1 - newCursor];
+      $2.promptInput.value = history.inputHistory[history.inputHistory.length - 1 - newCursor];
     }
     autoResize();
     updateSendIconState2();
-    const len = $.promptInput.value.length;
-    $.promptInput.setSelectionRange(len, len);
+    const len = $2.promptInput.value.length;
+    $2.promptInput.setSelectionRange(len, len);
   }
   function exitHistoryBrowsing() {
     if (history.cursor === -1) return;
@@ -236,19 +235,19 @@
   // resources/webview/components/context-meter.ts
   function updateContextMeter(telemetry) {
     if (!telemetry) {
-      $.contextMeter.style.display = "none";
+      $2.contextMeter.style.display = "none";
       return;
     }
-    $.contextMeter.style.display = "";
+    $2.contextMeter.style.display = "";
     const percent = getTokenUsagePercent(telemetry);
-    $.contextMeterRing.style.setProperty("--context-percent", `${percent}%`);
+    $2.contextMeterRing.style.setProperty("--context-percent", `${percent}%`);
     const tooltip = renderTooltip(telemetry, percent);
-    $.contextMeterTooltip.innerHTML = tooltip;
+    $2.contextMeterTooltip.innerHTML = tooltip;
   }
   function getTokenUsagePercent(telemetry) {
     const active = telemetry.activeTokens || 0;
     const base = 1e6;
-    const pct = (active / base) * 100;
+    const pct = active / base * 100;
     return Math.min(100, Math.max(0, Math.round(pct * 10) / 10));
   }
   function formatTokenCount(value) {
@@ -270,7 +269,7 @@
       const miss = usage.prompt_cache_miss_tokens;
       if (hit !== void 0 || miss !== void 0) {
         const totalCache = (hit || 0) + (miss || 0);
-        const rate = totalCache > 0 ? (((hit || 0) / totalCache) * 100).toFixed(1) : "--";
+        const rate = totalCache > 0 ? ((hit || 0) / totalCache * 100).toFixed(1) : "--";
         parts.push(`<hr style="margin:4px 0;border:none;border-top:1px solid var(--border-color)">`);
         parts.push(`<div>\u7F13\u5B58\u547D\u4E2D: ${formatTokenCount(hit || 0)}</div>`);
         parts.push(`<div>\u7F13\u5B58\u672A\u547D\u4E2D: ${formatTokenCount(miss || 0)}</div>`);
@@ -282,47 +281,47 @@
 
   // resources/webview/components/session-list.ts
   function initSessionList() {
-    $.sessionSelector.addEventListener("click", (e) => {
+    $2.sessionSelector.addEventListener("click", (e) => {
       e.stopPropagation();
       toggleDropdown();
     });
-    $.newSessionBtn.addEventListener("click", () => {
+    $2.newSessionBtn.addEventListener("click", () => {
       closeDropdown();
       vscode.postMessage({ type: "createNewSession" });
-      $.promptInput.value = "";
+      $2.promptInput.value = "";
       updateSendIconState?.();
     });
     document.addEventListener("click", () => closeDropdown());
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && $.sessionDropdown.classList.contains("show")) {
+      if (e.key === "Escape" && $2.sessionDropdown.classList.contains("show")) {
         closeDropdown();
       }
     });
   }
   function toggleDropdown() {
-    const isOpen = $.sessionDropdown.classList.toggle("show");
-    $.sessionSelector.classList.toggle("open", isOpen);
+    const isOpen = $2.sessionDropdown.classList.toggle("show");
+    $2.sessionSelector.classList.toggle("open", isOpen);
   }
   function closeDropdown() {
-    $.sessionDropdown.classList.remove("show");
-    $.sessionSelector.classList.remove("open");
+    $2.sessionDropdown.classList.remove("show");
+    $2.sessionSelector.classList.remove("open");
   }
   function updateSessionDropdown(sessions) {
     state.allSessions = sessions;
     const searchHtml = `<div class="session-search"><input type="text" id="sessionSearch" placeholder="\u641C\u7D22\u4F1A\u8BDD..." /></div>`;
     const listHtml = renderFilteredSessions(sessions, "");
-    $.sessionDropdown.innerHTML = searchHtml + listHtml;
+    $2.sessionDropdown.innerHTML = searchHtml + listHtml;
     const searchInput = document.getElementById("sessionSearch");
     if (searchInput) {
       searchInput.addEventListener("input", () => {
         const query = searchInput.value;
-        const listEl = $.sessionDropdown.querySelector(".session-list-wrap");
+        const listEl = $2.sessionDropdown.querySelector(".session-list-wrap");
         if (listEl) {
           listEl.innerHTML = renderFilteredSessions(sessions, query);
           bindSessionClickHandlers();
         }
       });
-      $.sessionSelector.addEventListener("click", () => {
+      $2.sessionSelector.addEventListener("click", () => {
         setTimeout(() => searchInput?.focus(), 50);
       });
     }
@@ -349,12 +348,17 @@
       html += `<div class="session-group-label">${label}</div>`;
       for (const s of items) {
         const isActive = s.id === state.currentSessionId;
-        const highlighted = query
-          ? escaped(s.summary).replace(new RegExp(escapeRegExp(query), "gi"), (m) => `<mark>${m}</mark>`)
-          : escaped(s.summary);
+        const highlighted = query ? escaped(s.summary).replace(new RegExp(escapeRegExp(query), "gi"), (m) => `<mark>${m}</mark>`) : escaped(s.summary);
         html += `<div class="session-item ${isActive ? "active" : ""}" data-session-id="${s.id}">
         <div class="session-item-summary">${highlighted || "\u7A7A\u5BF9\u8BDD"}</div>
-        <div class="session-item-time">${formatSessionTime(s.createTime)}</div>
+        <div class="session-item-right">
+          <span class="session-item-time">${formatSessionTime(s.createTime)}</span>
+          <button class="session-item-delete" title="\u5220\u9664\u4F1A\u8BDD" data-session-id="${s.id}">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M6.5 1.5h3a.5.5 0 0 1 .5.5v1H6V2a.5.5 0 0 1 .5-.5zM5 2v1H2.5a.5.5 0 0 0 0 1h.55l.66 8.25a1.5 1.5 0 0 0 1.5 1.35h5.58a1.5 1.5 0 0 0 1.5-1.35l.66-8.25h.55a.5.5 0 0 0 0-1H11V2a1.5 1.5 0 0 0-1.5-1.5h-3A1.5 1.5 0 0 0 5 2zm.72 10.5a.5.5 0 0 1-.5-.44L4.62 5h6.76l-.6 7.06a.5.5 0 0 1-.5.44H5.72z"/>
+            </svg>
+          </button>
+        </div>
       </div>`;
       }
     }
@@ -362,8 +366,10 @@
     return html;
   }
   function bindSessionClickHandlers() {
-    $.sessionDropdown.querySelectorAll(".session-item").forEach((el) => {
+    $2.sessionDropdown.querySelectorAll(".session-item").forEach((el) => {
       el.addEventListener("click", (e) => {
+        const target = e.target;
+        if (target.closest(".session-item-delete")) return;
         e.stopPropagation();
         const sessionId = el.dataset.sessionId;
         if (sessionId) {
@@ -372,12 +378,45 @@
         }
       });
     });
+    $2.sessionDropdown.querySelectorAll(".session-item-delete").forEach((btn) => {
+      let resetTimer = null;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const el = btn;
+        const sessionId = el.dataset.sessionId;
+        if (!sessionId) return;
+        if (el.dataset.confirming === "true") {
+          if (resetTimer) clearTimeout(resetTimer);
+          el.dataset.confirming = "false";
+          el.classList.remove("confirming");
+          restoreDeleteIcon(el);
+          closeDropdown();
+          vscode.postMessage({ type: "deleteSession", sessionId });
+          return;
+        }
+        el.dataset.confirming = "true";
+        el.classList.add("confirming");
+        el.innerHTML = "\u786E\u8BA4\u5220\u9664\uFF1F";
+        if (resetTimer) clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => {
+          el.dataset.confirming = "false";
+          el.classList.remove("confirming");
+          restoreDeleteIcon(el);
+          resetTimer = null;
+        }, 3e3);
+      });
+    });
+  }
+  function restoreDeleteIcon(el) {
+    el.innerHTML = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+    <path d="M6.5 1.5h3a.5.5 0 0 1 .5.5v1H6V2a.5.5 0 0 1 .5-.5zM5 2v1H2.5a.5.5 0 0 0 0 1h.55l.66 8.25a1.5 1.5 0 0 0 1.5 1.35h5.58a1.5 1.5 0 0 0 1.5-1.35l.66-8.25h.55a.5.5 0 0 0 0-1H11V2a1.5 1.5 0 0 0-1.5-1.5h-3A1.5 1.5 0 0 0 5 2zm.72 10.5a.5.5 0 0 1-.5-.44L4.62 5h6.76l-.6 7.06a.5.5 0 0 1-.5.44H5.72z"/>
+  </svg>`;
   }
   function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
   function updateSessionTitle(summary) {
-    $.sessionSelectorTitleText.textContent = summary?.slice(0, 100) || "New Chat";
+    $2.sessionSelectorTitleText.textContent = summary?.slice(0, 100) || "New Chat";
   }
 
   // resources/webview/components/chat-view.ts
@@ -389,34 +428,48 @@
     const bubble = document.createElement("div");
     bubble.className = `bubble bubble-${role}`;
     bubble.dataset.messageId = msg.id;
-    const isCollapsible = role === "system" || (role === "assistant" && meta.asThinking === true) || role === "tool";
+    const isCollapsible = role === "system" || role === "assistant" && meta.asThinking === true || role === "tool";
     const isThinking = role === "assistant" && meta.asThinking === true;
     const isSkillBubble = !!(role === "system" && meta.skill);
-    const defaultExpanded = isThinking && state.currentThinkingBubble === null;
+    const defaultExpanded = false;
+    const showConnect = shouldConnect && role !== "user";
     const dot = document.createElement("div");
-    dot.className = `bubble-dot${shouldConnect ? " connect-to-prev" : ""}`;
+    dot.className = `bubble-dot${showConnect ? " connect-to-prev" : ""}`;
     bubble.appendChild(dot);
     const body = document.createElement("div");
     body.className = "bubble-body";
     bubble.appendChild(body);
     if (isCollapsible) {
-      const displayContent = isThinking ? (msg.html ?? content) : content;
+      const displayContent = isThinking ? msg.html ?? content : content;
       renderCollapsibleContent(body, displayContent, role, meta, defaultExpanded, isThinking, isSkillBubble, msg.html);
     } else {
       const contentDiv = document.createElement("div");
       contentDiv.className = "bubble-normal-content";
       if (role === "user") {
         contentDiv.textContent = content;
+        if (msg.checkpointHash) {
+          const undoBtn = document.createElement("button");
+          undoBtn.className = "bubble-undo-btn";
+          undoBtn.dataset.sessionId = msg.sessionId;
+          undoBtn.dataset.messageId = msg.id;
+          undoBtn.textContent = "\u21A9 \u56DE\u9000\u5230\u6B64";
+          undoBtn.title = "\u56DE\u9000\u5230\u6B64\u6D88\u606F\uFF0C\u64A4\u6D88\u540E\u7EED\u7684\u5BF9\u8BDD\u548C\u6587\u4EF6\u53D8\u66F4";
+          undoBtn.addEventListener("click", function() {
+            vscode.postMessage({
+              type: "restoreSession",
+              sessionId: this.dataset.sessionId || "",
+              messageId: this.dataset.messageId || ""
+            });
+          });
+          body.appendChild(undoBtn);
+        }
       } else {
         contentDiv.innerHTML = msg.html ?? content;
       }
       body.appendChild(contentDiv);
     }
-    $.messages.appendChild(bubble);
+    $2.messages.appendChild(bubble);
     state.lastMessageRole = role;
-    if (isThinking && defaultExpanded) {
-      state.currentThinkingBubble = bubble;
-    }
     scrollToBottom();
     if (shouldConnect) {
       requestAnimationFrame(() => updateAllConnectionLines());
@@ -433,8 +486,7 @@
     if (isSkillBubble) {
       title.textContent = `\u{1F9E0} ${meta.skill}`;
     } else if (isThinking) {
-      const plainText = extractPlainText(content);
-      title.textContent = plainText.slice(0, 80) || "\u601D\u8003\u4E2D...";
+      title.textContent = "\u601D\u8003\u4E2D...";
     } else if (role === "tool") {
       const paramsMd = meta.paramsMd;
       title.textContent = `\u{1F527} ${paramsMd || "\u5DE5\u5177\u8C03\u7528"}`;
@@ -464,16 +516,8 @@
       const isNowExpanded = contentDiv.style.display !== "none";
       contentDiv.style.display = isNowExpanded ? "none" : "block";
       toggle.textContent = isNowExpanded ? "\u25B6" : "\u25BC";
-      if (!isNowExpanded && isThinking) {
-        state.currentThinkingBubble = null;
-      }
       requestAnimationFrame(() => updateAllConnectionLines());
     });
-  }
-  function extractPlainText(html) {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
   }
   function renderToolContent(container, content, meta) {
     const resultMd = meta.resultMd;
@@ -500,7 +544,8 @@
           container.appendChild(diffEl);
         }
       }
-    } catch {}
+    } catch {
+    }
   }
   function updateAllConnectionLines() {
     document.querySelectorAll(".bubble-dot.connect-to-prev").forEach((dot) => {
@@ -518,7 +563,7 @@
     });
   }
   function scrollToBottom() {
-    $.messages.scrollTop = $.messages.scrollHeight;
+    $2.messages.scrollTop = $2.messages.scrollHeight;
   }
   var streamBubble = null;
   var streamContent = "";
@@ -566,7 +611,7 @@
     const body = document.createElement("div");
     body.className = "bubble-body";
     bubble.appendChild(body);
-    $.messages.appendChild(bubble);
+    $2.messages.appendChild(bubble);
     scrollToBottom();
     return bubble;
   }
@@ -574,9 +619,8 @@
     streamBubble = null;
     streamContent = "";
     streamReasoningContent = "";
-    $.messages.innerHTML = "";
+    $2.messages.innerHTML = "";
     state.lastMessageRole = null;
-    state.currentThinkingBubble = null;
     state.currentRunningProcesses = null;
     state.currentLlmStreamProgress = null;
   }
@@ -587,14 +631,14 @@
     }
   }
   function enableAskUserForms() {
-    $.messages.querySelectorAll(".ask-user-form").forEach((form) => {
+    $2.messages.querySelectorAll(".ask-user-form").forEach((form) => {
       form.querySelectorAll("input, textarea, button").forEach((el) => {
         el.disabled = false;
       });
     });
   }
   function updateLoadingText() {
-    const loadingText = $.loading.querySelector("span");
+    const loadingText = $2.loading.querySelector("span");
     if (!loadingText) return;
     const parts = [];
     if (state.currentRunningProcesses) {
@@ -634,6 +678,16 @@
     initAttachmentManager();
     initSessionList();
     window.addEventListener("message", handleMessage);
+    $.messages.addEventListener("click", (e) => {
+      const target = e.target;
+      const btn = target.closest(".bubble-undo-btn");
+      if (!btn) return;
+      const sessionId = btn.dataset.sessionId;
+      const messageId = btn.dataset.messageId;
+      if (sessionId && messageId) {
+        vscode.postMessage({ type: "restoreSession", sessionId, messageId });
+      }
+    });
     vscode.postMessage({ type: "ready" });
   }
   function normalizeProcesses(processes) {
@@ -698,7 +752,7 @@
     state.currentTokenTelemetry = msg.tokenTelemetry ?? null;
     state.currentRunningProcesses = normalizeProcesses(msg.processes);
     updateSessionTitle(msg.summary || "Chat");
-    updateSessionDropdown(state.allSessions);
+    updateSessionDropdown(msg.sessions);
     updateContextMeter(state.currentTokenTelemetry);
     hideEmptyNewChat();
     let prevShouldConnect = false;
@@ -721,9 +775,7 @@
       startLoadingTimer();
     }
     if (msg.status === "waiting_for_user") {
-      document
-        .querySelectorAll(".ask-user-form input, .ask-user-form textarea, .ask-user-form button")
-        .forEach((el) => (el.disabled = false));
+      document.querySelectorAll(".ask-user-form input, .ask-user-form textarea, .ask-user-form button").forEach((el) => el.disabled = false);
     }
   }
   function handleUserMessage(content) {
@@ -735,7 +787,7 @@
       sessionId: state.currentSessionId || "",
       role: "user",
       content,
-      visible: true,
+      visible: true
     };
     addMessageBubble(msg, false);
     hideEmptyNewChat();
@@ -748,13 +800,40 @@
       sessionId: state.currentSessionId || "",
       role: "assistant",
       content: html,
-      visible: true,
+      visible: true
     };
     addMessageBubble(msg, true);
   }
   function handleAppendMessage(msg) {
     clearStreamState();
     const message = msg.message;
+    if (message.role === "user") {
+      const bubbles = $.messages.querySelectorAll(".bubble-user");
+      const lastUserBubble = bubbles[bubbles.length - 1];
+      if (lastUserBubble) {
+        lastUserBubble.dataset.messageId = message.id;
+        if (!lastUserBubble.querySelector(".bubble-undo-btn")) {
+          const body = lastUserBubble.querySelector(".bubble-body");
+          if (body) {
+            const undoBtn = document.createElement("button");
+            undoBtn.className = "bubble-undo-btn";
+            undoBtn.dataset.sessionId = message.sessionId;
+            undoBtn.dataset.messageId = message.id;
+            undoBtn.textContent = "\u21A9 \u56DE\u9000\u5230\u6B64";
+            undoBtn.title = "\u56DE\u9000\u5230\u6B64\u6D88\u606F\uFF0C\u64A4\u6D88\u540E\u7EED\u7684\u5BF9\u8BDD\u548C\u6587\u4EF6\u53D8\u66F4";
+            undoBtn.addEventListener("click", function() {
+              vscode.postMessage({
+                type: "restoreSession",
+                sessionId: this.dataset.sessionId || "",
+                messageId: this.dataset.messageId || ""
+              });
+            });
+            body.appendChild(undoBtn);
+          }
+        }
+      }
+      return;
+    }
     renderMessage(message, msg.shouldConnect);
     if (message.role === "tool" && message.content) {
       try {
@@ -762,14 +841,16 @@
         if (parsed.awaitUserResponse || parsed.metadata?.kind === "ask_user_question") {
           renderAskUserQuestion(message, msg.shouldConnect);
         }
-      } catch {}
+      } catch {
+      }
     }
   }
   function renderMessage(message, shouldConnect) {
     if (message.visible === false) return;
     addMessageBubble(message, shouldConnect);
   }
-  function hideEmptyNewChat() {}
+  function hideEmptyNewChat() {
+  }
   function startLoadingTimer() {
     if (loadingTimer) return;
     loadingTimer = setInterval(() => {
