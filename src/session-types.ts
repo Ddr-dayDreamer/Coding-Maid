@@ -124,6 +124,7 @@ export type SessionManagerOptions = {
     model: string;
     webSearchTool?: string;
     mcpServers?: Record<string, McpServerConfig>;
+    debugEnabled: boolean;
   };
   renderMarkdown: (text: string) => string;
   onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
@@ -132,8 +133,6 @@ export type SessionManagerOptions = {
   onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
   onMcpStatusChanged?: () => void;
   onProcessStdout?: (pid: number, chunk: string) => void;
-  /** 启用调试日志（写入 ~/.codingmaid/logs/） */
-  debugEnabled: boolean;
 };
 
 // ─── LLM 流进度 ──────────────────────────────────────────

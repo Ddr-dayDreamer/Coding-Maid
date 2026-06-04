@@ -7,6 +7,8 @@
 
   let promptText = $state("");
   let sessionDropdownOpen = $state(false);
+  let pendingDeleteId = $state<string | null>(null);
+  let pendingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
 
   // ─── 预设选择器状态 ──────────────────────────────
 
@@ -95,10 +97,12 @@
 
   function toggleDropdown() {
     sessionDropdownOpen = !sessionDropdownOpen;
+    if (!sessionDropdownOpen) clearPendingDelete();
   }
 
   function closeDropdown() {
     sessionDropdownOpen = false;
+    clearPendingDelete();
   }
 
   function selectSession(sessionId: string) {
@@ -109,6 +113,30 @@
   function createNewSession() {
     closeDropdown();
     api.send("createNewSession");
+  }
+
+  function clearPendingDelete() {
+    pendingDeleteId = null;
+    if (pendingDeleteTimer) {
+      clearTimeout(pendingDeleteTimer);
+      pendingDeleteTimer = undefined;
+    }
+  }
+
+  function handleDeleteClick(e: MouseEvent, sessionId: string) {
+    e.stopPropagation();
+    if (pendingDeleteId === sessionId) {
+      // 第二次点击，确认删除
+      clearPendingDelete();
+      api.send("deleteSession", { sessionId });
+    } else {
+      // 第一次点击，进入待确认状态
+      clearPendingDelete();
+      pendingDeleteId = sessionId;
+      pendingDeleteTimer = setTimeout(() => {
+        pendingDeleteId = null;
+      }, 3000);
+    }
   }
 
   function getCurrentSessionSummary(): string {
@@ -139,20 +167,36 @@
     <button class="new-chat-btn" onclick={createNewSession} title="新对话">+</button>
 
     {#if sessionDropdownOpen}
-      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="session-dropdown" role="listbox" onclick={() => {}} onkeydown={() => {}}>
+      <div class="session-dropdown" role="listbox" tabindex="0" onclick={() => {}} onkeydown={() => {}}>
         {#each appState.sessions as session (session.id)}
-          <button
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
             class="session-item"
             class:active={session.id === appState.currentSessionId}
             onclick={() => selectSession(session.id)}
             role="option"
+            tabindex="-1"
+            aria-selected={session.id === appState.currentSessionId}
           >
             <span class="session-item-title">{session.summary?.slice(0, 50) || "空对话"}</span>
             <span class="session-item-time">{formatDate(session.createTime)}</span>
-          </button>
+            {#if pendingDeleteId === session.id}
+              <button
+                class="session-delete-btn confirm"
+                onclick={(e) => handleDeleteClick(e, session.id)}
+                title="确认删除"
+              >确认?</button>
+            {:else}
+              <button
+                class="session-delete-btn"
+                onclick={(e) => handleDeleteClick(e, session.id)}
+                title="删除会话"
+              >✕</button>
+            {/if}
+          </div>
         {:else}
           <div class="session-empty">暂无历史对话</div>
         {/each}
@@ -382,6 +426,45 @@
     font-size: 11px;
     color: var(--vscode-descriptionForeground);
     margin-left: 8px;
+  }
+
+  .session-delete-btn {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-left: 4px;
+    border: none;
+    background: transparent;
+    color: var(--vscode-descriptionForeground);
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1;
+    display: none;
+    place-items: center;
+    padding: 0;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+
+  .session-item:hover .session-delete-btn {
+    display: grid;
+  }
+
+  .session-delete-btn:hover {
+    opacity: 1;
+    color: var(--vscode-errorForeground, #e74c3c);
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .session-delete-btn.confirm {
+    display: grid;
+    font-size: 11px;
+    width: auto;
+    padding: 0 6px;
+    color: var(--vscode-errorForeground, #e74c3c);
+    opacity: 1;
+    font-weight: 500;
   }
 
   .session-empty {

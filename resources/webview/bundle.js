@@ -6690,47 +6690,6 @@ ${component_stack}
   _streamingReasoning = new WeakMap();
   var appState = new AppState();
 
-  // resources/webview/components/TabBar.svelte
-  var root = from_html(`<button><span class="tab-icon svelte-dv0yh"> </span> <span class="tab-label svelte-dv0yh"> </span></button>`);
-  var root_1 = from_html(`<div class="tab-bar svelte-dv0yh"><div class="tab-header svelte-dv0yh"><span class="tab-title svelte-dv0yh">Coding Maid</span></div> <div class="tab-nav svelte-dv0yh"></div></div>`);
-  function TabBar($$anchor, $$props) {
-    push($$props, false);
-    const tabs = [
-      { id: "chat", label: "\u5BF9\u8BDD", icon: "\u{1F4AC}" },
-      { id: "presets", label: "\u9884\u8BBE", icon: "\u{1F4CB}" },
-      { id: "profiles", label: "\u8FDE\u63A5", icon: "\u{1F50C}" }
-    ];
-    function switchTab(tab) {
-      appState.currentTab = tab;
-    }
-    init();
-    var div = root_1();
-    var div_1 = sibling(child(div), 2);
-    each(div_1, 5, () => tabs, index, ($$anchor2, tab) => {
-      var button = root();
-      let classes;
-      var span = child(button);
-      var text2 = child(span, true);
-      reset(span);
-      var span_1 = sibling(span, 2);
-      var text_1 = child(span_1, true);
-      reset(span_1);
-      reset(button);
-      template_effect(() => {
-        classes = set_class(button, 1, "tab-btn svelte-dv0yh", null, classes, { active: appState.currentTab === get2(tab).id });
-        set_text(text2, get2(tab).icon);
-        set_text(text_1, get2(tab).label);
-      });
-      delegated("click", button, () => switchTab(get2(tab).id));
-      append($$anchor2, button);
-    });
-    reset(div_1);
-    reset(div);
-    append($$anchor, div);
-    pop();
-  }
-  delegate(["click"]);
-
   // resources/webview/lib/api.ts
   var vscode = acquireVsCodeApi();
   var pendingRequests = /* @__PURE__ */ new Map();
@@ -6777,6 +6736,48 @@ ${component_stack}
       vscode.setState(state2);
     }
   };
+
+  // resources/webview/components/TabBar.svelte
+  var root = from_html(`<button><span class="tab-label svelte-dv0yh"> </span></button>`);
+  var root_1 = from_html(`<div class="tab-bar svelte-dv0yh"><div class="tab-nav svelte-dv0yh"></div> <button class="settings-btn svelte-dv0yh" title="\u6253\u5F00\u8BBE\u7F6E"><span>\u2699</span></button></div>`);
+  function TabBar($$anchor, $$props) {
+    push($$props, false);
+    const tabs = [
+      { id: "chat", label: "\u5BF9\u8BDD" },
+      { id: "presets", label: "\u9884\u8BBE" },
+      { id: "profiles", label: "\u8FDE\u63A5" }
+    ];
+    function openSettings() {
+      api.send("openSettings");
+    }
+    function switchTab(tab) {
+      appState.currentTab = tab;
+    }
+    init();
+    var div = root_1();
+    var div_1 = child(div);
+    each(div_1, 5, () => tabs, index, ($$anchor2, tab) => {
+      var button = root();
+      let classes;
+      var span = child(button);
+      var text2 = child(span, true);
+      reset(span);
+      reset(button);
+      template_effect(() => {
+        classes = set_class(button, 1, "tab-btn svelte-dv0yh", null, classes, { active: appState.currentTab === get2(tab).id });
+        set_text(text2, get2(tab).label);
+      });
+      delegated("click", button, () => switchTab(get2(tab).id));
+      append($$anchor2, button);
+    });
+    reset(div_1);
+    var button_1 = sibling(div_1, 2);
+    reset(div);
+    delegated("click", button_1, openSettings);
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["click"]);
 
   // resources/webview/components/ContextMeter.svelte
   var root2 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8F93\u5165</span> <span class="svelte-vvns5x"> </span></div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8F93\u51FA</span> <span class="svelte-vvns5x"> </span></div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8BF7\u6C42\u6B21\u6570</span> <span class="svelte-vvns5x"> </span></div>`, 1);
@@ -7582,21 +7583,25 @@ ${component_stack}
   }
 
   // resources/webview/components/ChatPage.svelte
-  var root7 = from_html(`<button role="option"><span class="session-item-title svelte-1mroaqi"> </span> <span class="session-item-time svelte-1mroaqi"> </span></button>`);
-  var root_16 = from_html(`<div class="session-empty svelte-1mroaqi">\u6682\u65E0\u5386\u53F2\u5BF9\u8BDD</div>`);
-  var root_25 = from_html(`<div class="session-dropdown svelte-1mroaqi" role="listbox"></div>`);
-  var root_35 = from_html(`<span class="preset-check svelte-1mroaqi">\u2713</span>`);
-  var root_45 = from_html(`<button><span class="preset-item-name svelte-1mroaqi"> </span> <!></button>`);
-  var root_55 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u9884\u8BBE</div>`);
-  var root_65 = from_html(`<div class="preset-dropdown svelte-1mroaqi"></div>`);
-  var root_73 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u914D\u7F6E</div>`);
-  var root_82 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
-  var root_9 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
-  var root_10 = from_html(`<div class="chat-page svelte-1mroaqi"><div class="session-bar svelte-1mroaqi"><button class="session-btn svelte-1mroaqi"><span class="session-title svelte-1mroaqi"> </span> <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <button class="new-chat-btn svelte-1mroaqi" title="\u65B0\u5BF9\u8BDD">+</button> <!></div> <!> <div class="composer svelte-1mroaqi"><div class="input-wrap svelte-1mroaqi"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="3" class="svelte-1mroaqi"></textarea> <div class="composer-footer svelte-1mroaqi"><div class="footer-left svelte-1mroaqi"><!> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div></div> <div class="footer-right"><button class="send-btn svelte-1mroaqi"><!></button></div></div></div></div></div>`);
+  var root7 = from_html(`<button class="session-delete-btn confirm svelte-1mroaqi" title="\u786E\u8BA4\u5220\u9664">\u786E\u8BA4?</button>`);
+  var root_16 = from_html(`<button class="session-delete-btn svelte-1mroaqi" title="\u5220\u9664\u4F1A\u8BDD">\u2715</button>`);
+  var root_25 = from_html(`<div role="option" tabindex="-1"><span class="session-item-title svelte-1mroaqi"> </span> <span class="session-item-time svelte-1mroaqi"> </span> <!></div>`);
+  var root_35 = from_html(`<div class="session-empty svelte-1mroaqi">\u6682\u65E0\u5386\u53F2\u5BF9\u8BDD</div>`);
+  var root_45 = from_html(`<div class="session-dropdown svelte-1mroaqi" role="listbox" tabindex="0"></div>`);
+  var root_55 = from_html(`<span class="preset-check svelte-1mroaqi">\u2713</span>`);
+  var root_65 = from_html(`<button><span class="preset-item-name svelte-1mroaqi"> </span> <!></button>`);
+  var root_73 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u9884\u8BBE</div>`);
+  var root_82 = from_html(`<div class="preset-dropdown svelte-1mroaqi"></div>`);
+  var root_9 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u914D\u7F6E</div>`);
+  var root_10 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
+  var root_11 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
+  var root_122 = from_html(`<div class="chat-page svelte-1mroaqi"><div class="session-bar svelte-1mroaqi"><button class="session-btn svelte-1mroaqi"><span class="session-title svelte-1mroaqi"> </span> <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <button class="new-chat-btn svelte-1mroaqi" title="\u65B0\u5BF9\u8BDD">+</button> <!></div> <!> <div class="composer svelte-1mroaqi"><div class="input-wrap svelte-1mroaqi"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="3" class="svelte-1mroaqi"></textarea> <div class="composer-footer svelte-1mroaqi"><div class="footer-left svelte-1mroaqi"><!> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div></div> <div class="footer-right"><button class="send-btn svelte-1mroaqi"><!></button></div></div></div></div></div>`);
   function ChatPage($$anchor, $$props) {
     push($$props, true);
     let promptText = state("");
     let sessionDropdownOpen = state(false);
+    let pendingDeleteId = state(null);
+    let pendingDeleteTimer;
     let presetDropdownOpen = state(false);
     let presets = state(proxy([]));
     async function togglePresetDropdown() {
@@ -7666,9 +7671,11 @@ ${component_stack}
     }
     function toggleDropdown() {
       set(sessionDropdownOpen, !get2(sessionDropdownOpen));
+      if (!get2(sessionDropdownOpen)) clearPendingDelete();
     }
     function closeDropdown() {
       set(sessionDropdownOpen, false);
+      clearPendingDelete();
     }
     function selectSession(sessionId) {
       closeDropdown();
@@ -7677,6 +7684,29 @@ ${component_stack}
     function createNewSession() {
       closeDropdown();
       api.send("createNewSession");
+    }
+    function clearPendingDelete() {
+      set(pendingDeleteId, null);
+      if (pendingDeleteTimer) {
+        clearTimeout(pendingDeleteTimer);
+        pendingDeleteTimer = void 0;
+      }
+    }
+    function handleDeleteClick(e, sessionId) {
+      e.stopPropagation();
+      if (get2(pendingDeleteId) === sessionId) {
+        clearPendingDelete();
+        api.send("deleteSession", { sessionId });
+      } else {
+        clearPendingDelete();
+        set(pendingDeleteId, sessionId, true);
+        pendingDeleteTimer = setTimeout(
+          () => {
+            set(pendingDeleteId, null);
+          },
+          3e3
+        );
+      }
     }
     function getCurrentSessionSummary() {
       const current = appState.sessions.find((s) => s.id === appState.currentSessionId);
@@ -7691,7 +7721,7 @@ ${component_stack}
       if (days === 1) return "\u6628\u5929";
       return `${d.getMonth() + 1}/${d.getDate()}`;
     }
-    var div = root_10();
+    var div = root_122();
     var div_1 = child(div);
     var button = child(div_1);
     var span = child(button);
@@ -7703,26 +7733,44 @@ ${component_stack}
     var button_1 = sibling(button, 2);
     var node = sibling(button_1, 2);
     {
-      var consequent = ($$anchor2) => {
-        var div_2 = root_25();
+      var consequent_1 = ($$anchor2) => {
+        var div_2 = root_45();
         each(
           div_2,
           21,
           () => appState.sessions,
           (session) => session.id,
           ($$anchor3, session) => {
-            var button_2 = root7();
+            var div_3 = root_25();
             let classes_1;
-            var span_1 = child(button_2);
+            var span_1 = child(div_3);
             var text_2 = child(span_1, true);
             reset(span_1);
             var span_2 = sibling(span_1, 2);
             var text_3 = child(span_2, true);
             reset(span_2);
-            reset(button_2);
+            var node_1 = sibling(span_2, 2);
+            {
+              var consequent = ($$anchor4) => {
+                var button_2 = root7();
+                delegated("click", button_2, (e) => handleDeleteClick(e, get2(session).id));
+                append($$anchor4, button_2);
+              };
+              var alternate = ($$anchor4) => {
+                var button_3 = root_16();
+                delegated("click", button_3, (e) => handleDeleteClick(e, get2(session).id));
+                append($$anchor4, button_3);
+              };
+              if_block(node_1, ($$render) => {
+                if (get2(pendingDeleteId) === get2(session).id) $$render(consequent);
+                else $$render(alternate, -1);
+              });
+            }
+            reset(div_3);
             template_effect(
               ($0, $1) => {
-                classes_1 = set_class(button_2, 1, "session-item svelte-1mroaqi", null, classes_1, { active: get2(session).id === appState.currentSessionId });
+                classes_1 = set_class(div_3, 1, "session-item svelte-1mroaqi", null, classes_1, { active: get2(session).id === appState.currentSessionId });
+                set_attribute2(div_3, "aria-selected", get2(session).id === appState.currentSessionId);
                 set_text(text_2, $0);
                 set_text(text_3, $1);
               },
@@ -7731,12 +7779,12 @@ ${component_stack}
                 () => formatDate(get2(session).createTime)
               ]
             );
-            delegated("click", button_2, () => selectSession(get2(session).id));
-            append($$anchor3, button_2);
+            delegated("click", div_3, () => selectSession(get2(session).id));
+            append($$anchor3, div_3);
           },
           ($$anchor3) => {
-            var div_3 = root_16();
-            append($$anchor3, div_3);
+            var div_4 = root_35();
+            append($$anchor3, div_4);
           }
         );
         reset(div_2);
@@ -7747,147 +7795,147 @@ ${component_stack}
         append($$anchor2, div_2);
       };
       if_block(node, ($$render) => {
-        if (get2(sessionDropdownOpen)) $$render(consequent);
+        if (get2(sessionDropdownOpen)) $$render(consequent_1);
       });
     }
     reset(div_1);
-    var node_1 = sibling(div_1, 2);
-    MessageBoard(node_1, {});
-    var div_4 = sibling(node_1, 2);
-    var div_5 = child(div_4);
-    var textarea_1 = child(div_5);
+    var node_2 = sibling(div_1, 2);
+    MessageBoard(node_2, {});
+    var div_5 = sibling(node_2, 2);
+    var div_6 = child(div_5);
+    var textarea_1 = child(div_6);
     remove_textarea_child(textarea_1);
-    var div_6 = sibling(textarea_1, 2);
-    var div_7 = child(div_6);
-    var node_2 = child(div_7);
-    ContextMeter(node_2, {});
-    var div_8 = sibling(node_2, 2);
-    var button_3 = child(div_8);
-    var text_4 = child(button_3);
+    var div_7 = sibling(textarea_1, 2);
+    var div_8 = child(div_7);
+    var node_3 = child(div_8);
+    ContextMeter(node_3, {});
+    var div_9 = sibling(node_3, 2);
+    var button_4 = child(div_9);
+    var text_4 = child(button_4);
     var svg_1 = sibling(text_4);
     let classes_2;
-    reset(button_3);
-    var node_3 = sibling(button_3, 2);
+    reset(button_4);
+    var node_4 = sibling(button_4, 2);
     {
-      var consequent_2 = ($$anchor2) => {
-        var div_9 = root_65();
+      var consequent_3 = ($$anchor2) => {
+        var div_10 = root_82();
         each(
-          div_9,
+          div_10,
           21,
           () => get2(presets),
           (preset) => preset.name,
           ($$anchor3, preset) => {
-            var button_4 = root_45();
+            var button_5 = root_65();
             let classes_3;
-            var span_3 = child(button_4);
+            var span_3 = child(button_5);
             var text_5 = child(span_3, true);
             reset(span_3);
-            var node_4 = sibling(span_3, 2);
+            var node_5 = sibling(span_3, 2);
             {
-              var consequent_1 = ($$anchor4) => {
-                var span_4 = root_35();
+              var consequent_2 = ($$anchor4) => {
+                var span_4 = root_55();
                 append($$anchor4, span_4);
               };
-              if_block(node_4, ($$render) => {
-                if (get2(preset).name === appState.activePreset) $$render(consequent_1);
+              if_block(node_5, ($$render) => {
+                if (get2(preset).name === appState.activePreset) $$render(consequent_2);
               });
             }
-            reset(button_4);
+            reset(button_5);
             template_effect(() => {
-              classes_3 = set_class(button_4, 1, "preset-item svelte-1mroaqi", null, classes_3, { active: get2(preset).name === appState.activePreset });
+              classes_3 = set_class(button_5, 1, "preset-item svelte-1mroaqi", null, classes_3, { active: get2(preset).name === appState.activePreset });
               set_text(text_5, get2(preset).displayName);
             });
-            delegated("click", button_4, () => selectPreset(get2(preset).name));
-            append($$anchor3, button_4);
+            delegated("click", button_5, () => selectPreset(get2(preset).name));
+            append($$anchor3, button_5);
           },
           ($$anchor3) => {
-            var div_10 = root_55();
-            append($$anchor3, div_10);
+            var div_11 = root_73();
+            append($$anchor3, div_11);
           }
         );
-        reset(div_9);
-        append($$anchor2, div_9);
+        reset(div_10);
+        append($$anchor2, div_10);
       };
-      if_block(node_3, ($$render) => {
-        if (get2(presetDropdownOpen)) $$render(consequent_2);
+      if_block(node_4, ($$render) => {
+        if (get2(presetDropdownOpen)) $$render(consequent_3);
       });
     }
-    reset(div_8);
-    var div_11 = sibling(div_8, 2);
-    var button_5 = child(div_11);
-    var text_6 = child(button_5);
+    reset(div_9);
+    var div_12 = sibling(div_9, 2);
+    var button_6 = child(div_12);
+    var text_6 = child(button_6);
     var svg_2 = sibling(text_6);
     let classes_4;
-    reset(button_5);
-    var node_5 = sibling(button_5, 2);
+    reset(button_6);
+    var node_6 = sibling(button_6, 2);
     {
-      var consequent_4 = ($$anchor2) => {
-        var div_12 = root_65();
+      var consequent_5 = ($$anchor2) => {
+        var div_13 = root_82();
         each(
-          div_12,
+          div_13,
           21,
           () => get2(profiles),
           (profile) => profile.name,
           ($$anchor3, profile) => {
-            var button_6 = root_45();
+            var button_7 = root_65();
             let classes_5;
-            var span_5 = child(button_6);
+            var span_5 = child(button_7);
             var text_7 = child(span_5, true);
             reset(span_5);
-            var node_6 = sibling(span_5, 2);
+            var node_7 = sibling(span_5, 2);
             {
-              var consequent_3 = ($$anchor4) => {
-                var span_6 = root_35();
+              var consequent_4 = ($$anchor4) => {
+                var span_6 = root_55();
                 append($$anchor4, span_6);
               };
-              if_block(node_6, ($$render) => {
-                if (get2(profile).name === appState.activeProfile) $$render(consequent_3);
+              if_block(node_7, ($$render) => {
+                if (get2(profile).name === appState.activeProfile) $$render(consequent_4);
               });
             }
-            reset(button_6);
+            reset(button_7);
             template_effect(() => {
-              classes_5 = set_class(button_6, 1, "preset-item svelte-1mroaqi", null, classes_5, { active: get2(profile).name === appState.activeProfile });
+              classes_5 = set_class(button_7, 1, "preset-item svelte-1mroaqi", null, classes_5, { active: get2(profile).name === appState.activeProfile });
               set_text(text_7, get2(profile).name);
             });
-            delegated("click", button_6, () => selectProfile(get2(profile).name));
-            append($$anchor3, button_6);
+            delegated("click", button_7, () => selectProfile(get2(profile).name));
+            append($$anchor3, button_7);
           },
           ($$anchor3) => {
-            var div_13 = root_73();
-            append($$anchor3, div_13);
+            var div_14 = root_9();
+            append($$anchor3, div_14);
           }
         );
-        reset(div_12);
-        append($$anchor2, div_12);
+        reset(div_13);
+        append($$anchor2, div_13);
       };
-      if_block(node_5, ($$render) => {
-        if (get2(profileDropdownOpen)) $$render(consequent_4);
+      if_block(node_6, ($$render) => {
+        if (get2(profileDropdownOpen)) $$render(consequent_5);
       });
     }
-    reset(div_11);
-    reset(div_7);
-    var div_14 = sibling(div_7, 2);
-    var button_7 = child(div_14);
-    var node_7 = child(button_7);
+    reset(div_12);
+    reset(div_8);
+    var div_15 = sibling(div_8, 2);
+    var button_8 = child(div_15);
+    var node_8 = child(button_8);
     {
-      var consequent_5 = ($$anchor2) => {
-        var svg_3 = root_82();
+      var consequent_6 = ($$anchor2) => {
+        var svg_3 = root_10();
         append($$anchor2, svg_3);
       };
-      var alternate = ($$anchor2) => {
-        var svg_4 = root_9();
+      var alternate_1 = ($$anchor2) => {
+        var svg_4 = root_11();
         append($$anchor2, svg_4);
       };
-      if_block(node_7, ($$render) => {
-        if (appState.isProcessing) $$render(consequent_5);
-        else $$render(alternate, -1);
+      if_block(node_8, ($$render) => {
+        if (appState.isProcessing) $$render(consequent_6);
+        else $$render(alternate_1, -1);
       });
     }
-    reset(button_7);
-    reset(div_14);
+    reset(button_8);
+    reset(div_15);
+    reset(div_7);
     reset(div_6);
     reset(div_5);
-    reset(div_4);
     reset(div);
     template_effect(
       ($0, $1) => {
@@ -7897,8 +7945,8 @@ ${component_stack}
         classes_2 = set_class(svg_1, 0, "preset-arrow svelte-1mroaqi", null, classes_2, { open: get2(presetDropdownOpen) });
         set_text(text_6, `\u914D\u7F6E: ${appState.activeProfile ?? ""} `);
         classes_4 = set_class(svg_2, 0, "preset-arrow svelte-1mroaqi", null, classes_4, { open: get2(profileDropdownOpen) });
-        button_7.disabled = $1;
-        set_attribute2(button_7, "title", appState.isProcessing ? "\u4E2D\u65AD" : "\u53D1\u9001");
+        button_8.disabled = $1;
+        set_attribute2(button_8, "title", appState.isProcessing ? "\u4E2D\u65AD" : "\u53D1\u9001");
       },
       [
         () => getCurrentSessionSummary(),
@@ -7909,9 +7957,9 @@ ${component_stack}
     delegated("click", button_1, createNewSession);
     delegated("keydown", textarea_1, handleKeydown);
     bind_value(textarea_1, () => get2(promptText), ($$value) => set(promptText, $$value));
-    delegated("click", button_3, togglePresetDropdown);
-    delegated("click", button_5, toggleProfileDropdown);
-    delegated("click", button_7, sendPrompt);
+    delegated("click", button_4, togglePresetDropdown);
+    delegated("click", button_6, toggleProfileDropdown);
+    delegated("click", button_8, sendPrompt);
     append($$anchor, div);
     pop();
   }
@@ -8697,7 +8745,7 @@ ${component_stack}
   var root_83 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Zm2.5 4.15a.75.75 0 0 1 .1 1.06l-3 3.5a.75.75 0 0 1-1.1.04l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.47-2.88a.75.75 0 0 1 1-.13Z"></path></svg>`);
   var root_92 = from_html(`<div role="button" tabindex="0"><div class="card-info svelte-1no2ghb"><!></div> <div class="card-actions svelte-1no2ghb"><button class="icon-btn svelte-1no2ghb" title="\u91CD\u547D\u540D"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg></button> <button class="icon-btn svelte-1no2ghb" title="\u7F16\u8F91\u914D\u7F6E\u6587\u4EF6"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn test svelte-1no2ghb" title="\u6D4B\u8BD5\u8FDE\u63A5"><!></button> <button class="icon-btn danger svelte-1no2ghb" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
   var root_102 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
-  var root_11 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb"> </span></div> <!> <!> <div class="list-actions svelte-1no2ghb"><button class="action-btn primary svelte-1no2ghb"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u914D\u7F6E</button></div></div>`);
+  var root_112 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb"> </span></div> <!> <!> <div class="list-actions svelte-1no2ghb"><button class="action-btn primary svelte-1no2ghb"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u914D\u7F6E</button></div></div>`);
   function ProfilePage($$anchor, $$props) {
     push($$props, true);
     let profiles = state(proxy([]));
@@ -8831,7 +8879,7 @@ ${component_stack}
         set(testingProfile, null);
       }
     }
-    var div = root_11();
+    var div = root_112();
     var div_1 = child(div);
     var span = sibling(child(div_1), 2);
     var text2 = child(span, true);
@@ -8978,7 +9026,7 @@ ${component_stack}
 
   // resources/webview/components/ToastNotification.svelte
   var root14 = from_html(`<div role="alert"><span class="toast-icon svelte-1fwhj3x"></span> <span class="toast-text svelte-1fwhj3x"> </span> <button class="toast-close svelte-1fwhj3x" aria-label="\u5173\u95ED"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg></button></div>`);
-  var root_112 = from_html(`<div class="toast-container svelte-1fwhj3x"></div>`);
+  var root_113 = from_html(`<div class="toast-container svelte-1fwhj3x"></div>`);
   function ToastNotification($$anchor, $$props) {
     push($$props, true);
     let items2 = user_derived(() => notify.items);
@@ -8995,7 +9043,7 @@ ${component_stack}
     var node = first_child(fragment);
     {
       var consequent = ($$anchor2) => {
-        var div = root_112();
+        var div = root_113();
         each(div, 21, () => get2(items2), (item) => item.id, ($$anchor3, item) => {
           var div_1 = root14();
           var span = child(div_1);

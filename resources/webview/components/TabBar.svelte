@@ -1,11 +1,16 @@
 <script lang="ts">
   import { appState, type TabId } from "../lib/state.svelte";
+  import { api } from "../lib/api";
 
-  const tabs: { id: TabId; label: string; icon: string }[] = [
-    { id: "chat", label: "对话", icon: "💬" },
-    { id: "presets", label: "预设", icon: "📋" },
-    { id: "profiles", label: "连接", icon: "🔌" },
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "chat", label: "对话" },
+    { id: "presets", label: "预设" },
+    { id: "profiles", label: "连接" },
   ];
+
+  function openSettings() {
+    api.send("openSettings");
+  }
 
   function switchTab(tab: TabId) {
     appState.currentTab = tab;
@@ -13,9 +18,6 @@
 </script>
 
 <div class="tab-bar">
-  <div class="tab-header">
-    <span class="tab-title">Coding Maid</span>
-  </div>
   <div class="tab-nav">
     {#each tabs as tab}
       <button
@@ -23,38 +25,29 @@
         class:active={appState.currentTab === tab.id}
         onclick={() => switchTab(tab.id)}
       >
-        <span class="tab-icon">{tab.icon}</span>
         <span class="tab-label">{tab.label}</span>
       </button>
     {/each}
   </div>
+  <button class="settings-btn" onclick={openSettings} title="打开设置">
+    <span>⚙</span>
+  </button>
 </div>
 
 <style>
   .tab-bar {
+    display: flex;
+    align-items: center;
     flex-shrink: 0;
     background: var(--vscode-sideBar-background);
     border-bottom: 1px solid var(--vscode-panel-border);
-  }
-
-  .tab-header {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px 4px;
-  }
-
-  .tab-title {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--vscode-descriptionForeground);
+    padding: 0 8px;
   }
 
   .tab-nav {
     display: flex;
     gap: 0;
-    padding: 0 8px;
+    flex: 1;
   }
 
   .tab-btn {
@@ -83,11 +76,29 @@
     color: var(--vscode-foreground);
   }
 
-  .tab-icon {
-    font-size: 14px;
-  }
-
   .tab-label {
     font-size: 13px;
+  }
+
+  .settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--vscode-sideBarTitle-foreground);
+    cursor: pointer;
+    font-size: 15px;
+    opacity: 0.7;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+  }
+
+  .settings-btn:hover {
+    opacity: 1;
+    background: var(--vscode-list-hoverBackground);
+    color: var(--vscode-foreground);
   }
 </style>

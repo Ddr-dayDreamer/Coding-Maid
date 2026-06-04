@@ -61,7 +61,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       projectRoot: this.getWorkspaceRoot(),
       createOpenAIClient: () => this.createOpenAIClient(),
       getResolvedSettings: () => this.resolveCurrentSettings(),
-      debugEnabled: this.resolveCurrentSettings().debugEnabled ?? false,
       renderMarkdown: (text) => this.md.render(text),
       onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => {
         if (!this.webviewView) return;
@@ -105,6 +104,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     this.registerHandler("selectSession", this.handleSelectSession);
     this.registerHandler("backToList", async () => this.showSessionsList());
     this.registerHandler("openFile", this.handleOpenFile);
+    this.registerHandler("openSettings", this.handleOpenSettings);
     this.registerHandler("deleteSession", this.handleDeleteSessionMsg);
     this.registerHandler("restoreSession", this.handleRestoreSessionMsg);
 
@@ -369,6 +369,11 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     const filePath = String(message.filePath || "").trim();
     const line = Number(message.line || 1);
     if (filePath) await this.openFileInEditor(filePath, line);
+  };
+
+  private handleOpenSettings = async (_message: Record<string, unknown>): Promise<void> => {
+    const settingsPath = path.join(os.homedir(), ".codingmaid", "settings.json");
+    await this.openFileInEditor(settingsPath, 1);
   };
 
   private handleDeleteSessionMsg = async (message: Record<string, unknown>): Promise<void> => {

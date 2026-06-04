@@ -95,9 +95,9 @@ function rotateLogFile(filePath: string): void {
 }
 
 /**
- * 写入完整的 LLM 请求结构到 prompt-debug.jsonl
+ * 写入完整的 LLM 请求结构到 prompt-debug.log
  *
- * 每次 LLM 调用写入一行 JSON，包含完整请求体（model / messages / tools / 参数等）。
+ * 每次 LLM 调用写入一段可读格式的日志，包含时间戳和完整请求体。
  * 通过 `codingmaid.debugEnabled: true` 启用。
  */
 export function logPromptDebug(
@@ -108,15 +108,12 @@ export function logPromptDebug(
   try {
     const logDir = path.join(os.homedir(), ".codingmaid", "logs");
     fs.mkdirSync(logDir, { recursive: true });
-    const logPath = path.join(logDir, "prompt-debug.jsonl");
+    const logPath = path.join(logDir, "prompt-debug.log");
     rotateLogFile(logPath);
-    const entry = {
-      timestamp: new Date().toISOString(),
-      sessionId,
-      iteration,
-      request: toSerializable(fullRequest),
-    };
-    fs.appendFileSync(logPath, JSON.stringify(entry) + "\n", "utf8");
+    const header = `[${new Date().toISOString()}] Session: ${sessionId}  Iteration: ${iteration}`;
+    const separator = "─".repeat(60);
+    const body = JSON.stringify(toSerializable(fullRequest), null, 2);
+    fs.appendFileSync(logPath, `${separator}\n${header}\n${separator}\n${body}\n\n`, "utf8");
   } catch {
     // Debug logging must never affect runtime behavior.
   }

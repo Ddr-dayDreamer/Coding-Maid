@@ -1,25 +1,16 @@
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/TabBar.esbuild-svelte-fake-css */
 .tab-bar.svelte-dv0yh {
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
   background: var(--vscode-sideBar-background);
   border-bottom: 1px solid var(--vscode-panel-border);
-}
-.tab-header.svelte-dv0yh {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px 4px;
-}
-.tab-title.svelte-dv0yh {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--vscode-descriptionForeground);
+  padding: 0 8px;
 }
 .tab-nav.svelte-dv0yh {
   display: flex;
   gap: 0;
-  padding: 0 8px;
+  flex: 1;
 }
 .tab-btn.svelte-dv0yh {
   display: flex;
@@ -44,11 +35,28 @@
   border-bottom-color: var(--vscode-focusBorder);
   color: var(--vscode-foreground);
 }
-.tab-icon.svelte-dv0yh {
-  font-size: 14px;
-}
 .tab-label.svelte-dv0yh {
   font-size: 13px;
+}
+.settings-btn.svelte-dv0yh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-sideBarTitle-foreground);
+  cursor: pointer;
+  font-size: 15px;
+  opacity: 0.7;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+.settings-btn.svelte-dv0yh:hover {
+  opacity: 1;
+  background: var(--vscode-list-hoverBackground);
+  color: var(--vscode-foreground);
 }
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/ContextMeter.esbuild-svelte-fake-css */
@@ -752,6 +760,41 @@
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
   margin-left: 8px;
+}
+.session-delete-btn.svelte-1mroaqi {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  display: none;
+  place-items: center;
+  padding: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.session-item.svelte-1mroaqi:hover .session-delete-btn:where(.svelte-1mroaqi) {
+  display: grid;
+}
+.session-delete-btn.svelte-1mroaqi:hover {
+  opacity: 1;
+  color: var(--vscode-errorForeground, #e74c3c);
+  background: var(--vscode-list-hoverBackground);
+}
+.session-delete-btn.confirm.svelte-1mroaqi {
+  display: grid;
+  font-size: 11px;
+  width: auto;
+  padding: 0 6px;
+  color: var(--vscode-errorForeground, #e74c3c);
+  opacity: 1;
+  font-weight: 500;
 }
 .session-empty.svelte-1mroaqi {
   padding: 16px;

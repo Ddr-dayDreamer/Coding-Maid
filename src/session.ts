@@ -70,6 +70,7 @@ export class SessionManager {
     model: string;
     webSearchTool?: string;
     mcpServers?: Record<string, McpServerConfig>;
+    debugEnabled: boolean;
   };
   private readonly onAssistantMessage: (
     message: SessionMessage,
@@ -80,7 +81,6 @@ export class SessionManager {
   private readonly onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
   private readonly onMcpStatusChanged?: () => void;
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
-  private readonly debugEnabled: boolean;
 
   /* 子模块 */
   private readonly storage: SessionStorage;
@@ -113,7 +113,6 @@ export class SessionManager {
     this.onStreamChunk = options.onStreamChunk;
     this.onMcpStatusChanged = options.onMcpStatusChanged;
     this.onProcessStdout = options.onProcessStdout;
-    this.debugEnabled = options.debugEnabled;
 
     this.storage = new SessionStorage(this.projectRoot);
     this.fileHistory = new SessionFileHistory(this.projectRoot, this.storage);
@@ -343,7 +342,7 @@ export class SessionManager {
         appendToolMessages: (sid, calls) => this.appendToolMessages(sid, calls),
         onAssistantMessage: (msg, connect) => this.onAssistantMessage(msg, connect),
         onSessionEntryUpdated: (entry) => this.onSessionEntryUpdated?.(entry),
-        debugEnabled: this.debugEnabled,
+        debugEnabled: this.getResolvedSettings().debugEnabled,
         presetMgr: this.presetMgr,
         activePreset: getActivePreset(),
       });
