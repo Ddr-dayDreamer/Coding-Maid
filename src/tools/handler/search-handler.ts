@@ -13,6 +13,7 @@ import * as fs from "fs";
 import * as path from "path";
 import ignore from "ignore";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
+import { posixPathToWindowsPath } from "../../common/shell-utils";
 
 // ─── 常量 ───────────────────────────────────────────────
 
@@ -400,7 +401,9 @@ export async function handleSearchTool(
   // 确定搜索根目录
   let rootPath: string;
   if (typeof args.path === "string" && args.path.trim()) {
-    rootPath = path.resolve(args.path.trim());
+    const p = args.path.trim();
+    const normalized = process.platform === "win32" ? posixPathToWindowsPath(p) : p;
+    rootPath = path.resolve(normalized);
   } else {
     rootPath = context.projectRoot;
   }

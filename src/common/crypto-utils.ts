@@ -12,6 +12,20 @@ export function generateEncryptionKey(): string {
 }
 
 /**
+ * 从种子值确定性派生加密密钥（相同 seed 始终返回相同 key）
+ *
+ * 用于解决扩展重装后 globalState 丢失导致密钥变化的问题。
+ * 传入 vscode.env.machineId 即可保证同一台机器上密钥始终一致。
+ */
+export function deriveKeyFromSeed(seed: string): string {
+  return crypto
+    .createHash("sha256")
+    .update("codingmaid-encryption-v2:" + seed)
+    .digest("hex")
+    .substring(0, KEY_LENGTH * 2);
+}
+
+/**
  * 使用 AES-256-GCM 加密明文
  * @returns 格式为 "iv:tag:ciphertext" 的 hex 编码字符串
  */

@@ -81,13 +81,7 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 
 | 宏                            | 说明                                       |
 | ----------------------------- | ------------------------------------------ |
-| `{{tool.bash}}`               | bash 工具描述文档                          |
-| `{{tool.read}}`               | read 工具描述文档                          |
-| `{{tool.write}}`              | write 工具描述文档                         |
-| `{{tool.edit}}`               | edit 工具描述文档                          |
-| `{{tool.ask_user_question}}`  | AskUserQuestion 工具描述文档               |
-| `{{tool.web_search}}`         | WebSearch 工具描述文档                     |
-| `{{tool.update_plan}}`        | UpdatePlan 工具描述文档                    |
+| `{{tool.$toolname}}`          | 内置对应工具的内置描述prompt                |
 | `{{skill.agent-drift-guard}}` | 内建 skill 文档（agent-drift-guard）       |
 | `{{skill.plan-and-execute}}`  | 内建 skill 文档（plan-and-execute）        |
 | `{{runtime_context}}`         | 运行时环境信息（日期、系统、路径、版本等） |
@@ -101,9 +95,13 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 | `{{setvar::key::val}}`        | 设置会话级变量                             |
 | `{{getvar::key}}`             | 读取会话级变量                             |
 
-对话历史记录将会注入到身份为“chat_history”的条目位置。
+“对话历史记录”将会注入到身份为“chat_history”的条目位置。
 
-## 主要功能
+注意，想要确保缓存命中高，你需要将任何可能变化的提示词放到后面（“对话历史记录”后面）
+
+而且注意不要在“对话历史记录”后面使用系统身份(system)的提示词，经过测试，我的推测是：deepseek会把传入参数里的tools数组中的那些schema格式注入到最后一个系统身份的提示词的位置。使用了系统身份的话这些东西可能不会命中的。
+
+
 
 ~~**Skills**~~
 
@@ -120,5 +118,5 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 ## 支持的模型
 
 - `deepseek-v4-pro`（推荐使用）
-- `deepseek-v4-flash`
-- 任何其他 OpenAI 兼容模型
+- `deepseek-v4-flash`（虽然推荐pro但是我穷的一，平时只能用flash，也就是说这个插件也是...）
+- 任何其他 OpenAI 兼容模型（不知道，没测试）

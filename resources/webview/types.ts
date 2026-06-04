@@ -34,7 +34,8 @@ export type BackendMessage =
   | { type: "appendMessage"; message: SessionMessageData; shouldConnect: boolean }
   | { type: "loading"; value: boolean }
   | { type: "llmStreamProgress"; progress: LlmStreamProgressData }
-  | { type: "streamChunk"; sessionId?: string; content?: string; reasoningContent?: string };
+  | { type: "streamChunk"; sessionId?: string; content?: string; reasoningContent?: string }
+  | { type: "notify"; level: "success" | "error" | "warning" | "info"; text: string; duration?: number };
 
 // 前端 → 后端
 export type FrontendMessage =

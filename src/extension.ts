@@ -20,7 +20,6 @@ import {
 import {
   listProfiles,
   loadProfile,
-  saveProfile,
   deleteProfile,
   renameProfile,
   setActiveProfile,
@@ -30,7 +29,7 @@ import {
 } from "./common/connection-profiles";
 import { getActivePreset, setActivePreset } from "./common/global-settings";
 import { setShellIfWindows } from "./common/shell-utils";
-import { generateEncryptionKey } from "./common/crypto-utils";
+import { generateEncryptionKey, deriveKeyFromSeed } from "./common/crypto-utils";
 
 const CRYPTO_KEY_STORAGE_KEY = "codingmaid.cryptoKey";
 
@@ -94,6 +93,10 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
           reasoningContent: chunk.reasoningContent,
         });
       },
+      onNotify: (level, text, duration) => {
+        if (!this.webviewView) return;
+        this.webviewView.webview.postMessage({ type: "notify", level, text, duration });
+      },
     });
 
     // 注册消息处理器
@@ -121,7 +124,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     // 连接配置管理
     this.registerHandler("listProfiles", this.handleListProfiles);
     this.registerHandler("getProfile", this.handleGetProfile);
-    this.registerHandler("saveProfile", this.handleSaveProfile);
     this.registerHandler("deleteProfile", this.handleDeleteProfile);
     this.registerHandler("selectProfile", this.handleSelectProfile);
     this.registerHandler("testConnection", this.handleTestConnection);
@@ -534,14 +536,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     this.respond(message.requestId as string, true, safe);
   };
 
-  private handleSaveProfile = async (message: Record<string, unknown>): Promise<void> => {
-    const profile = message.profile as ConnectionProfile | undefined;
-    if (!profile?.name) { this.respond(message.requestId as string, false, undefined, "缺少配置信息"); return; }
-    const cryptoKey = this.getCryptoKey();
-    saveProfile(profile, cryptoKey);
-    this.respond(message.requestId as string, true);
-  };
-
   private handleDeleteProfile = async (message: Record<string, unknown>): Promise<void> => {
     const name = String(message.name || "").trim();
     if (!name) { this.respond(message.requestId as string, false, undefined, "缺少配置名称"); return; }
@@ -735,15 +729,14 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
   }
 
   private getCryptoKey(): string {
-    return this.context.globalState.get<string>(CRYPTO_KEY_STORAGE_KEY, "");
+    // 基于 machineId 确定性派生，扩展重装后密钥不变
+    return deriveKeyFromSeed(vscode.env.machineId);
   }
 
   private initCryptoKey(): void {
-    const existing = this.context.globalState.get<string>(CRYPTO_KEY_STORAGE_KEY);
-    if (!existing) {
-      const key = generateEncryptionKey();
-      void this.context.globalState.update(CRYPTO_KEY_STORAGE_KEY, key);
-    }
+    // 用新密钥覆盖更新 globalState（仅记录，实际已不依赖它）
+    const newKey = deriveKeyFromSeed(vscode.env.machineId);
+    void this.context.globalState.update(CRYPTO_KEY_STORAGE_KEY, newKey);
   }
 
   private resolveCurrentSettings(): ResolvedSettings {

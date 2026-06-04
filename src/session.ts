@@ -79,6 +79,7 @@ export class SessionManager {
   private readonly onSessionEntryUpdated?: (entry: SessionEntry) => void;
   private readonly onLlmStreamProgress?: (progress: LlmStreamProgress) => void;
   private readonly onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
+  private readonly onNotify?: (level: "success" | "error" | "warning" | "info", text: string, duration?: number) => void;
   private readonly onMcpStatusChanged?: () => void;
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
 
@@ -111,6 +112,7 @@ export class SessionManager {
     this.onSessionEntryUpdated = options.onSessionEntryUpdated;
     this.onLlmStreamProgress = options.onLlmStreamProgress;
     this.onStreamChunk = options.onStreamChunk;
+    this.onNotify = options.onNotify;
     this.onMcpStatusChanged = options.onMcpStatusChanged;
     this.onProcessStdout = options.onProcessStdout;
 
@@ -342,6 +344,7 @@ export class SessionManager {
         appendToolMessages: (sid, calls) => this.appendToolMessages(sid, calls),
         onAssistantMessage: (msg, connect) => this.onAssistantMessage(msg, connect),
         onSessionEntryUpdated: (entry) => this.onSessionEntryUpdated?.(entry),
+        onNotify: this.onNotify,
         debugEnabled: this.getResolvedSettings().debugEnabled,
         presetMgr: this.presetMgr,
         activePreset: getActivePreset(),

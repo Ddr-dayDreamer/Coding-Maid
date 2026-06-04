@@ -9208,6 +9208,9 @@ ${component_stack}
       case "streamChunk":
         handleStreamChunk(msg.content ?? "", msg.reasoningContent ?? "");
         break;
+      case "notify":
+        notify[msg.level](msg.text, msg.duration);
+        break;
     }
   });
   function normalizeProcesses(processes) {

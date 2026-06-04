@@ -7,6 +7,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
+import { posixPathToWindowsPath } from "../../common/shell-utils";
 
 export async function handleListDirTool(
   args: Record<string, unknown>,
@@ -21,8 +22,11 @@ export async function handleListDirTool(
     };
   }
 
+  // 在 Windows 上，将 Git Bash / MSYS2 风格路径（如 /f/extra/test）转为盘符格式（F:\extra\test）
+  const normalized =
+    process.platform === "win32" ? posixPathToWindowsPath(rawPath) : rawPath;
   // 解析为绝对路径（相对于 projectRoot 如果传入的是相对路径）
-  const dirPath = path.isAbsolute(rawPath) ? rawPath : path.resolve(context.projectRoot, rawPath);
+  const dirPath = path.isAbsolute(normalized) ? normalized : path.resolve(context.projectRoot, normalized);
 
   if (!fs.existsSync(dirPath)) {
     return {

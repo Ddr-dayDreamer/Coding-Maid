@@ -131,6 +131,7 @@ export type SessionManagerOptions = {
   onSessionEntryUpdated?: (entry: SessionEntry) => void;
   onLlmStreamProgress?: (progress: LlmStreamProgress) => void;
   onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
+  onNotify?: (level: "success" | "error" | "warning" | "info", text: string, duration?: number) => void;
   onMcpStatusChanged?: () => void;
   onProcessStdout?: (pid: number, chunk: string) => void;
 };

@@ -33,6 +33,8 @@ export type ActivateOptions = {
   activePreset: string;
   /** 启用调试日志（写入 ~/.codingmaid/logs/） */
   debugEnabled: boolean;
+  /** 通知回调，用于向前端推送非消息类的提示（如错误通知） */
+  onNotify?: (level: "success" | "error" | "warning" | "info", text: string, duration?: number) => void;
 };
 
 // ─── SessionActivator ────────────────────────────────────
@@ -93,13 +95,10 @@ export class SessionActivator {
         failReason: "OpenAI API key not found",
         updateTime: now,
       }));
-      opts.onAssistantMessage(
-        this.messageBuilder.buildAssistantMessage(
-          sessionId,
-          "OpenAI API key not found. Please configure ~/.codingmaid/settings.json or ./.codingmaid/settings.json.",
-          null
-        ),
-        false
+      opts.onNotify?.(
+        "error",
+        "API 密钥未找到。请在连接配置中填写 API Key。如果之前已配置过，可能是插件升级导致加密密钥变更，请重新保存一次 API Key。",
+        0
       );
       this.notifier.maybeNotifyTaskCompletion(sessionId, notify, startedAt, this.projectRoot, env);
       return;

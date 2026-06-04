@@ -9,16 +9,19 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
+import { posixPathToWindowsPath } from "../../common/shell-utils";
 
 /**
- * 解析 filePath + lineContent 找到符号的精确位置�? */
+ * 解析 filePath + lineContent 找到符号的精确位置。 */
 function resolveSymbolPosition(
   filePath: string,
   symbol: string,
   lineContent: string,
   projectRoot: string,
 ): { uri: vscode.Uri; position: vscode.Position } | { error: string } {
-  const absPath = path.isAbsolute(filePath) ? filePath : path.resolve(projectRoot, filePath);
+  // 在 Windows 上归一化 Git Bash 风格路径
+  const normalizedPath = process.platform === "win32" ? posixPathToWindowsPath(filePath) : filePath;
+  const absPath = path.isAbsolute(normalizedPath) ? normalizedPath : path.resolve(projectRoot, normalizedPath);
   const normalized = path.resolve(absPath);
 
   if (!fs.existsSync(normalized)) {

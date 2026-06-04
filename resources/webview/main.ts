@@ -124,6 +124,10 @@ window.addEventListener("message", (event: MessageEvent) => {
     case "streamChunk":
       handleStreamChunk(msg.content ?? "", msg.reasoningContent ?? "");
       break;
+
+    case "notify":
+      notify[msg.level](msg.text, msg.duration);
+      break;
   }
 });
 

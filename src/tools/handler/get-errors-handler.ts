@@ -8,6 +8,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
+import { posixPathToWindowsPath } from "../../common/shell-utils";
 
 export async function handleGetErrors(
   args: Record<string, unknown>,
@@ -30,13 +31,15 @@ export async function handleGetErrors(
       uris = [];
       for (const p of rawPaths) {
         if (typeof p !== "string") continue;
-        const absPath = path.isAbsolute(p) ? p : path.resolve(context.projectRoot, p);
+        const normalized = process.platform === "win32" ? posixPathToWindowsPath(p) : p;
+        const absPath = path.isAbsolute(normalized) ? normalized : path.resolve(context.projectRoot, normalized);
         const uri = vscode.Uri.file(absPath);
         uris.push(uri);
       }
     }
   } else if (typeof rawPaths === "string") {
-    const absPath = path.isAbsolute(rawPaths) ? rawPaths : path.resolve(context.projectRoot, rawPaths);
+    const normalized = process.platform === "win32" ? posixPathToWindowsPath(rawPaths) : rawPaths;
+    const absPath = path.isAbsolute(normalized) ? normalized : path.resolve(context.projectRoot, normalized);
     uris = [vscode.Uri.file(absPath)];
   } else {
     return {

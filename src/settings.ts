@@ -4,7 +4,6 @@ import {
   getActiveProfile,
   listProfiles,
   loadProfile,
-  saveProfile,
   deleteProfile,
   setActiveProfile,
   ensureDefaultProfile,
@@ -44,6 +43,8 @@ export type ResolvedSettings = {
 
 /**
  * 根据加密密钥解析当前激活的连接预设 + 全局设置
+ *
+ * 密钥由 vscode.env.machineId 确定性派生，扩展重装后仍然一致。
  */
 export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSettings {
   const globalSettings = loadGlobalSettings();
@@ -79,7 +80,6 @@ export {
   getActiveProfile,
   listProfiles,
   loadProfile,
-  saveProfile,
   deleteProfile,
   setActiveProfile,
   ensureDefaultProfile,

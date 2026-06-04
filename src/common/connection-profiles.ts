@@ -118,6 +118,8 @@ function profilePath(name: string): string {
 
 /**
  * 读取一个连接预设（返回明文 API Key，需提供加密密钥）
+ *
+ * 如果发现明文 API Key 且为真实密钥，会自动加密写入并用占位符替换明文。
  */
 export function loadProfile(name: string, cryptoKey: string): ConnectionProfile | null {
   ensureProfileDir();
@@ -141,9 +143,22 @@ export function loadProfile(name: string, cryptoKey: string): ConnectionProfile 
       }
     }
 
-    // 回退：读取明文的 apiKey（手动编辑 JSON 场景）
-    if (!apiKey && stored.apiKey) {
+    // 回退：读取明文的 apiKey（手动编辑 JSON 场景）→ 自动加密并替换为占位符
+    if (!apiKey && isRealApiKey(stored.apiKey)) {
       apiKey = stored.apiKey;
+      try {
+        stored.apiKeyEncrypted = encrypt(apiKey!, cryptoKey);
+        stored.apiKey = PLACEHOLDER_API_KEY;
+        fs.writeFileSync(filePath, JSON.stringify(stored, null, 2), "utf8");
+        console.log(`[Coding Maid] Auto-encrypted API key in profile "${name}"`);
+      } catch (e) {
+        console.error(`[Coding Maid] Failed to encrypt API key in profile "${name}":`, e);
+      }
+    }
+
+    // 占位符清理（不留空 key 字段）
+    if (!apiKey && stored.apiKey && !isRealApiKey(stored.apiKey)) {
+      delete stored.apiKey;
     }
 
     return {
@@ -161,9 +176,9 @@ export function loadProfile(name: string, cryptoKey: string): ConnectionProfile 
 }
 
 /**
- * 保存一个连接预设（自动加密 API Key）
+ * 写入预设文件（内部使用，不对外暴露）
  */
-export function saveProfile(profile: ConnectionProfile, cryptoKey: string): void {
+function writeProfileFile(profile: ConnectionProfile, cryptoKey: string): void {
   ensureProfileDir();
 
   const stored: ConnectionProfileStored = {
@@ -172,12 +187,14 @@ export function saveProfile(profile: ConnectionProfile, cryptoKey: string): void
     baseURL: profile.baseURL,
     thinkingEnabled: profile.thinkingEnabled,
     reasoningEffort: profile.reasoningEffort,
+    apiKey: profile.apiKey,
     params: profile.params,
   };
 
   // 加密 API Key（跳过空值和占位符）
   if (isRealApiKey(profile.apiKey)) {
     stored.apiKeyEncrypted = encrypt(profile.apiKey!, cryptoKey);
+    delete stored.apiKey;
   }
 
   const filePath = profilePath(profile.name);
@@ -256,13 +273,14 @@ export function ensureDefaultProfile(cryptoKey: string): void {
     baseURL: "https://api.deepseek.com",
   };
 
-  saveProfile(defaultProfile, cryptoKey);
+  writeProfileFile(defaultProfile, cryptoKey);
   setActiveProfile("default");
 }
 
 /**
  * 扫描所有连接预设，将明文 apiKey 自动加密为 apiKeyEncrypted。
  * 支持用户在 JSON 中直接填写真实 key，启动时自动完成加密迁移。
+ * 加密后会在 apiKey 字段保留占位符，方便下次替换。
  */
 export function migratePlaintextApiKeys(cryptoKey: string): void {
   const profiles = listProfiles();
@@ -275,16 +293,12 @@ export function migratePlaintextApiKeys(cryptoKey: string): void {
       // 已有加密 key 或没有明文 key → 跳过
       if (stored.apiKeyEncrypted || !stored.apiKey) continue;
 
-      // 占位符 → 清理明文，不留痕迹
-      if (!isRealApiKey(stored.apiKey)) {
-        delete stored.apiKey;
-        fs.writeFileSync(filePath, JSON.stringify(stored, null, 2), "utf8");
-        continue;
-      }
+      // 占位符 → 保留不动
+      if (!isRealApiKey(stored.apiKey)) continue;
 
-      // 真实 key → 加密写入
+      // 真实 key → 加密写入，明文替换为占位符
       stored.apiKeyEncrypted = encrypt(stored.apiKey, cryptoKey);
-      delete stored.apiKey;
+      stored.apiKey = PLACEHOLDER_API_KEY;
       fs.writeFileSync(filePath, JSON.stringify(stored, null, 2), "utf8");
       console.log(`[Coding Maid] Auto-encrypted API key in profile "${name}"`);
     } catch (err) {
@@ -324,9 +338,9 @@ export function ensureInitialConfig(templatesDir: string, cryptoKey: string): vo
       if (fs.existsSync(templatePath)) {
         const raw = fs.readFileSync(templatePath, "utf8");
         const profile = JSON.parse(raw) as ConnectionProfile;
-        // 模板中的 apiKey 只是占位指引，不写入实际配置
-        delete profile.apiKey;
-        saveProfile(profile, cryptoKey);
+        // 保留占位符，方便用户直接填写
+        profile.apiKey = PLACEHOLDER_API_KEY;
+        writeProfileFile(profile, cryptoKey);
         setActiveProfile(profile.name);
         console.log("[Coding Maid] Created default profile from template");
       } else {
@@ -336,7 +350,7 @@ export function ensureInitialConfig(templatesDir: string, cryptoKey: string): vo
           model: "deepseek-v4-pro",
           baseURL: "https://api.deepseek.com",
         };
-        saveProfile(profile, cryptoKey);
+        writeProfileFile(profile, cryptoKey);
         setActiveProfile("default");
       }
     } catch (err) {
@@ -367,16 +381,14 @@ export function createProfileFromTemplate(name: string, templatesDir: string, cr
       name: "default",
       model: "deepseek-v4-flash",
       baseURL: "https://api.deepseek.com",
-      thinkingEnabled: true,
-      reasoningEffort: "max",
       params: { stream: true },
     };
   }
 
-  // 使用新名称，清除 API Key（占位符不写入）
+  // 使用新名称，保留占位符方便直接编辑
   base.name = name;
-  delete base.apiKey;
+  base.apiKey = PLACEHOLDER_API_KEY;
 
-  saveProfile(base, cryptoKey);
+  writeProfileFile(base, cryptoKey);
   return base;
 }
