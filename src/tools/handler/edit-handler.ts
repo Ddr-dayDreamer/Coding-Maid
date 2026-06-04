@@ -1,14 +1,14 @@
 import * as fs from "fs";
 import { z } from "zod";
-import { buildThinkingRequestOptions } from "../common/openai-thinking";
-import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { buildThinkingRequestOptions } from "../../common/openai-thinking";
+import type { ToolExecutionContext, ToolExecutionResult } from "../types";
 import {
   buildDiffPreview,
   hasFileChangedSinceState,
   readTextFileWithMetadata,
   writeTextFile,
-} from "../common/file-utils";
-import { executeValidatedTool, semanticBoolean } from "../common/runtime";
+} from "../../common/file-utils";
+import { executeValidatedTool, semanticBoolean } from "../../common/runtime";
 import {
   createSnippet,
   getFileState,
@@ -18,7 +18,7 @@ import {
   isFullFileView,
   normalizeFilePath,
   recordFileState,
-} from "../common/state";
+} from "../../common/state";
 
 const MAX_CANDIDATE_COUNT = 5;
 const REPLACE_ALL_MATCH_THRESHOLD = 5;
@@ -82,6 +82,15 @@ const editSchema = z.strictObject({
     }
     return value;
   }, z.number().int().min(1, "expected_occurrences must be >= 1.").optional()),
+  expected_start_line: z.preprocess((value) => {
+    if (value === undefined || value === null || value === "") {
+      return undefined;
+    }
+    if (typeof value === "string") {
+      return Number(value);
+    }
+    return value;
+  }, z.number().int().min(1, "expected_start_line must be >= 1.").optional()),
 });
 
 export async function handleEditTool(
@@ -295,6 +304,22 @@ export async function handleEditTool(
               match_count: matches.length,
               scope: formatScopeMetadata(scope),
               candidates: buildCandidateMetadata(context.sessionId, filePath, raw, matches),
+            },
+          };
+        }
+
+        const expectedStartLine = input.expected_start_line ?? null;
+        if (expectedStartLine !== null && matches[0].startLine !== expectedStartLine) {
+          return {
+            ok: false,
+            name: "edit",
+            error: `old_string found at line ${matches[0].startLine}, but expected_start_line is ${expectedStartLine}.`,
+            metadata: {
+              match_count: matches.length,
+              scope: formatScopeMetadata(scope),
+              candidates: buildCandidateMetadata(context.sessionId, filePath, raw, matches),
+              actual_start_line: matches[0].startLine,
+              expected_start_line: expectedStartLine,
             },
           };
         }

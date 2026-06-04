@@ -8207,6 +8207,23 @@ ${component_stack}
   }
   delegate(["input", "change", "click"]);
 
+  // src/tools/builtin-tools.ts
+  var BUILTIN_TOOLS = [
+    "bash",
+    "read",
+    "write",
+    "edit",
+    "AskUserQuestion",
+    "UpdatePlan",
+    "search",
+    "list_dir",
+    "find_references",
+    "rename_symbol",
+    "get_errors",
+    "fetch_webpage",
+    "memory"
+  ];
+
   // resources/webview/components/MacroPanel.svelte
   var root10 = from_html(`<span class="macro-hint svelte-11xah9r">\uFF08\u8BF7\u5148\u9009\u4E2D\u4E00\u4E2A\u6761\u76EE\uFF09</span>`);
   var root_19 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
@@ -8215,22 +8232,14 @@ ${component_stack}
   var root_47 = from_html(`<div class="macro-section svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F <!></button> <!></div>`);
   function MacroPanel($$anchor, $$props) {
     push($$props, true);
-    "use strict";
     let disabled = prop($$props, "disabled", 3, false), oninsert = prop($$props, "oninsert", 3, (_macro) => {
     });
     let open = state(false);
     const MACROS = [
       {
         group: "\u5DE5\u5177\u6587\u6863",
-        items: [
-          "{{tool.bash}}",
-          "{{tool.read}}",
-          "{{tool.write}}",
-          "{{tool.edit}}",
-          "{{tool.AskUserQuestion}}",
-          "{{tool.UpdatePlan}}",
-          "{{tool.WebSearch}}"
-        ]
+        // 工具列表来自 src/tools/builtin-tools.ts（唯一数据源）
+        items: BUILTIN_TOOLS.map((t) => `{{tool.${t}}}`)
       },
       {
         group: "\u6280\u80FD\u7CFB\u7EDF",
@@ -8314,7 +8323,7 @@ ${component_stack}
   var root11 = from_html(`<button> </button>`);
   var root_110 = from_html(`<div><!></div>`);
   var root_28 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
-  var root_38 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u6807\u8BC6\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u663E\u793A\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u63CF\u8FF0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">char \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">user \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
+  var root_38 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
   function PresetEditor($$anchor, $$props) {
     push($$props, true);
     let definition = prop($$props, "definition", 19, () => ({
@@ -8326,15 +8335,26 @@ ${component_stack}
         "write",
         "edit",
         "AskUserQuestion",
-        "UpdatePlan",
-        "WebSearch"
+        "UpdatePlan"
       ],
       entries: []
     })), presetName = prop($$props, "presetName", 3, ""), onsave = prop($$props, "onsave", 3, (_name, _def) => {
     }), oncancel = prop($$props, "oncancel", 3, () => {
     });
-    let editName = state(proxy(presetName()));
-    let editDef = state(proxy(deepClone(definition())));
+    let editName = state("");
+    let editDef = state(proxy({
+      name: "",
+      description: "",
+      availableTools: [
+        "bash",
+        "read",
+        "write",
+        "edit",
+        "AskUserQuestion",
+        "UpdatePlan"
+      ],
+      entries: []
+    }));
     let activeEntryIndex = state(null);
     user_effect(() => {
       set(editName, presetName());
@@ -8343,15 +8363,7 @@ ${component_stack}
     function deepClone(obj) {
       return JSON.parse(JSON.stringify(obj));
     }
-    const ALL_TOOLS = [
-      { id: "bash", label: "Bash" },
-      { id: "read", label: "Read" },
-      { id: "write", label: "Write" },
-      { id: "edit", label: "Edit" },
-      { id: "AskUserQuestion", label: "AskUser" },
-      { id: "UpdatePlan", label: "Plan" },
-      { id: "WebSearch", label: "Search" }
-    ];
+    const ALL_TOOLS = BUILTIN_TOOLS.map((id) => ({ id, label: id }));
     function addEntry() {
       get2(editDef).entries = [
         ...get2(editDef).entries,
@@ -8625,15 +8637,8 @@ ${component_stack}
           description: "",
           char: "",
           user: "",
-          availableTools: [
-            "bash",
-            "read",
-            "write",
-            "edit",
-            "AskUserQuestion",
-            "UpdatePlan",
-            "WebSearch"
-          ],
+          // 工具列表来自 src/tools/builtin-tools.ts（唯一数据源）
+          availableTools: [...BUILTIN_TOOLS],
           entries: []
         },
         true

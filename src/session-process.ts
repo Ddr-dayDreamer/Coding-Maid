@@ -5,7 +5,7 @@
  * 从 session.ts 拆分。
  */
 
-import type { ProcessTimeoutControl, ProcessTimeoutInfo } from "./tools/executor";
+import type { ProcessTimeoutControl, ProcessTimeoutInfo } from "./tools/types";
 import type { SessionProcessEntry, BashTimeoutAdjustment } from "./session-types";
 
 // ─── SessionProcessManager ───────────────────────────────

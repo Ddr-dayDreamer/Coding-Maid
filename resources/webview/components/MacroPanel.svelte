@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { BUILTIN_TOOLS } from "../../../src/tools/builtin-tools";
+
   let {
     disabled = false,
     oninsert = (_macro: string) => {},
@@ -12,10 +14,8 @@
   const MACROS = [
     {
       group: "工具文档",
-      items: [
-        "{{tool.bash}}", "{{tool.read}}", "{{tool.write}}", "{{tool.edit}}",
-        "{{tool.AskUserQuestion}}", "{{tool.UpdatePlan}}", "{{tool.WebSearch}}",
-      ],
+      // 工具列表来自 src/tools/builtin-tools.ts（唯一数据源）
+      items: BUILTIN_TOOLS.map((t) => `{{tool.${t}}}`),
     },
     {
       group: "技能系统",

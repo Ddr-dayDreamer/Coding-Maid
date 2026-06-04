@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import { z } from "zod";
-import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import type { ToolExecutionContext, ToolExecutionResult } from "../types";
 import {
   buildDiffPreview,
   ensureParentDirectory,
@@ -8,9 +8,9 @@ import {
   normalizeContent,
   readTextFileWithMetadata,
   writeTextFile,
-} from "../common/file-utils";
-import { executeValidatedTool } from "../common/runtime";
-import { getFileState, isAbsoluteFilePath, isFullFileView, normalizeFilePath, recordFileState } from "../common/state";
+} from "../../common/file-utils";
+import { executeValidatedTool } from "../../common/runtime";
+import { getFileState, isAbsoluteFilePath, isFullFileView, normalizeFilePath, recordFileState } from "../../common/state";
 
 const writeSchema = z.strictObject({
   file_path: z.string().min(1, "file_path is required."),
@@ -114,6 +114,11 @@ export async function handleWriteTool(
           { incrementVersion: true }
         );
 
+        const lineCount = normalizedContent.split(/\r\n|\r|\n/).length;
+        const prevLineCount = existingMetadata?.content
+          ? existingMetadata.content.split(/\r\n|\r|\n/).length
+          : 0;
+
         return {
           ok: true,
           name: "write",
@@ -122,6 +127,8 @@ export async function handleWriteTool(
             type: existingMetadata ? "update" : "create",
             file_path: filePath,
             bytes,
+            total_lines: lineCount,
+            line_delta: existingMetadata ? lineCount - prevLineCount : lineCount,
             encoding: freshMetadata.encoding,
             line_endings: freshMetadata.lineEndings,
             cache_refreshed: true,

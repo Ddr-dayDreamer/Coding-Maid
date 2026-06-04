@@ -15,9 +15,6 @@
     "Other"
   ],
   "icon": "resources/coding_maid_icon.png",
-  "activationEvents": [
-    "onView:codingmaid.chatView"
-  ],
   "main": "./out/extension.js",
   "files": [
     "out/extension.js",

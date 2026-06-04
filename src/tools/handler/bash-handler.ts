@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
-import { DEFAULT_BASH_TIMEOUT_MS, clampBashTimeoutMs } from "../common/bash-timeout";
-import { killProcessTree } from "../common/process-tree";
-import type { ProcessTimeoutControl, ProcessTimeoutInfo, ToolExecutionContext, ToolExecutionResult } from "./executor";
+import { DEFAULT_BASH_TIMEOUT_MS, clampBashTimeoutMs } from "../../common/bash-timeout";
+import { killProcessTree } from "../../common/process-tree";
+import type { ProcessTimeoutControl, ProcessTimeoutInfo, ToolExecutionContext, ToolExecutionResult } from "../types";
 import {
   buildDisableExtglobCommand,
   buildShellEnv,
@@ -9,7 +9,7 @@ import {
   resolveShellPath,
   rewriteWindowsNullRedirect,
   toNativeCwd,
-} from "../common/shell-utils";
+} from "../../common/shell-utils";
 
 const MAX_OUTPUT_CHARS = 30000;
 const MAX_CAPTURE_CHARS = 10 * 1024 * 1024;
@@ -42,10 +42,12 @@ export async function handleBashTool(
     };
   }
 
+  const description = typeof args.description === "string" ? args.description.trim() : "";
+
   const startCwd = getSessionCwd(context.sessionId, context.projectRoot);
   const { shellPath, shellArgs, marker } = buildShellCommand(command);
 
-  const execution = await executeShellCommand(shellPath, shellArgs, startCwd, command, context);
+  const execution = await executeShellCommand(shellPath, shellArgs, startCwd, command, description, context);
   const result = buildToolCommandResult(
     execution.stdout,
     execution.stderr,
@@ -109,6 +111,7 @@ async function executeShellCommand(
   shellArgs: string[],
   cwd: string,
   command: string,
+  description: string,
   context: ToolExecutionContext
 ): Promise<{
   stdout: string;
@@ -183,7 +186,7 @@ async function executeShellCommand(
     };
 
     if (typeof pid === "number") {
-      context.onProcessStart?.(pid, command);
+      context.onProcessStart?.(pid, description || command);
       context.onProcessTimeoutControl?.(pid, timeoutControl);
       scheduleTimeout();
     }

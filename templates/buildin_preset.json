@@ -3,7 +3,7 @@
   "char": "Coding Maid",
   "user": "user",
   "description": "Coding Maid 默认预设，真的有人用吗？不打算给女仆酱加点特殊玩法吗？",
-  "availableTools": ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan", "WebSearch"],
+  "availableTools": ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan"],
   "entries": [
     {
       "name": "system setting/系统设定",
@@ -14,7 +14,7 @@
     {
       "name": "tools/工具",
       "role": "system",
-      "content": "# Available Tools\n\n{{tool.bash}}\n\n{{tool.read}}\n\n{{tool.write}}\n\n{{tool.edit}}\n\n{{tool.ask_user_question}}\n\n{{tool.update_plan}}\n\n{{tool.web_search}}",
+      "content": "# Available Tools\n\n{{tool.bash}}\n\n{{tool.read}}\n\n{{tool.write}}\n\n{{tool.edit}}\n\n{{tool.ask_user_question}}\n\n{{tool.update_plan}}",
       "enabled": true
     },
     {

@@ -6,6 +6,7 @@
   import PresetList from "./PresetList.svelte";
   import PresetEditor from "./PresetEditor.svelte";
   import type { PresetMeta, PresetDefinition } from "../types";
+  import { BUILTIN_TOOLS } from "../../../src/tools/builtin-tools";
 
   // ─── 状态 ──────────────────────────────────────────
 
@@ -61,7 +62,8 @@
       description: "",
       char: "",
       user: "",
-      availableTools: ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan", "WebSearch"],
+      // 工具列表来自 src/tools/builtin-tools.ts（唯一数据源）
+      availableTools: [...BUILTIN_TOOLS],
       entries: [],
     };
     mode = "new";

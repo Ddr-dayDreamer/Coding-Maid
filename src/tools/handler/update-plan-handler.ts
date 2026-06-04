@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
-import { executeValidatedTool } from "../common/runtime";
+import type { ToolExecutionContext, ToolExecutionResult } from "../types";
+import { executeValidatedTool } from "../../common/runtime";
 
 const updatePlanSchema = z.strictObject({
   plan: z.string().trim().min(1, "plan must not be empty."),

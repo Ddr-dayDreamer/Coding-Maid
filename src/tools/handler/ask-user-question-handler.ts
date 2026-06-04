@@ -1,4 +1,4 @@
-import type { ToolExecutionContext, ToolExecutionResult } from "./executor";
+import type { ToolExecutionContext, ToolExecutionResult } from "../types";
 
 type AskUserQuestionOption = {
   label: string;
@@ -9,6 +9,7 @@ type AskUserQuestionItem = {
   question: string;
   multiSelect?: boolean;
   options: AskUserQuestionOption[];
+  context?: string;
 };
 
 type AskUserQuestionMetadata = {
@@ -115,9 +116,15 @@ function parseQuestions(raw: unknown): { ok: true; value: AskUserQuestionItem[] 
         ? (item as { multiSelect: boolean }).multiSelect
         : undefined;
 
+    const context =
+      typeof (item as { context?: unknown }).context === "string"
+        ? (item as { context: string }).context.trim()
+        : undefined;
+
     questions.push({
       question,
       multiSelect,
+      context: context || undefined,
       options,
     });
   }

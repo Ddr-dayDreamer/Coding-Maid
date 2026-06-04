@@ -9,7 +9,7 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import { buildThinkingRequestOptions } from "./common/openai-thinking";
 import { getExtensionRoot, getTools } from "./prompt";
 import type { ToolDefinition } from "./prompt";
-import type { CreateOpenAIClient } from "./tools/executor";
+import type { CreateOpenAIClient } from "./tools/types";
 import type { SessionStorage } from "./session-storage";
 import type { SessionMessageBuilder } from "./session-message-builder";
 import type { SessionNotifier } from "./session-notify";
@@ -24,7 +24,7 @@ import type { PresetManager } from "./preset-manager";
 export type ActivateOptions = {
   controller?: AbortController;
   mcpToolDefinitions: ToolDefinition[];
-  getPromptToolOptions: () => { model: string; webSearchEnabled: boolean; availableTools?: string[] };
+  getPromptToolOptions: () => { model: string; availableTools?: string[] };
   appendToolMessages: (sessionId: string, toolCalls: unknown[]) => Promise<{ waitingForUser: boolean }>;
   onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
   onSessionEntryUpdated?: (entry: SessionEntry) => void;

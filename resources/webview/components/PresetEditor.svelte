@@ -3,11 +3,12 @@
   import EntryCard from "./EntryCard.svelte";
   import MacroPanel from "./MacroPanel.svelte";
   import { onMount, onDestroy } from "svelte";
+  import { BUILTIN_TOOLS } from "../../../src/tools/builtin-tools";
 
   let {
     definition = {
       name: "", description: "",
-      availableTools: ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan", "WebSearch"],
+      availableTools: ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan"],
       entries: [],
     } as PresetDefinition,
     presetName = "",
@@ -22,11 +23,16 @@
 
   // ─── 编辑状态 ──────────────────────────────────────
 
-  let editName = $state(presetName);
-  let editDef = $state<PresetDefinition>(deepClone(definition));
+  let editName = $state("");
+  let editDef = $state<PresetDefinition>({
+    name: "",
+    description: "",
+    availableTools: ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan"],
+    entries: [],
+  });
   let activeEntryIndex = $state<number | null>(null);
 
-  // 当外部 definition 变化时同步（不能用 structuredClone，$state prop 传过来的是 Proxy）
+  // 当外部 prop 变化时同步（$state 只捕获初始化值，实际值由 $effect 维护）
   $effect(() => {
     editName = presetName;
     editDef = deepClone(definition);
@@ -36,15 +42,8 @@
     return JSON.parse(JSON.stringify(obj));
   }
 
-  const ALL_TOOLS = [
-    { id: "bash", label: "Bash" },
-    { id: "read", label: "Read" },
-    { id: "write", label: "Write" },
-    { id: "edit", label: "Edit" },
-    { id: "AskUserQuestion", label: "AskUser" },
-    { id: "UpdatePlan", label: "Plan" },
-    { id: "WebSearch", label: "Search" },
-  ];
+  // 工具列表来自 src/tools/builtin-tools.ts（唯一数据源）
+  const ALL_TOOLS = BUILTIN_TOOLS.map((id) => ({ id, label: id }));
 
   // ─── 条目操作 ──────────────────────────────────────
 
@@ -174,37 +173,37 @@
   <!-- 元信息 -->
   <div class="meta-section">
     <div class="field-row">
-      <label class="field-label">标识名称</label>
-      <input class="field-input" type="text" value={editName} placeholder="preset-name"
-        oninput={(e) => (editName = e.target.value)} />
+      <label class="field-label" for="edit-name">标识名称</label>
+      <input id="edit-name" class="field-input" type="text" value={editName} placeholder="preset-name"
+        oninput={(e) => (editName = (e.target as HTMLInputElement).value)} />
     </div>
     <div class="field-row">
-      <label class="field-label">显示名称</label>
-      <input class="field-input" type="text" value={editDef.name} placeholder="我的预设"
-        oninput={(e) => (editDef = { ...editDef, name: e.target.value })} />
+      <label class="field-label" for="edit-display-name">显示名称</label>
+      <input id="edit-display-name" class="field-input" type="text" value={editDef.name} placeholder="我的预设"
+        oninput={(e) => (editDef = { ...editDef, name: (e.target as HTMLInputElement).value })} />
     </div>
     <div class="field-row">
-      <label class="field-label">描述</label>
-      <input class="field-input" type="text" value={editDef.description} placeholder="预设用途说明"
-        oninput={(e) => (editDef = { ...editDef, description: e.target.value })} />
+      <label class="field-label" for="edit-description">描述</label>
+      <input id="edit-description" class="field-input" type="text" value={editDef.description} placeholder="预设用途说明"
+        oninput={(e) => (editDef = { ...editDef, description: (e.target as HTMLInputElement).value })} />
     </div>
     <div class="field-row half">
       <div class="half-field">
-        <label class="field-label">char 变量</label>
-        <input class="field-input" type="text" value={editDef.char ?? ""} placeholder="Coding Maid"
-          oninput={(e) => (editDef = { ...editDef, char: e.target.value })} />
+        <label class="field-label" for="edit-char">char 变量</label>
+        <input id="edit-char" class="field-input" type="text" value={editDef.char ?? ""} placeholder="Coding Maid"
+          oninput={(e) => (editDef = { ...editDef, char: (e.target as HTMLInputElement).value })} />
       </div>
       <div class="half-field">
-        <label class="field-label">user 变量</label>
-        <input class="field-input" type="text" value={editDef.user ?? ""} placeholder="user"
-          oninput={(e) => (editDef = { ...editDef, user: e.target.value })}
+        <label class="field-label" for="edit-user">user 变量</label>
+        <input id="edit-user" class="field-input" type="text" value={editDef.user ?? ""} placeholder="user"
+          oninput={(e) => (editDef = { ...editDef, user: (e.target as HTMLInputElement).value })}
         />
       </div>
     </div>
 
     <!-- 可用工具 -->
     <div class="field-row">
-      <label class="field-label">可用工具</label>
+      <label class="field-label" for="edit-tools">可用工具</label>
       <div class="tool-chips">
         {#each ALL_TOOLS as tool}
           <button
@@ -222,7 +221,7 @@
   <!-- 条目列表 -->
   <div class="entries-section">
     <div class="entries-header">
-      <label class="field-label">预设条目（{editDef.entries.length}）</label>
+      <label class="field-label" for="edit-entries">预设条目（{editDef.entries.length}）</label>
       <button class="add-entry-btn" onclick={addEntry}>
         <svg viewBox="0 0 16 16" width="12" height="12">
           <path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"/>
@@ -231,7 +230,7 @@
       </button>
     </div>
 
-    <div class="entries-list" ondragover={handleDragOver} ondrop={handleDrop}>
+    <div class="entries-list" role="list" ondragover={handleDragOver} ondrop={handleDrop}>
       {#each editDef.entries as entry, i (i)}
         <div data-entry-index={i}>
           <EntryCard

@@ -8,7 +8,7 @@
 import { launchNotifyScript } from "./common/notify";
 import type { SessionEntry } from "./session-types";
 import type { SessionStorage } from "./session-storage";
-import type { CreateOpenAIClient } from "./tools/executor";
+import type { CreateOpenAIClient } from "./tools/types";
 
 const DEFAULT_NEW_PROMPT_API_URL = "https://codingmaid.vegamo.cn/api/plugin/new";
 const NEW_PROMPT_REPORT_TIMEOUT_MS = 3000;

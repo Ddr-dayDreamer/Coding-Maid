@@ -17,7 +17,7 @@ import * as crypto from "crypto";
 import { getExtensionRoot } from "./prompt";
 import type { ToolDefinition } from "./prompt";
 import { ToolExecutor } from "./tools/executor";
-import type { CreateOpenAIClient } from "./tools/executor";
+import type { CreateOpenAIClient } from "./tools/types";
 import { McpManager } from "./mcp/mcp-manager";
 import type { McpServerConfig } from "./settings";
 import { getActivePreset } from "./common/global-settings";
@@ -562,8 +562,8 @@ export class SessionManager {
   //  内部工具
   // ═══════════════════════════════════════════════════════
 
-  private getPromptToolOptions(): { model: string; webSearchEnabled: boolean; availableTools?: string[] } {
-    const base = { model: this.getResolvedSettings().model, webSearchEnabled: true };
+  private getPromptToolOptions(): { model: string; availableTools?: string[] } {
+    const base = { model: this.getResolvedSettings().model };
 
     // 从当前激活的预设获取 availableTools
     try {

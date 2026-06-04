@@ -13,6 +13,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import type { MacroContext } from "./session-types";
+import { registry } from "./tools/index";
 
 // ─── MacroEngine ─────────────────────────────────────────
 
@@ -146,18 +147,9 @@ export class MacroEngine {
   //  内部方法
   // ═══════════════════════════════════════════════════════
 
-  /** 从 templates/tools/ 读取工具描述文档 */
+  /** 从 ToolRegistry 读取工具描述文档 */
   private readToolDoc(toolName: string): string {
-    const toolsDir = path.join(this.extensionRoot, "templates", "tools");
-    const files = fs.readdirSync(toolsDir);
-    const match = files.find((f) => path.parse(f).name.toLowerCase() === toolName.toLowerCase());
-    if (!match) return "";
-
-    try {
-      return fs.readFileSync(path.join(toolsDir, match), "utf8").trim();
-    } catch {
-      return "";
-    }
+    return registry.getToolDoc(toolName) ?? "";
   }
 
   /** 读取单个 skill 文档 */

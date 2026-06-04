@@ -14,6 +14,7 @@ import * as os from "os";
 import type { PresetDefinition, PresetEntry, PresetMeta, MacroContext, SessionMessage } from "./session-types";
 import type { SessionMessageBuilder } from "./session-message-builder";
 import { MacroEngine } from "./preset-macros";
+import { registry } from "./tools/index";
 
 // ─── 常量 ────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ const DEFAULT_PRESET_NAME = "default";
 
 // ─── 内置工具列表 ────────────────────────────────────────
 
-const ALL_TOOLS = ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan", "WebSearch"] as const;
+const ALL_TOOLS = ["bash", "read", "write", "edit", "AskUserQuestion", "UpdatePlan"] as const;
 
 // ─── PresetManager ───────────────────────────────────────
 
@@ -127,7 +128,7 @@ export class PresetManager {
       return {
         name: "默认编程助手",
         description: "Coding Maid 默认行为",
-        availableTools: [...ALL_TOOLS],
+        availableTools: [...registry.getNames()],
         entries: [
           {
             name: "系统设定",

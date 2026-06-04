@@ -8,7 +8,7 @@
 import * as crypto from "crypto";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { logOpenAIChatCompletionDebug, normalizeDebugError } from "./common/debug-logger";
-import type { CreateOpenAIClient } from "./tools/executor";
+import type { CreateOpenAIClient } from "./tools/types";
 import type { ModelUsage, LlmStreamProgress } from "./session-types";
 
 // ─── 内部类型 ────────────────────────────────────────────

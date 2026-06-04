@@ -5,7 +5,7 @@
  */
 
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import type { CreateOpenAIClient, ProcessTimeoutControl, ProcessTimeoutInfo } from "./tools/executor";
+import type { CreateOpenAIClient, ProcessTimeoutControl, ProcessTimeoutInfo } from "./tools/types";
 import type { McpServerConfig } from "./settings";
 
 // ─── Session 状态 ────────────────────────────────────────
