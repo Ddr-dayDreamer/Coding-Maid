@@ -16,8 +16,6 @@ export type CreateOpenAIClient = () => {
   thinkingEnabled?: boolean;
   reasoningEffort?: ReasoningEffort;
   params?: Record<string, unknown>;
-  debugLogEnabled?: boolean;
-  debugPromptEnabled?: boolean;
   notify?: string;
   webSearchTool?: string;
   env?: Record<string, string>;

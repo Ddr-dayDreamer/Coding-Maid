@@ -45,7 +45,7 @@ export type DebugLogEntry = {
 };
 
 /**
- * 通用调试日志（受 codingmaid.debugLogEnabled 控制）
+ * 通用调试日志（受 codingmaid.debugEnabled 控制）
  *
  * 用法：
  * ```ts
@@ -73,6 +73,53 @@ export function logDebug(location: string, message: string, data?: Record<string
 
 export function getDebugLogPath(): string {
   return path.join(os.homedir(), ".codingmaid", "logs", DEBUG_LOG_FILE);
+}
+
+// ─── Prompt 调试日志 ──────────────────────────────────────
+
+const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
+
+/**
+ * 轮转日志文件：超过大小时将旧文件重命名为 .1
+ */
+function rotateLogFile(filePath: string): void {
+  try {
+    const stat = fs.statSync(filePath);
+    if (stat.size < MAX_LOG_SIZE) return;
+    const rotated = filePath + ".1";
+    try { fs.unlinkSync(rotated); } catch { /* 可能不存在 */ }
+    fs.renameSync(filePath, rotated);
+  } catch {
+    // 文件还不存在，忽略
+  }
+}
+
+/**
+ * 写入完整的 LLM 请求结构到 prompt-debug.jsonl
+ *
+ * 每次 LLM 调用写入一行 JSON，包含完整请求体（model / messages / tools / 参数等）。
+ * 通过 `codingmaid.debugEnabled: true` 启用。
+ */
+export function logPromptDebug(
+  fullRequest: Record<string, unknown>,
+  iteration: number,
+  sessionId: string
+): void {
+  try {
+    const logDir = path.join(os.homedir(), ".codingmaid", "logs");
+    fs.mkdirSync(logDir, { recursive: true });
+    const logPath = path.join(logDir, "prompt-debug.jsonl");
+    rotateLogFile(logPath);
+    const entry = {
+      timestamp: new Date().toISOString(),
+      sessionId,
+      iteration,
+      request: toSerializable(fullRequest),
+    };
+    fs.appendFileSync(logPath, JSON.stringify(entry) + "\n", "utf8");
+  } catch {
+    // Debug logging must never affect runtime behavior.
+  }
 }
 
 export function normalizeDebugError(error: unknown): { name: string; message: string; stack?: string } {

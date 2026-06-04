@@ -14,7 +14,6 @@
  */
 
 import * as crypto from "crypto";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { getExtensionRoot } from "./prompt";
 import type { ToolDefinition } from "./prompt";
 import { ToolExecutor } from "./tools/executor";
@@ -81,7 +80,7 @@ export class SessionManager {
   private readonly onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
   private readonly onMcpStatusChanged?: () => void;
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
-  private readonly onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;
+  private readonly debugEnabled: boolean;
 
   /* 子模块 */
   private readonly storage: SessionStorage;
@@ -114,7 +113,7 @@ export class SessionManager {
     this.onStreamChunk = options.onStreamChunk;
     this.onMcpStatusChanged = options.onMcpStatusChanged;
     this.onProcessStdout = options.onProcessStdout;
-    this.onDebugPrompt = options.onDebugPrompt;
+    this.debugEnabled = options.debugEnabled;
 
     this.storage = new SessionStorage(this.projectRoot);
     this.fileHistory = new SessionFileHistory(this.projectRoot, this.storage);
@@ -136,7 +135,6 @@ export class SessionManager {
 
     this.llm.onProgress = (progress) => this.onLlmStreamProgress?.(progress);
     this.llm.onChunk = (chunk) => this.onStreamChunk?.(chunk);
-    this.llm.onDebugPrompt = (messages, iteration) => this.onDebugPrompt?.(messages, iteration);
     this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
   }
 
@@ -345,7 +343,7 @@ export class SessionManager {
         appendToolMessages: (sid, calls) => this.appendToolMessages(sid, calls),
         onAssistantMessage: (msg, connect) => this.onAssistantMessage(msg, connect),
         onSessionEntryUpdated: (entry) => this.onSessionEntryUpdated?.(entry),
-        onDebugPrompt: (msgs, iter) => this.onDebugPrompt?.(msgs, iter),
+        debugEnabled: this.debugEnabled,
         presetMgr: this.presetMgr,
         activePreset: getActivePreset(),
       });

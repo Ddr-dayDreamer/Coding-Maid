@@ -24,7 +24,5 @@ await esbuild.build({
       preprocess: sveltePreprocess(),
     }),
   ],
-  logOverride: {
-    "empty-import-meta": "silent",
-  },
+  logLevel: "error",
 });

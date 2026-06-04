@@ -4,7 +4,6 @@ import * as path from "path";
 import * as os from "os";
 import OpenAI from "openai";
 import MarkdownIt from "markdown-it";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { SessionMessage } from "./session";
 import {
   SessionManager,
@@ -46,7 +45,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
   private webviewView: vscode.WebviewView | undefined;
   private readonly md: MarkdownIt;
   private readonly sessionManager: SessionManager;
-  private readonly debugOutputChannel: vscode.OutputChannel;
   private readonly templatesDir: string;
 
   /** 消息路由表 */
@@ -59,11 +57,11 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       linkify: false,
       breaks: true,
     });
-    this.debugOutputChannel = vscode.window.createOutputChannel("Coding Maid Debug", "log");
     this.sessionManager = new SessionManager({
       projectRoot: this.getWorkspaceRoot(),
       createOpenAIClient: () => this.createOpenAIClient(),
       getResolvedSettings: () => this.resolveCurrentSettings(),
+      debugEnabled: this.resolveCurrentSettings().debugEnabled ?? false,
       renderMarkdown: (text) => this.md.render(text),
       onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => {
         if (!this.webviewView) return;
@@ -96,24 +94,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
           content: chunk.content,
           reasoningContent: chunk.reasoningContent,
         });
-      },
-      onDebugPrompt: (messages: ChatCompletionMessageParam[], iteration: number) => {
-        this.debugOutputChannel.clear();
-        this.debugOutputChannel.appendLine("=".repeat(80));
-        this.debugOutputChannel.appendLine(
-          `[Coding Maid Debug] Iteration: ${iteration}`
-        );
-        this.debugOutputChannel.appendLine("=".repeat(80));
-        for (const msg of messages) {
-          const role = msg.role ?? "unknown";
-          const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content, null, 2);
-          this.debugOutputChannel.appendLine(`\n--- ${role.toUpperCase()} ---`);
-          this.debugOutputChannel.appendLine(content);
-          this.debugOutputChannel.appendLine("");
-        }
-        this.debugOutputChannel.appendLine("=".repeat(80));
-        this.debugOutputChannel.appendLine("[End]");
-        this.debugOutputChannel.show(true);
       },
     });
 
@@ -158,7 +138,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
 
   dispose(): void {
     this.sessionManager.dispose();
-    this.debugOutputChannel.dispose();
   }
 
   // ═══════════════════════════════════════════════════════
@@ -485,11 +464,17 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     this.respond(message.requestId as string, true);
   };
 
+  /** 仅在有 requestId 时才回复（用于区分 fire-and-forget 和 request 调用） */
+  private respondIfRequested(message: Record<string, unknown>, ok: boolean, data?: unknown, error?: string): void {
+    const rid = message.requestId;
+    if (rid && typeof rid === "string") this.respond(rid, ok, data, error);
+  }
+
   private handleSelectPreset = async (message: Record<string, unknown>): Promise<void> => {
     const name = String(message.name || "").trim();
-    if (!name) { this.respond(message.requestId as string, false, undefined, "缺少预设名称"); return; }
+    if (!name) { this.respondIfRequested(message, false, undefined, "缺少预设名称"); return; }
     setActivePreset(name);
-    this.respond(message.requestId as string, true);
+    this.respondIfRequested(message, true);
   };
 
   private handleGetActivePreset = async (message: Record<string, unknown>): Promise<void> => {
@@ -567,11 +552,11 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
 
   private handleSelectProfile = async (message: Record<string, unknown>): Promise<void> => {
     const name = String(message.name || "").trim();
-    if (!name) return;
+    if (!name) { this.respondIfRequested(message, false, undefined, "缺少配置名称"); return; }
     setActiveProfile(name);
     // 重新初始化 MCP 服务器（配置可能变了）
     void this.initializeMcpServers();
-    this.respond(message.requestId as string, true);
+    this.respondIfRequested(message, true);
   };
 
   private handleTestConnection = async (message: Record<string, unknown>): Promise<void> => {
@@ -671,8 +656,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     thinkingEnabled?: boolean;
     reasoningEffort?: ReasoningEffort;
     params?: Record<string, unknown>;
-    debugLogEnabled: boolean;
-    debugPromptEnabled: boolean;
     notify?: string;
     webSearchTool?: string;
     env?: Record<string, string>;
@@ -687,8 +670,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       thinkingEnabled,
       reasoningEffort,
       params,
-      debugLogEnabled,
-      debugPromptEnabled,
       notify,
       webSearchTool,
     } = settings;
@@ -702,8 +683,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         thinkingEnabled,
         reasoningEffort,
         params,
-        debugLogEnabled,
-        debugPromptEnabled,
         notify,
         webSearchTool,
         machineId,
@@ -722,8 +701,6 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       thinkingEnabled,
       reasoningEffort,
       params,
-      debugLogEnabled,
-      debugPromptEnabled,
       notify,
       webSearchTool,
       machineId,

@@ -1,5 +1,6 @@
 {
   "activeProfile": "default",
-  "debugLogEnabled": false,
-  "debugPromptEnabled": false
+  "debugEnabled": false ,
+  "activePreset": "default"
+
 }

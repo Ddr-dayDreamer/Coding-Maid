@@ -132,7 +132,8 @@ export type SessionManagerOptions = {
   onStreamChunk?: (chunk: { sessionId?: string; content?: string; reasoningContent?: string }) => void;
   onMcpStatusChanged?: () => void;
   onProcessStdout?: (pid: number, chunk: string) => void;
-  onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;
+  /** 启用调试日志（写入 ~/.codingmaid/logs/） */
+  debugEnabled: boolean;
 };
 
 // ─── LLM 流进度 ──────────────────────────────────────────

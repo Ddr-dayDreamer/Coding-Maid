@@ -921,40 +921,49 @@ textarea.svelte-1mroaqi::placeholder {
 }
 .entry-header.svelte-1y400fn {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px 6px;
   padding: 6px 8px;
   background: var(--vscode-sideBar-background);
   border-bottom: 1px solid var(--vscode-panel-border);
+}
+.entry-card.disabled.svelte-1y400fn {
+  opacity: 0.5;
+}
+.entry-card.disabled.svelte-1y400fn .entry-textarea:where(.svelte-1y400fn) {
+  opacity: 0.55;
 }
 .entry-drag-order.svelte-1y400fn {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+  cursor: grab;
 }
-.move-btn.svelte-1y400fn {
+.entry-drag-order.svelte-1y400fn:active {
+  cursor: grabbing;
+}
+.drag-handle.svelte-1y400fn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
+  width: 18px;
   height: 20px;
   padding: 0;
   border: none;
   border-radius: 3px;
   background: transparent;
   color: var(--vscode-foreground);
-  cursor: pointer;
-  opacity: 0.4;
-  transition: opacity 0.1s, background 0.1s;
+  opacity: 0.3;
+  transition: opacity 0.1s;
 }
-.move-btn.svelte-1y400fn:hover:not(:disabled) {
-  opacity: 0.8;
+.entry-card.svelte-1y400fn:hover .drag-handle:where(.svelte-1y400fn) {
+  opacity: 0.6;
+}
+.drag-handle.svelte-1y400fn:hover {
+  opacity: 0.9 !important;
   background: var(--vscode-toolbar-hoverBackground);
-}
-.move-btn.svelte-1y400fn:disabled {
-  opacity: 0.15;
-  cursor: not-allowed;
 }
 .entry-index.svelte-1y400fn {
   font-size: 10px;
@@ -962,12 +971,6 @@ textarea.svelte-1mroaqi::placeholder {
   color: var(--vscode-descriptionForeground);
   min-width: 14px;
   text-align: center;
-}
-.entry-meta.svelte-1y400fn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 .entry-name-input.svelte-1y400fn {
   flex: 1;
@@ -983,6 +986,18 @@ textarea.svelte-1mroaqi::placeholder {
 .entry-name-input.svelte-1y400fn:focus {
   outline: none;
   border-color: var(--vscode-focusBorder);
+}
+.entry-actions.svelte-1y400fn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.action-divider.svelte-1y400fn {
+  width: 1px;
+  height: 16px;
+  background: var(--vscode-panel-border);
+  flex-shrink: 0;
 }
 .entry-role-select.svelte-1y400fn {
   padding: 1px 4px;

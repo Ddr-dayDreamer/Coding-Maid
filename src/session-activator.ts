@@ -16,6 +16,7 @@ import type { SessionNotifier } from "./session-notify";
 import type { SessionEntry, SessionMessage } from "./session-types";
 import type { LlmStreamManager } from "./llm-stream";
 import { accumulateUsage } from "./llm-stream";
+import { logPromptDebug } from "./common/debug-logger";
 import type { PresetManager } from "./preset-manager";
 
 // ─── Activate 选项 ───────────────────────────────────────
@@ -27,10 +28,11 @@ export type ActivateOptions = {
   appendToolMessages: (sessionId: string, toolCalls: unknown[]) => Promise<{ waitingForUser: boolean }>;
   onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
   onSessionEntryUpdated?: (entry: SessionEntry) => void;
-  onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;
   presetMgr: PresetManager;
   /** 当前激活的预设名称 */
   activePreset: string;
+  /** 启用调试日志（写入 ~/.codingmaid/logs/） */
+  debugEnabled: boolean;
 };
 
 // ─── SessionActivator ────────────────────────────────────
@@ -77,8 +79,6 @@ export class SessionActivator {
       thinkingEnabled,
       reasoningEffort,
       params,
-      debugLogEnabled,
-      debugPromptEnabled,
       notify,
       env,
     } = this.createOpenAIClient();
@@ -206,26 +206,29 @@ export class SessionActivator {
         // 构建消息 → 调用 LLM
         const messages = this.messageBuilder.buildOpenAIMessages(fullMessages, thinkingEnabled ?? false, model);
         console.log("[DEBUG] activate: openai messages count =", messages.length);
-        if (debugPromptEnabled && opts.onDebugPrompt) {
-          opts.onDebugPrompt(messages, iteration);
-        }
 
         const thinkingOptions = thinkingEnabled
           ? buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort)
           : {};
 
+        const requestBody = {
+          model,
+          messages,
+          tools: getTools(opts.getPromptToolOptions(), opts.mcpToolDefinitions),
+          ...thinkingOptions,
+          ...params,
+        };
+
+        if (opts.debugEnabled) {
+          logPromptDebug(requestBody, iteration, sessionId);
+        }
+
         const response = await this.llm.createStream(
-          {
-            model,
-            messages,
-            tools: getTools(opts.getPromptToolOptions(), opts.mcpToolDefinitions),
-            ...thinkingOptions,
-            ...params,
-          },
+          requestBody,
           { signal: sessionController.signal },
           sessionId,
           {
-            enabled: debugLogEnabled,
+            enabled: opts.debugEnabled,
             location: "SessionActivator.activate",
             baseURL,
             params: { iteration, thinkingEnabled, reasoningEffort },

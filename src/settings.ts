@@ -32,8 +32,8 @@ export type ResolvedSettings = {
   reasoningEffort?: ReasoningEffort;
   contextLimit?: number;
   params?: Record<string, unknown>;
-  debugLogEnabled: boolean;
-  debugPromptEnabled: boolean;
+  /** 是否启用调试日志（统一开关，控制 LLM 请求日志 + prompt 调试输出） */
+  debugEnabled: boolean;
   notify?: string;
   webSearchTool?: string;
   mcpServers?: Record<string, McpServerConfig>;
@@ -61,8 +61,7 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSetting
     reasoningEffort: profile?.reasoningEffort,
     contextLimit: profile?.contextLimit,
     params: profile?.params,
-    debugLogEnabled: globalSettings.debugLogEnabled ?? false,
-    debugPromptEnabled: globalSettings.debugPromptEnabled ?? false,
+    debugEnabled: globalSettings.debugEnabled ?? false,
     notify: globalSettings.notify,
     mcpServers: globalSettings.mcpServers,
     profileName: globalSettings.activeProfile || "default",

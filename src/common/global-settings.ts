@@ -37,10 +37,8 @@ export type CodingMaidSettings = {
   notify?: string;
   /** 预设目录覆盖路径 */
   presetsDir?: string;
-  /** 是否启用 debug 日志 */
-  debugLogEnabled?: boolean;
-  /** 是否启用 prompt 调试输出 */
-  debugPromptEnabled?: boolean;
+  /** 是否启用调试日志 */
+  debugEnabled?: boolean;
   /** MCP 服务器配置 */
   mcpServers?: Record<string, McpServerConfig>;
 };

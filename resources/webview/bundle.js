@@ -6504,6 +6504,12 @@ ${component_stack}
       });
     }
   }
+  function onDestroy(fn) {
+    if (component_context === null) {
+      lifecycle_outside_component("onDestroy");
+    }
+    onMount(() => () => untrack(fn));
+  }
   function init_update_callbacks(context) {
     var l = (
       /** @type {ComponentContextLegacy} */
@@ -7883,12 +7889,11 @@ ${component_stack}
 
   // resources/webview/components/EntryCard.svelte
   var root6 = from_html(`<option> </option>`);
-  var root_110 = from_html(`<div><div class="entry-header svelte-1y400fn"><div class="entry-drag-order svelte-1y400fn"><button class="move-btn svelte-1y400fn" title="\u4E0A\u79FB"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.47 9.78a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1-1.06 1.06L8 6.06l-3.47 3.47a.75.75 0 0 1-1.06 0Z"></path></svg></button> <span class="entry-index svelte-1y400fn"> </span> <button class="move-btn svelte-1y400fn" title="\u4E0B\u79FB"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.47 5.22a.75.75 0 0 1 1.06 0L8 8.69l3.47-3.47a.75.75 0 0 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.47 6.28a.75.75 0 0 1 0-1.06Z"></path></svg></button></div> <div class="entry-meta svelte-1y400fn"><input class="entry-name-input svelte-1y400fn" type="text" placeholder="\u6761\u76EE\u540D\u79F0"/> <select class="entry-role-select svelte-1y400fn"></select> <label class="toggle-label svelte-1y400fn" title="\u542F\u7528/\u7981\u7528"><input type="checkbox" class="svelte-1y400fn"/> <span class="toggle-switch svelte-1y400fn"></span></label></div> <button class="icon-btn danger svelte-1y400fn" title="\u5220\u9664\u6761\u76EE"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Z"></path></svg></button></div> <div class="entry-content svelte-1y400fn"><textarea class="entry-textarea svelte-1y400fn" placeholder="\u8F93\u5165\u63D0\u793A\u8BCD\u5185\u5BB9\uFF0C\u652F\u6301 tool.xxx\u3001char \u7B49\u5B8F"></textarea></div></div>`);
+  var root_110 = from_html(`<div role="listitem"><div class="entry-header svelte-1y400fn"><div class="entry-drag-order svelte-1y400fn"><span class="drag-handle svelte-1y400fn" title="\u62D6\u62FD\u6392\u5E8F"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M5 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path></svg></span> <span class="entry-index svelte-1y400fn"> </span></div> <input class="entry-name-input svelte-1y400fn" type="text" placeholder="\u6761\u76EE\u540D\u79F0"/> <div class="entry-actions svelte-1y400fn"><select class="entry-role-select svelte-1y400fn"></select> <div class="action-divider svelte-1y400fn"></div> <label class="toggle-label svelte-1y400fn" title="\u542F\u7528/\u7981\u7528"><input type="checkbox" class="svelte-1y400fn"/> <span class="toggle-switch svelte-1y400fn"></span></label> <button class="icon-btn danger svelte-1y400fn" title="\u5220\u9664\u6761\u76EE"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Z"></path></svg></button></div></div> <div class="entry-content svelte-1y400fn"><textarea class="entry-textarea svelte-1y400fn" placeholder="\u8F93\u5165\u63D0\u793A\u8BCD\u5185\u5BB9\uFF0C\u652F\u6301 tool.xxx\u3001char \u7B49\u5B8F"></textarea></div></div>`);
   function EntryCard($$anchor, $$props) {
     push($$props, true);
-    let entry = prop($$props, "entry", 19, () => ({ name: "", role: "system", content: "", enabled: true })), index2 = prop($$props, "index", 3, 0), total = prop($$props, "total", 3, 1), isActive = prop($$props, "isActive", 3, false), onupdate = prop($$props, "onupdate", 3, (_entry) => {
+    let entry = prop($$props, "entry", 19, () => ({ name: "", role: "system", content: "", enabled: true })), index2 = prop($$props, "index", 3, 0), isActive = prop($$props, "isActive", 3, false), onupdate = prop($$props, "onupdate", 3, (_entry) => {
     }), ondelete = prop($$props, "ondelete", 3, () => {
-    }), onmove = prop($$props, "onmove", 3, (_dir) => {
     }), onfocus = prop($$props, "onfocus", 3, () => {
     });
     const ROLE_OPTIONS = [
@@ -7899,18 +7904,17 @@ ${component_stack}
     ];
     var div = root_110();
     let classes;
+    set_attribute2(div, "draggable", true);
     var div_1 = child(div);
     var div_2 = child(div_1);
-    var button = child(div_2);
-    var span = sibling(button, 2);
+    var span = sibling(child(div_2), 2);
     var text2 = child(span, true);
     reset(span);
-    var button_1 = sibling(span, 2);
     reset(div_2);
-    var div_3 = sibling(div_2, 2);
-    var input = child(div_3);
+    var input = sibling(div_2, 2);
     remove_input_defaults(input);
-    var select = sibling(input, 2);
+    var div_3 = sibling(input, 2);
+    var select = child(div_3);
     each(select, 21, () => ROLE_OPTIONS, index, ($$anchor2, opt) => {
       var option = root6();
       var text_1 = child(option, true);
@@ -7927,13 +7931,13 @@ ${component_stack}
     reset(select);
     var select_value;
     init_select(select);
-    var label = sibling(select, 2);
+    var label = sibling(select, 4);
     var input_1 = child(label);
     remove_input_defaults(input_1);
     next(2);
     reset(label);
+    var button = sibling(label, 2);
     reset(div_3);
-    var button_2 = sibling(div_3, 2);
     reset(div_1);
     var div_4 = sibling(div_1, 2);
     var textarea = child(div_4);
@@ -7942,10 +7946,8 @@ ${component_stack}
     reset(div_4);
     reset(div);
     template_effect(() => {
-      classes = set_class(div, 1, "entry-card svelte-1y400fn", null, classes, { active: isActive() });
-      button.disabled = index2() === 0;
+      classes = set_class(div, 1, "entry-card svelte-1y400fn", null, classes, { active: isActive(), disabled: !entry().enabled });
       set_text(text2, index2() + 1);
-      button_1.disabled = index2() === total() - 1;
       set_value(input, entry().name ?? "");
       if (select_value !== (select_value = entry().role)) {
         select.value = (select.__value = entry().role) ?? "", select_option(select, entry().role);
@@ -7953,12 +7955,14 @@ ${component_stack}
       set_checked(input_1, entry().enabled);
       set_value(textarea, entry().content ?? "");
     });
-    delegated("click", button, () => onmove()(-1));
-    delegated("click", button_1, () => onmove()(1));
+    event("dragstart", div, (e) => {
+      e.dataTransfer.setData("text/plain", String(index2()));
+      e.dataTransfer.effectAllowed = "move";
+    });
     delegated("input", input, (e) => onupdate()({ ...entry(), name: e.target.value }));
     delegated("change", select, (e) => onupdate()({ ...entry(), role: e.target.value }));
     delegated("change", input_1, (e) => onupdate()({ ...entry(), enabled: e.target.checked }));
-    delegated("click", button_2, function(...$$args) {
+    delegated("click", button, function(...$$args) {
       ondelete()?.apply(this, $$args);
     });
     delegated("input", textarea, (e) => onupdate()({ ...entry(), content: e.target.value }));
@@ -7968,7 +7972,7 @@ ${component_stack}
     append($$anchor, div);
     pop();
   }
-  delegate(["click", "input", "change"]);
+  delegate(["input", "change", "click"]);
 
   // resources/webview/components/MacroPanel.svelte
   var root7 = from_html(`<span class="macro-hint svelte-11xah9r">\uFF08\u8BF7\u5148\u9009\u4E2D\u4E00\u4E2A\u6761\u76EE\uFF09</span>`);
@@ -8075,8 +8079,9 @@ ${component_stack}
 
   // resources/webview/components/PresetEditor.svelte
   var root8 = from_html(`<button> </button>`);
-  var root_112 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
-  var root_26 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u6807\u8BC6\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u663E\u793A\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u63CF\u8FF0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">char \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">user \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
+  var root_112 = from_html(`<div><!></div>`);
+  var root_26 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
+  var root_36 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u6807\u8BC6\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u663E\u793A\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u63CF\u8FF0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">char \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">user \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
   function PresetEditor($$anchor, $$props) {
     push($$props, true);
     let definition = prop($$props, "definition", 19, () => ({
@@ -8130,13 +8135,57 @@ ${component_stack}
       get2(editDef).entries = get2(editDef).entries.filter((_, i) => i !== index2);
       if (get2(activeEntryIndex) === index2) set(activeEntryIndex, null);
     }
-    function moveEntry(index2, direction) {
+    let _scrollTimer = null;
+    let _scrollDir = 1;
+    function startEdgeScroll(container, dir) {
+      if (_scrollTimer) return;
+      _scrollDir = dir;
+      _scrollTimer = setInterval(
+        () => {
+          container.scrollTop += _scrollDir * 8;
+        },
+        16
+      );
+    }
+    function stopEdgeScroll() {
+      if (_scrollTimer) {
+        clearInterval(_scrollTimer);
+        _scrollTimer = null;
+      }
+    }
+    onMount(() => window.addEventListener("dragend", stopEdgeScroll));
+    onDestroy(() => {
+      window.removeEventListener("dragend", stopEdgeScroll);
+      stopEdgeScroll();
+    });
+    function handleDragOver(e) {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      const container = e.currentTarget.closest(".editor-panel");
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const threshold = 40;
+      if (e.clientY < rect.top + threshold) {
+        startEdgeScroll(container, -1);
+      } else if (e.clientY > rect.bottom - threshold) {
+        startEdgeScroll(container, 1);
+      } else {
+        stopEdgeScroll();
+      }
+    }
+    function handleDrop(e) {
+      e.preventDefault();
+      const fromIndex = parseInt(e.dataTransfer?.getData("text/plain") ?? "");
+      if (isNaN(fromIndex)) return;
+      const target = e.target.closest("[data-entry-index]");
+      if (!target) return;
+      const toIndex = parseInt(target.getAttribute("data-entry-index") ?? "");
+      if (isNaN(toIndex) || fromIndex === toIndex) return;
       const entries = [...get2(editDef).entries];
-      const target = index2 + direction;
-      if (target < 0 || target >= entries.length) return;
-      [entries[index2], entries[target]] = [entries[target], entries[index2]];
+      const [moved] = entries.splice(fromIndex, 1);
+      entries.splice(toIndex, 0, moved);
       get2(editDef).entries = entries;
-      set(activeEntryIndex, target);
+      set(activeEntryIndex, toIndex, true);
     }
     function insertMacro(macro) {
       if (get2(activeEntryIndex) === null) return;
@@ -8155,7 +8204,7 @@ ${component_stack}
     function handleSave() {
       onsave()(get2(editName), deepClone(get2(editDef)));
     }
-    var div = root_26();
+    var div = root_36();
     var div_1 = child(div);
     var button = child(div_1);
     var h2 = sibling(button, 2);
@@ -8219,52 +8268,53 @@ ${component_stack}
     var div_13 = sibling(div_12, 2);
     var node = child(div_13);
     each(node, 17, () => get2(editDef).entries, index, ($$anchor2, entry, i) => {
+      var div_14 = root_112();
+      set_attribute2(div_14, "data-entry-index", i);
+      var node_1 = child(div_14);
       {
         let $0 = user_derived(() => get2(activeEntryIndex) === i);
-        EntryCard($$anchor2, {
+        EntryCard(node_1, {
           get entry() {
             return get2(entry);
           },
           index: i,
-          get total() {
-            return get2(editDef).entries.length;
-          },
           get isActive() {
             return get2($0);
           },
           onupdate: (e) => updateEntry(i, e),
           ondelete: () => deleteEntry(i),
-          onmove: (d) => moveEntry(i, d),
           onfocus: () => set(activeEntryIndex, i, true)
         });
       }
+      reset(div_14);
+      append($$anchor2, div_14);
     });
-    var node_1 = sibling(node, 2);
+    var node_2 = sibling(node, 2);
     {
       var consequent = ($$anchor2) => {
-        var p = root_112();
+        var p = root_26();
         append($$anchor2, p);
       };
-      if_block(node_1, ($$render) => {
+      if_block(node_2, ($$render) => {
         if (get2(editDef).entries.length === 0) $$render(consequent);
       });
     }
     reset(div_13);
     reset(div_11);
-    var node_2 = sibling(div_11, 2);
+    var node_3 = sibling(div_11, 2);
     {
       let $0 = user_derived(() => get2(activeEntryIndex) === null);
-      MacroPanel(node_2, {
+      MacroPanel(node_3, {
         get disabled() {
           return get2($0);
         },
         oninsert: insertMacro
       });
     }
-    var div_14 = sibling(node_2, 2);
-    var button_3 = child(div_14);
+    var div_15 = sibling(node_3, 2);
+    var button_3 = child(div_15);
     var button_4 = sibling(button_3, 2);
-    reset(div_14);
+    reset(div_15);
     reset(div);
     template_effect(() => {
       set_text(text2, presetName() ? `\u7F16\u8F91: ${presetName()}` : "\u65B0\u5EFA\u9884\u8BBE");
@@ -8284,6 +8334,8 @@ ${component_stack}
     delegated("input", input_3, (e) => set(editDef, { ...get2(editDef), char: e.target.value }, true));
     delegated("input", input_4, (e) => set(editDef, { ...get2(editDef), user: e.target.value }, true));
     delegated("click", button_2, addEntry);
+    event("dragover", div_13, handleDragOver);
+    event("drop", div_13, handleDrop);
     delegated("click", button_3, handleSave);
     delegated("click", button_4, function(...$$args) {
       oncancel()?.apply(this, $$args);
@@ -8452,7 +8504,7 @@ ${component_stack}
   var root10 = from_html(`<div class="new-profile-bar svelte-1no2ghb"><input class="new-profile-input svelte-1no2ghb" type="text" placeholder="\u8F93\u5165\u914D\u7F6E\u540D\u79F0..."/> <button class="action-btn primary svelte-1no2ghb">\u521B\u5EFA</button> <button class="action-btn svelte-1no2ghb">\u53D6\u6D88</button></div>`);
   var root_113 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
   var root_27 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
-  var root_36 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
+  var root_37 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
   var root_46 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
   var root_55 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
   var root_65 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
@@ -8639,7 +8691,7 @@ ${component_stack}
           var node_2 = child(div_5);
           {
             var consequent_3 = ($$anchor4) => {
-              var input_2 = root_36();
+              var input_2 = root_37();
               remove_input_defaults(input_2);
               delegated("keydown", input_2, handleRenameKeydown);
               event("blur", input_2, confirmRename);

@@ -7,7 +7,6 @@
 
 import * as crypto from "crypto";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { logApiError } from "./common/error-logger";
 import { logOpenAIChatCompletionDebug, normalizeDebugError } from "./common/debug-logger";
 import type { CreateOpenAIClient } from "./tools/executor";
 import type { ModelUsage, LlmStreamProgress } from "./session-types";
@@ -88,7 +87,6 @@ export class LlmStreamManager {
   private readonly createClient: CreateOpenAIClient;
   public onProgress?: (progress: LlmStreamProgress) => void;
   public onChunk?: (chunk: StreamChunk) => void;
-  public onDebugPrompt?: (messages: ChatCompletionMessageParam[], iteration: number) => void;
 
   constructor(createClient: CreateOpenAIClient) {
     this.createClient = createClient;
@@ -150,7 +148,7 @@ export class LlmStreamManager {
     sessionId?: string,
     debug?: ChatCompletionDebugOptions
   ): Promise<StreamResult> {
-    const { client, baseURL, debugLogEnabled } = this.createClient();
+    const { client, baseURL } = this.createClient();
     if (!client) {
       throw new Error("OpenAI client not available");
     }
@@ -190,19 +188,6 @@ export class LlmStreamManager {
         params: { ...debug?.params, options: summarizeCompletionOptions(options) },
         request: streamRequest,
         error: normalizeDebugError(error),
-      });
-      logApiError({
-        timestamp: new Date().toISOString(),
-        location: "LlmStreamManager.createStream:create",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        error: {
-          name: error instanceof Error ? error.name : "UnknownError",
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        request: streamRequest,
       });
       this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
       throw error;
@@ -332,19 +317,6 @@ export class LlmStreamManager {
         request: streamRequest,
         responseChunks,
         error: normalizeDebugError(error),
-      });
-      logApiError({
-        timestamp: new Date().toISOString(),
-        location: "LlmStreamManager.createStream:stream",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        error: {
-          name: error instanceof Error ? error.name : "UnknownError",
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        request: streamRequest,
       });
       throw error;
     } finally {

@@ -2,6 +2,7 @@
   import type { PresetDefinition, PresetEntry } from "../types";
   import EntryCard from "./EntryCard.svelte";
   import MacroPanel from "./MacroPanel.svelte";
+  import { onMount, onDestroy } from "svelte";
 
   let {
     definition = {
@@ -68,13 +69,66 @@
     if (activeEntryIndex === index) activeEntryIndex = null;
   }
 
-  function moveEntry(index: number, direction: -1 | 1) {
+  // ─── 拖拽排序（含边缘自动滚动） ──────────────────
+
+  let _scrollTimer: ReturnType<typeof setInterval> | null = null;
+  let _scrollDir: -1 | 1 = 1;
+
+  function startEdgeScroll(container: HTMLElement, dir: -1 | 1) {
+    if (_scrollTimer) return;
+    _scrollDir = dir;
+    _scrollTimer = setInterval(() => {
+      container.scrollTop += _scrollDir * 8;
+    }, 16); // ≈ 60fps
+  }
+
+  function stopEdgeScroll() {
+    if (_scrollTimer) {
+      clearInterval(_scrollTimer);
+      _scrollTimer = null;
+    }
+  }
+
+  // 拖拽结束时停止自动滚动（dragend 不冒泡，用捕获监听 window）
+  onMount(() => window.addEventListener("dragend", stopEdgeScroll));
+  onDestroy(() => {
+    window.removeEventListener("dragend", stopEdgeScroll);
+    stopEdgeScroll();
+  });
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+
+    const container = (e.currentTarget as HTMLElement).closest(".editor-panel") as HTMLElement | null;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const threshold = 40;
+
+    if (e.clientY < rect.top + threshold) {
+      startEdgeScroll(container, -1);
+    } else if (e.clientY > rect.bottom - threshold) {
+      startEdgeScroll(container, 1);
+    } else {
+      stopEdgeScroll();
+    }
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    const fromIndex = parseInt(e.dataTransfer?.getData("text/plain") ?? "");
+    if (isNaN(fromIndex)) return;
+
+    const target = (e.target as HTMLElement).closest("[data-entry-index]");
+    if (!target) return;
+    const toIndex = parseInt(target.getAttribute("data-entry-index") ?? "");
+    if (isNaN(toIndex) || fromIndex === toIndex) return;
+
     const entries = [...editDef.entries];
-    const target = index + direction;
-    if (target < 0 || target >= entries.length) return;
-    [entries[index], entries[target]] = [entries[target], entries[index]];
+    const [moved] = entries.splice(fromIndex, 1);
+    entries.splice(toIndex, 0, moved);
     editDef.entries = entries;
-    activeEntryIndex = target;
+    activeEntryIndex = toIndex;
   }
 
   // ─── 宏操作 ──────────────────────────────────────
@@ -177,18 +231,18 @@
       </button>
     </div>
 
-    <div class="entries-list">
+    <div class="entries-list" ondragover={handleDragOver} ondrop={handleDrop}>
       {#each editDef.entries as entry, i (i)}
-        <EntryCard
-          {entry}
-          index={i}
-          total={editDef.entries.length}
-          isActive={activeEntryIndex === i}
-          onupdate={(e) => updateEntry(i, e)}
-          ondelete={() => deleteEntry(i)}
-          onmove={(d) => moveEntry(i, d)}
-          onfocus={() => (activeEntryIndex = i)}
-        />
+        <div data-entry-index={i}>
+          <EntryCard
+            {entry}
+            index={i}
+            isActive={activeEntryIndex === i}
+            onupdate={(e) => updateEntry(i, e)}
+            ondelete={() => deleteEntry(i)}
+            onfocus={() => (activeEntryIndex = i)}
+          />
+        </div>
       {/each}
       {#if editDef.entries.length === 0}
         <p class="empty-hint">暂无条目，点击"添加条目"开始</p>
