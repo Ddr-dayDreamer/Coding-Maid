@@ -84,6 +84,9 @@
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      // 从 DOM 同步最新值（绕过 bind:value 时序问题）
+      const textarea = e.currentTarget as HTMLTextAreaElement;
+      promptText = textarea.value;
       sendPrompt();
     }
   }

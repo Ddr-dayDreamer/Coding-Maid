@@ -121,7 +121,11 @@ export class SessionFileHistory {
       }));
   }
 
-  restoreConversation(sessionId: string, messageId: string): SessionMessage[] {
+  /**
+   * 统一回退到指定消息：先恢复文件 checkpoint，再截断对话。
+   * 文件恢复失败不阻塞对话回退。
+   */
+  rollbackToMessage(sessionId: string, messageId: string): { keptMessages: SessionMessage[]; checkpointHash?: string } {
     const messages = this.storage.listSessionMessages(sessionId);
     let targetIndex = messages.findIndex((message) => message.id === messageId);
 
@@ -139,19 +143,22 @@ export class SessionFileHistory {
       throw new Error("Selected message was not found in this session.");
     }
 
+    const targetMessage = messages[targetIndex];
+    const checkpointHash = targetMessage?.checkpointHash;
+
+    // 先恢复文件（需要在截断对话之前读取 checkpointHash）
+    if (checkpointHash) {
+      try {
+        this.restore(sessionId, checkpointHash);
+      } catch {
+        console.warn("[CodingMaid] 文件恢复失败，仅回退对话", { sessionId, messageId, checkpointHash });
+      }
+    }
+
+    // 再截断对话消息
     const keptMessages = messages.slice(0, targetIndex);
     this.storage.saveSessionMessages(sessionId, keptMessages);
-    return keptMessages;
-  }
 
-  restoreCode(sessionId: string, messageId: string): void {
-    const message = this.storage.listSessionMessages(sessionId).find((item) => item.id === messageId);
-    if (!message) {
-      throw new Error("Selected message was not found in this session.");
-    }
-    if (!message.checkpointHash) {
-      throw new Error("Selected message has no code checkpoint.");
-    }
-    this.restore(sessionId, message.checkpointHash);
+    return { keptMessages, checkpointHash };
   }
 }

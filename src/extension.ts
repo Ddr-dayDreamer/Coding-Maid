@@ -250,6 +250,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
           sessionId: m.sessionId,
           role: m.role,
           content: m.content,
+          messageParams: m.messageParams,
           html:
             m.role !== "tool"
               ? this.md.render(m.content || (m.messageParams as ReasoningMessageParams | null)?.reasoning_content || "")
@@ -305,16 +306,9 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     // 先中断当前处理（如果有），避免与 LLM 循环竞争
     this.sessionManager.interruptSession(sessionId);
 
-    // 先恢复文件（需要在截断对话之前找到消息的 checkpointHash）
+    // 统一回退：内部先恢复文件再截断对话，文件恢复失败不阻塞
     try {
-      this.sessionManager.restoreSessionCode(sessionId, messageId);
-    } catch {
-      // 文件恢复失败不阻塞，仅回退对话
-    }
-
-    // 再截断对话消息
-    try {
-      this.sessionManager.restoreSessionConversation(sessionId, messageId);
+      this.sessionManager.rollbackToMessage(sessionId, messageId);
     } catch {
       void vscode.window.showErrorMessage("回退失败：找不到目标消息");
       return;

@@ -447,8 +447,8 @@ export class SessionManager {
     return this.fileHistory.listUndoTargets(sessionId);
   }
 
-  restoreSessionConversation(sessionId: string, messageId: string): SessionMessage[] {
-    const keptMessages = this.fileHistory.restoreConversation(sessionId, messageId);
+  rollbackToMessage(sessionId: string, messageId: string): SessionMessage[] {
+    const { keptMessages, checkpointHash } = this.fileHistory.rollbackToMessage(sessionId, messageId);
     const now = new Date().toISOString();
     const latestAssistant = [...keptMessages].reverse().find((m) => m.role === "assistant");
     const latestParams = latestAssistant?.messageParams as
@@ -468,10 +468,6 @@ export class SessionManager {
       updateTime: now,
     }));
     return keptMessages;
-  }
-
-  restoreSessionCode(sessionId: string, messageId: string): void {
-    this.fileHistory.restoreCode(sessionId, messageId);
   }
 
   // ═══════════════════════════════════════════════════════

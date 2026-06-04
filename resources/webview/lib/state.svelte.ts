@@ -50,6 +50,9 @@ class AppState {
   /** 回退时暂存的消息内容，供 ChatPage 填入输入框 */
   pendingPrompt = $state("");
 
+  /** 标记是否正在等待回退完成（用于 loadSession 时弹出提示） */
+  pendingRollback = $state(false);
+
   /** 当前使用的预设名称 */
   activePreset = $state("default");
 
@@ -59,9 +62,12 @@ class AppState {
   /** 流式输出暂存内容（打字机效果） */
   streamingContent = $state("");
 
+  /** 流式思维链暂存内容 */
+  streamingReasoning = $state("");
+
   /** 是否正在流式输出 */
   get isStreaming(): boolean {
-    return this.streamingContent !== "";
+    return this.streamingContent !== "" || this.streamingReasoning !== "";
   }
 
   /** 当前 Tab 为聊天页 */

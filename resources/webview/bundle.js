@@ -1194,11 +1194,11 @@ ${component_stack}
     var effects = collected_effects = [];
     var render_effects = [];
     var updates = legacy_updates = [];
-    for (const root13 of roots) {
+    for (const root16 of roots) {
       try {
-        __privateMethod(this, _Batch_instances, traverse_fn).call(this, root13, effects, render_effects);
+        __privateMethod(this, _Batch_instances, traverse_fn).call(this, root16, effects, render_effects);
       } catch (e) {
-        reset_all(root13);
+        reset_all(root16);
         if (!__privateMethod(this, _Batch_instances, is_deferred_fn).call(this)) this.discard();
         throw e;
       }
@@ -1271,9 +1271,9 @@ ${component_stack}
    * @param {Effect[]} effects
    * @param {Effect[]} render_effects
    */
-  traverse_fn = function(root13, effects, render_effects) {
-    root13.f ^= CLEAN;
-    var effect2 = root13.first;
+  traverse_fn = function(root16, effects, render_effects) {
+    root16.f ^= CLEAN;
+    var effect2 = root16.first;
     while (effect2 !== null) {
       var flags2 = effect2.f;
       var is_branch = (flags2 & (BRANCH_EFFECT | ROOT_EFFECT)) !== 0;
@@ -1451,8 +1451,8 @@ ${component_stack}
         }
         if (__privateGet(batch, _roots).length > 0 && !__privateGet(batch, _decrement_queued)) {
           batch.apply();
-          for (var root13 of __privateGet(batch, _roots)) {
-            __privateMethod(_a2 = batch, _Batch_instances, traverse_fn).call(_a2, root13, [], []);
+          for (var root16 of __privateGet(batch, _roots)) {
+            __privateMethod(_a2 = batch, _Batch_instances, traverse_fn).call(_a2, root16, [], []);
           }
           __privateSet(batch, _roots, []);
         }
@@ -3657,7 +3657,7 @@ ${component_stack}
     }
     return false;
   }
-  function schedule_possible_effect_self_invalidation(signal, effect2, root13 = true) {
+  function schedule_possible_effect_self_invalidation(signal, effect2, root16 = true) {
     var reactions = signal.reactions;
     if (reactions === null) return;
     if (!async_mode_flag && current_sources !== null && current_sources.has(signal)) {
@@ -3673,7 +3673,7 @@ ${component_stack}
           false
         );
       } else if (effect2 === reaction) {
-        if (root13) {
+        if (root16) {
           set_signal_status(reaction, DIRTY);
         } else if ((reaction.f & CLEAN) !== 0) {
           set_signal_status(reaction, MAYBE_DIRTY);
@@ -4388,21 +4388,21 @@ ${component_stack}
           /** @type {DocumentFragment} */
           create_fragment_from_html(wrapped)
         );
-        var root13 = (
+        var root16 = (
           /** @type {Element} */
           get_first_child(fragment)
         );
         if (is_fragment) {
           node = document.createDocumentFragment();
-          while (get_first_child(root13)) {
+          while (get_first_child(root16)) {
             node.appendChild(
               /** @type {TemplateNode} */
-              get_first_child(root13)
+              get_first_child(root16)
             );
           }
         } else {
           node = /** @type {Element} */
-          get_first_child(root13);
+          get_first_child(root16);
         }
       }
       var clone = (
@@ -6531,7 +6531,7 @@ ${component_stack}
   enable_legacy_mode_flag();
 
   // resources/webview/lib/state.svelte.ts
-  var _currentTab, _currentSessionId, _currentSessionStatus, _sessions, _messages, _tokenTelemetry, _llmStreamProgress, _isLoading, _runningProcesses, _inputHistory, _lastPrompt, _pendingPrompt, _activePreset, _activeProfile, _streamingContent;
+  var _currentTab, _currentSessionId, _currentSessionStatus, _sessions, _messages, _tokenTelemetry, _llmStreamProgress, _isLoading, _runningProcesses, _inputHistory, _lastPrompt, _pendingPrompt, _pendingRollback, _activePreset, _activeProfile, _streamingContent, _streamingReasoning;
   var AppState = class {
     constructor() {
       __privateAdd(
@@ -6551,9 +6551,11 @@ ${component_stack}
       __privateAdd(this, _inputHistory, state(proxy([])));
       __privateAdd(this, _lastPrompt, state(""));
       __privateAdd(this, _pendingPrompt, state(""));
+      __privateAdd(this, _pendingRollback, state(false));
       __privateAdd(this, _activePreset, state("default"));
       __privateAdd(this, _activeProfile, state("default"));
       __privateAdd(this, _streamingContent, state(""));
+      __privateAdd(this, _streamingReasoning, state(""));
     }
     get currentTab() {
       return get2(__privateGet(this, _currentTab));
@@ -6627,6 +6629,12 @@ ${component_stack}
     set pendingPrompt(value) {
       set(__privateGet(this, _pendingPrompt), value, true);
     }
+    get pendingRollback() {
+      return get2(__privateGet(this, _pendingRollback));
+    }
+    set pendingRollback(value) {
+      set(__privateGet(this, _pendingRollback), value, true);
+    }
     get activePreset() {
       return get2(__privateGet(this, _activePreset));
     }
@@ -6645,8 +6653,14 @@ ${component_stack}
     set streamingContent(value) {
       set(__privateGet(this, _streamingContent), value, true);
     }
+    get streamingReasoning() {
+      return get2(__privateGet(this, _streamingReasoning));
+    }
+    set streamingReasoning(value) {
+      set(__privateGet(this, _streamingReasoning), value, true);
+    }
     get isStreaming() {
-      return this.streamingContent !== "";
+      return this.streamingContent !== "" || this.streamingReasoning !== "";
     }
     /** 当前 Tab 为聊天页 */
     get isChatTab() {
@@ -6669,9 +6683,11 @@ ${component_stack}
   _inputHistory = new WeakMap();
   _lastPrompt = new WeakMap();
   _pendingPrompt = new WeakMap();
+  _pendingRollback = new WeakMap();
   _activePreset = new WeakMap();
   _activeProfile = new WeakMap();
   _streamingContent = new WeakMap();
+  _streamingReasoning = new WeakMap();
   var appState = new AppState();
 
   // resources/webview/components/TabBar.svelte
@@ -6966,103 +6982,444 @@ ${component_stack}
     pop();
   }
 
-  // resources/webview/components/MessageBoard.svelte
-  var root3 = from_html(`<div class="bubble-content html svelte-12vix06"></div>`);
-  var root_13 = from_html(`<div class="bubble-content svelte-12vix06"> </div>`);
-  var root_22 = from_html(`<div class="user-row svelte-12vix06"><button class="rollback-btn svelte-12vix06" title="\u56DE\u9000\u5230\u6B64">\u21A9</button> <div class="bubble bubble-user svelte-12vix06"><div class="bubble-body svelte-12vix06"><!></div></div></div>`);
-  var root_32 = from_html(`<span class="option-desc svelte-12vix06"> </span>`);
-  var root_42 = from_html(`<button><span class="option-label svelte-12vix06"> </span> <!></button>`);
-  var root_52 = from_html(`<div class="question-item svelte-12vix06"><div class="question-text svelte-12vix06"> </div> <div class="question-options svelte-12vix06"></div></div>`);
-  var root_62 = from_html(`<div class="question-form svelte-12vix06"><div class="question-hint svelte-12vix06">\u{1F4AC} \u7B49\u5F85\u56DE\u7B54</div> <!> <div class="question-other svelte-12vix06"><input type="text" placeholder="\u5176\u4ED6..." class="svelte-12vix06"/></div> <button class="question-submit svelte-12vix06">\u53D1\u9001\u56DE\u7B54</button></div>`);
-  var root_7 = from_html(`<span class="tool-params svelte-12vix06"> </span>`);
-  var root_8 = from_html(`<pre class="tool-result svelte-12vix06"> </pre>`);
-  var root_9 = from_html(`<div class="tool-result-wrap svelte-12vix06"><!></div>`);
-  var root_10 = from_html(`<div class="tool-card svelte-12vix06"><button class="tool-header svelte-12vix06"><span class="collapse-icon svelte-12vix06"> </span> <span class="tool-icon svelte-12vix06">\u2699</span> <span class="tool-name svelte-12vix06"> </span> <!></button> <!></div>`);
-  var root_11 = from_html(`<div class="thinking-content svelte-12vix06"><!></div>`);
-  var root_122 = from_html(`<div class="thinking-block svelte-12vix06"><button class="thinking-header svelte-12vix06"><span class="collapse-icon svelte-12vix06"> </span> <span class="thinking-label svelte-12vix06">\u601D\u8003\u4E2D...</span></button> <!></div>`);
-  var root_132 = from_html(`<div><div class="bubble-avatar svelte-12vix06"></div> <div class="bubble-body svelte-12vix06"><!></div></div>`);
-  var root_14 = from_html(`<div class="empty-state svelte-12vix06"><div class="empty-icon svelte-12vix06">\u{1F4AC}</div> <p class="svelte-12vix06">\u5F00\u59CB\u65B0\u7684\u5BF9\u8BDD</p> <p class="empty-hint svelte-12vix06">\u8F93\u5165\u6D88\u606F\u5E76\u6309 Enter \u53D1\u9001</p></div>`);
-  var root_15 = from_html(`<div class="bubble bubble-assistant svelte-12vix06"><div class="bubble-avatar svelte-12vix06"></div> <div class="bubble-body svelte-12vix06"><div class="bubble-content svelte-12vix06"> <span class="cursor svelte-12vix06">\u258A</span></div></div></div>`);
-  var root_16 = from_html(`<div class="loading-indicator svelte-12vix06"><div class="spinner svelte-12vix06"></div> <span class="svelte-12vix06">\u601D\u8003\u4E2D...</span></div>`);
-  var root_17 = from_html(`<div class="messages svelte-12vix06"><!> <!> <!></div>`);
-  function MessageBoard($$anchor, $$props) {
+  // resources/webview/components/UserMessage.svelte
+  var root3 = from_html(`<div class="user-row svelte-10hwl6j"><button class="rollback-btn svelte-10hwl6j" title="\u56DE\u9000\u5230\u6B64">\u21A9</button> <div class="bubble-user svelte-10hwl6j"><div class="bubble-body svelte-10hwl6j"><div class="bubble-content svelte-10hwl6j"> </div></div></div></div>`);
+  function UserMessage($$anchor, $$props) {
     push($$props, true);
-    let messagesContainer = state(void 0);
-    let expandedIds = state(proxy(/* @__PURE__ */ new Set()));
+    function rollback() {
+      if (!appState.currentSessionId) return;
+      appState.pendingPrompt = $$props.msg.content ?? "";
+      appState.pendingRollback = true;
+      api.send("restoreSession", {
+        sessionId: appState.currentSessionId,
+        messageId: $$props.msg.id
+      });
+    }
+    var div = root3();
+    var button = child(div);
+    var div_1 = sibling(button, 2);
+    var div_2 = child(div_1);
+    var div_3 = child(div_2);
+    var text2 = child(div_3, true);
+    reset(div_3);
+    reset(div_2);
+    reset(div_1);
+    reset(div);
+    template_effect(($0) => set_text(text2, $0), [() => $$props.msg.content?.trim()]);
+    delegated("click", button, rollback);
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["click"]);
+
+  // resources/webview/components/AssistantMessage.svelte
+  var root4 = from_html(`<div class="bubble-content html svelte-11dqytc"></div>`);
+  var root_13 = from_html(`<div class="bubble-content svelte-11dqytc"> </div>`);
+  var root_22 = from_html(`<div class="thinking-content svelte-11dqytc"><!></div>`);
+  var root_32 = from_html(`<div class="thinking-block"><button class="thinking-header svelte-11dqytc"><span class="collapse-icon svelte-11dqytc"> </span> <span class="thinking-label svelte-11dqytc"> </span></button> <!></div>`);
+  var root_42 = from_html(`<div class="thinking-content svelte-11dqytc"><div class="bubble-content svelte-11dqytc"> </div></div>`);
+  var root_52 = from_html(`<div class="reasoning-toggle svelte-11dqytc"><button class="thinking-header svelte-11dqytc"><span class="collapse-icon svelte-11dqytc"> </span> <span class="thinking-label svelte-11dqytc"> </span></button> <!></div>`);
+  var root_62 = from_html(`<!> <!>`, 1);
+  var root_7 = from_html(`<div class="bubble-assistant svelte-11dqytc"><div class="bubble-avatar svelte-11dqytc"></div> <div class="bubble-body svelte-11dqytc"><!></div></div>`);
+  function AssistantMessage($$anchor, $$props) {
+    push($$props, true);
+    function getReasoning() {
+      const mParams = $$props.msg.messageParams;
+      if (mParams && typeof mParams.reasoning_content === "string" && mParams.reasoning_content.length > 0) {
+        return mParams.reasoning_content;
+      }
+      return null;
+    }
+    function isThinkingOnly() {
+      if ($$props.msg.meta?.asThinking) return true;
+      return !!getReasoning() && !$$props.msg.content;
+    }
+    function reasoningLabel() {
+      const text2 = getReasoning();
+      if (!text2) return "\u601D\u8003\u8FC7\u7A0B";
+      const firstLine = text2.split("\n").find((l) => l.trim().length > 0);
+      return firstLine?.trim().slice(0, 80) ?? "\u601D\u8003\u8FC7\u7A0B";
+    }
+    function toggle() {
+      $$props.onToggleExpand($$props.msg.id);
+    }
+    var div = root_7();
+    var div_1 = sibling(child(div), 2);
+    var node = child(div_1);
+    {
+      var consequent_2 = ($$anchor2) => {
+        var div_2 = root_32();
+        var button = child(div_2);
+        var span = child(button);
+        var text_1 = child(span, true);
+        reset(span);
+        var span_1 = sibling(span, 2);
+        var text_2 = child(span_1, true);
+        reset(span_1);
+        reset(button);
+        var node_1 = sibling(button, 2);
+        {
+          var consequent_1 = ($$anchor3) => {
+            var div_3 = root_22();
+            var node_2 = child(div_3);
+            {
+              var consequent = ($$anchor4) => {
+                var div_4 = root4();
+                html(div_4, () => $$props.msg.html, true);
+                reset(div_4);
+                append($$anchor4, div_4);
+              };
+              var alternate = ($$anchor4) => {
+                var div_5 = root_13();
+                var text_3 = child(div_5, true);
+                reset(div_5);
+                template_effect(() => set_text(text_3, $$props.msg.content));
+                append($$anchor4, div_5);
+              };
+              if_block(node_2, ($$render) => {
+                if ($$props.msg.html) $$render(consequent);
+                else $$render(alternate, -1);
+              });
+            }
+            reset(div_3);
+            append($$anchor3, div_3);
+          };
+          var d = user_derived(() => $$props.expandedIds.has($$props.msg.id));
+          if_block(node_1, ($$render) => {
+            if (get2(d)) $$render(consequent_1);
+          });
+        }
+        reset(div_2);
+        template_effect(
+          ($0, $1) => {
+            set_text(text_1, $0);
+            set_text(text_2, $1);
+          },
+          [
+            () => $$props.expandedIds.has($$props.msg.id) ? "\u25BC" : "\u25B6",
+            () => reasoningLabel()
+          ]
+        );
+        delegated("click", button, toggle);
+        append($$anchor2, div_2);
+      };
+      var d_1 = user_derived(() => isThinkingOnly());
+      var alternate_2 = ($$anchor2) => {
+        var fragment = root_62();
+        var node_3 = first_child(fragment);
+        {
+          var consequent_4 = ($$anchor3) => {
+            var div_6 = root_52();
+            var button_1 = child(div_6);
+            var span_2 = child(button_1);
+            var text_4 = child(span_2, true);
+            reset(span_2);
+            var span_3 = sibling(span_2, 2);
+            var text_5 = child(span_3, true);
+            reset(span_3);
+            reset(button_1);
+            var node_4 = sibling(button_1, 2);
+            {
+              var consequent_3 = ($$anchor4) => {
+                var div_7 = root_42();
+                var div_8 = child(div_7);
+                var text_6 = child(div_8, true);
+                reset(div_8);
+                reset(div_7);
+                template_effect(($0) => set_text(text_6, $0), [() => getReasoning()]);
+                append($$anchor4, div_7);
+              };
+              var d_2 = user_derived(() => $$props.expandedIds.has($$props.msg.id));
+              if_block(node_4, ($$render) => {
+                if (get2(d_2)) $$render(consequent_3);
+              });
+            }
+            reset(div_6);
+            template_effect(
+              ($0, $1) => {
+                set_text(text_4, $0);
+                set_text(text_5, $1);
+              },
+              [
+                () => $$props.expandedIds.has($$props.msg.id) ? "\u25BC" : "\u25B6",
+                () => reasoningLabel()
+              ]
+            );
+            delegated("click", button_1, toggle);
+            append($$anchor3, div_6);
+          };
+          var d_3 = user_derived(() => getReasoning());
+          if_block(node_3, ($$render) => {
+            if (get2(d_3)) $$render(consequent_4);
+          });
+        }
+        var node_5 = sibling(node_3, 2);
+        {
+          var consequent_5 = ($$anchor3) => {
+            var div_9 = root4();
+            html(div_9, () => $$props.msg.html, true);
+            reset(div_9);
+            append($$anchor3, div_9);
+          };
+          var alternate_1 = ($$anchor3) => {
+            var div_10 = root_13();
+            var text_7 = child(div_10, true);
+            reset(div_10);
+            template_effect(() => set_text(text_7, $$props.msg.content));
+            append($$anchor3, div_10);
+          };
+          if_block(node_5, ($$render) => {
+            if ($$props.msg.html) $$render(consequent_5);
+            else $$render(alternate_1, -1);
+          });
+        }
+        append($$anchor2, fragment);
+      };
+      if_block(node, ($$render) => {
+        if (get2(d_1)) $$render(consequent_2);
+        else $$render(alternate_2, -1);
+      });
+    }
+    reset(div_1);
+    reset(div);
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["click"]);
+
+  // resources/webview/components/ToolMessage.svelte
+  var root5 = from_html(`<span class="option-desc svelte-1gpypfo"> </span>`);
+  var root_14 = from_html(`<button><span class="option-label svelte-1gpypfo"> </span> <!></button>`);
+  var root_23 = from_html(`<div class="question-item svelte-1gpypfo"><div class="question-text svelte-1gpypfo"> </div> <div class="question-options svelte-1gpypfo"></div></div>`);
+  var root_33 = from_html(`<div class="question-form svelte-1gpypfo"><div class="question-hint svelte-1gpypfo">\u{1F4AC} \u7B49\u5F85\u56DE\u7B54</div> <!> <div class="question-other svelte-1gpypfo"><input type="text" placeholder="\u5176\u4ED6\u2026" class="svelte-1gpypfo"/></div> <button class="question-submit svelte-1gpypfo">\u53D1\u9001\u56DE\u7B54</button></div>`);
+  var root_43 = from_html(`<span class="tool-params svelte-1gpypfo"> </span>`);
+  var root_53 = from_html(`<pre class="tool-result svelte-1gpypfo"> </pre>`);
+  var root_63 = from_html(`<div class="tool-result-wrap svelte-1gpypfo"><!></div>`);
+  var root_72 = from_html(`<div class="tool-card svelte-1gpypfo"><button class="tool-header svelte-1gpypfo"><span class="collapse-icon svelte-1gpypfo"> </span> <span class="tool-icon svelte-1gpypfo">\u2699</span> <span class="tool-name svelte-1gpypfo"> </span> <!></button> <!></div>`);
+  var root_8 = from_html(`<div class="bubble-tool svelte-1gpypfo"><div class="bubble-avatar svelte-1gpypfo"></div> <div class="bubble-body svelte-1gpypfo"><!></div></div>`);
+  function ToolMessage($$anchor, $$props) {
+    push($$props, true);
     let formValues = state(proxy({}));
     let otherInputs = proxy({});
     let submittedQuestions = state(proxy(/* @__PURE__ */ new Set()));
-    function isAskUserQuestion(msg) {
-      if (msg.role !== "tool") return false;
+    function isAskUserQuestion() {
       try {
-        const data = JSON.parse(msg.content ?? "{}");
+        const data = JSON.parse($$props.msg.content ?? "{}");
         const meta = data.metadata;
         return meta?.kind === "ask_user_question";
       } catch {
         return false;
       }
     }
-    function getQuestions(msg) {
+    function getQuestions() {
       try {
-        const data = JSON.parse(msg.content ?? "{}");
+        const data = JSON.parse($$props.msg.content ?? "{}");
         const meta = data.metadata;
         return meta?.questions ?? [];
       } catch {
         return [];
       }
     }
-    function selectOption(msgId, multiSelect, value) {
+    function selectOption(multiSelect, value) {
       if (multiSelect) {
-        const current = get2(formValues)[msgId] ?? [];
-        get2(formValues)[msgId] = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+        const current = get2(formValues)[$$props.msg.id] ?? [];
+        get2(formValues)[$$props.msg.id] = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
       } else {
-        get2(formValues)[msgId] = value;
+        get2(formValues)[$$props.msg.id] = value;
       }
       set(formValues, { ...get2(formValues) }, true);
     }
-    function submitAnswer(msgId, questions) {
+    function submitAnswer() {
+      const questions = getQuestions();
       const answers = [];
       for (const q of questions) {
-        const val = get2(formValues)[msgId];
+        const val = get2(formValues)[$$props.msg.id];
         if (q.multiSelect) {
           const selected = val ?? [];
-          const other = otherInputs[msgId]?.trim();
+          const other = otherInputs[$$props.msg.id]?.trim();
           if (other) selected.push(other);
           if (selected.length > 0) answers.push(`${q.question}: ${selected.join(", ")}`);
         } else {
           const selected = typeof val === "string" ? val : "";
-          const other = otherInputs[msgId]?.trim();
+          const other = otherInputs[$$props.msg.id]?.trim();
           if (other) answers.push(`${q.question}: ${other}`);
           else if (selected) answers.push(`${q.question}: ${selected}`);
         }
       }
-      set(submittedQuestions, /* @__PURE__ */ new Set([...get2(submittedQuestions), msgId]), true);
+      set(submittedQuestions, /* @__PURE__ */ new Set([...get2(submittedQuestions), $$props.msg.id]), true);
       api.send("userPrompt", { prompt: answers.join("\n") });
     }
-    function rollback(msg) {
-      if (!appState.currentSessionId) return;
-      appState.pendingPrompt = msg.content ?? "";
-      if (appState.isProcessing) {
-        api.send("interrupt");
-      }
-      api.send("restoreSession", { sessionId: appState.currentSessionId, messageId: msg.id });
-    }
-    function getToolName(msg) {
-      const fn = msg.meta?.function;
+    function getToolName() {
+      const fn = $$props.msg.meta?.function;
       if (fn && typeof fn === "object" && "name" in fn) {
         return String(fn.name ?? "tool");
       }
       return "tool";
     }
-    function isThinking(msg) {
-      if (msg.role !== "assistant") return false;
-      if (msg.meta?.asThinking) return true;
-      const mParams = msg.messageParams;
-      if (mParams && typeof mParams.reasoning_content === "string") {
-        return mParams.reasoning_content.length > 0;
-      }
-      return false;
+    function toggle() {
+      $$props.onToggleExpand($$props.msg.id);
     }
+    function hasAnswer() {
+      return get2(formValues)[$$props.msg.id] || otherInputs[$$props.msg.id]?.trim();
+    }
+    var div = root_8();
+    var div_1 = sibling(child(div), 2);
+    var node = child(div_1);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var div_2 = root_33();
+        var node_1 = sibling(child(div_2), 2);
+        each(node_1, 17, getQuestions, index, ($$anchor3, q) => {
+          var div_3 = root_23();
+          var div_4 = child(div_3);
+          var text2 = child(div_4, true);
+          reset(div_4);
+          var div_5 = sibling(div_4, 2);
+          each(div_5, 21, () => get2(q).options, index, ($$anchor4, opt) => {
+            var button = root_14();
+            let classes;
+            var span = child(button);
+            var text_1 = child(span, true);
+            reset(span);
+            var node_2 = sibling(span, 2);
+            {
+              var consequent = ($$anchor5) => {
+                var span_1 = root5();
+                var text_2 = child(span_1, true);
+                reset(span_1);
+                template_effect(() => set_text(text_2, get2(opt).description));
+                append($$anchor5, span_1);
+              };
+              if_block(node_2, ($$render) => {
+                if (get2(opt).description) $$render(consequent);
+              });
+            }
+            reset(button);
+            template_effect(
+              ($0) => {
+                classes = set_class(button, 1, "question-option svelte-1gpypfo", null, classes, $0);
+                set_text(text_1, get2(opt).label);
+              },
+              [
+                () => ({
+                  selected: get2(q).multiSelect ? (get2(formValues)[$$props.msg.id] ?? []).includes(get2(opt).label) : get2(formValues)[$$props.msg.id] === get2(opt).label
+                })
+              ]
+            );
+            delegated("click", button, () => selectOption(get2(q).multiSelect, get2(opt).label));
+            append($$anchor4, button);
+          });
+          reset(div_5);
+          reset(div_3);
+          template_effect(() => set_text(text2, get2(q).question));
+          append($$anchor3, div_3);
+        });
+        var div_6 = sibling(node_1, 2);
+        var input = child(div_6);
+        remove_input_defaults(input);
+        reset(div_6);
+        var button_1 = sibling(div_6, 2);
+        reset(div_2);
+        template_effect(($0) => button_1.disabled = $0, [() => !hasAnswer()]);
+        bind_value(input, () => otherInputs[$$props.msg.id], ($$value) => otherInputs[$$props.msg.id] = $$value);
+        delegated("click", button_1, submitAnswer);
+        append($$anchor2, div_2);
+      };
+      var d = user_derived(() => isAskUserQuestion() && !get2(submittedQuestions).has($$props.msg.id));
+      var alternate = ($$anchor2) => {
+        var div_7 = root_72();
+        var button_2 = child(div_7);
+        var span_2 = child(button_2);
+        var text_3 = child(span_2, true);
+        reset(span_2);
+        var span_3 = sibling(span_2, 4);
+        var text_4 = child(span_3, true);
+        reset(span_3);
+        var node_3 = sibling(span_3, 2);
+        {
+          var consequent_2 = ($$anchor3) => {
+            var span_4 = root_43();
+            var text_5 = child(span_4, true);
+            reset(span_4);
+            template_effect(() => set_text(text_5, $$props.msg.meta.paramsMd));
+            append($$anchor3, span_4);
+          };
+          if_block(node_3, ($$render) => {
+            if ($$props.msg.meta?.paramsMd) $$render(consequent_2);
+          });
+        }
+        reset(button_2);
+        var node_4 = sibling(button_2, 2);
+        {
+          var consequent_5 = ($$anchor3) => {
+            var div_8 = root_63();
+            var node_5 = child(div_8);
+            {
+              var consequent_3 = ($$anchor4) => {
+                var pre = root_53();
+                var text_6 = child(pre, true);
+                reset(pre);
+                template_effect(() => set_text(text_6, $$props.msg.meta.resultMd));
+                append($$anchor4, pre);
+              };
+              var consequent_4 = ($$anchor4) => {
+                var pre_1 = root_53();
+                var text_7 = child(pre_1, true);
+                reset(pre_1);
+                template_effect(() => set_text(text_7, $$props.msg.content));
+                append($$anchor4, pre_1);
+              };
+              if_block(node_5, ($$render) => {
+                if ($$props.msg.meta?.resultMd) $$render(consequent_3);
+                else if ($$props.msg.content) $$render(consequent_4, 1);
+              });
+            }
+            reset(div_8);
+            append($$anchor3, div_8);
+          };
+          var d_1 = user_derived(() => $$props.expandedIds.has($$props.msg.id));
+          if_block(node_4, ($$render) => {
+            if (get2(d_1)) $$render(consequent_5);
+          });
+        }
+        reset(div_7);
+        template_effect(
+          ($0, $1) => {
+            set_text(text_3, $0);
+            set_text(text_4, $1);
+          },
+          [
+            () => $$props.expandedIds.has($$props.msg.id) ? "\u25BC" : "\u25B6",
+            () => getToolName()
+          ]
+        );
+        delegated("click", button_2, toggle);
+        append($$anchor2, div_7);
+      };
+      if_block(node, ($$render) => {
+        if (get2(d)) $$render(consequent_1);
+        else $$render(alternate, -1);
+      });
+    }
+    reset(div_1);
+    reset(div);
+    append($$anchor, div);
+    pop();
+  }
+  delegate(["click"]);
+
+  // resources/webview/components/MessageBoard.svelte
+  var root6 = from_html(`<div class="bubble-system svelte-12vix06"><div class="bubble-body svelte-12vix06"> </div></div>`);
+  var root_15 = from_html(`<div class="empty-state svelte-12vix06"><div class="empty-icon svelte-12vix06">\u{1F4AC}</div> <p class="svelte-12vix06">\u5F00\u59CB\u65B0\u7684\u5BF9\u8BDD</p> <p class="empty-hint svelte-12vix06">\u8F93\u5165\u6D88\u606F\u5E76\u6309 Enter \u53D1\u9001</p></div>`);
+  var root_24 = from_html(`<div class="streaming-thinking svelte-12vix06"><span class="thinking-label svelte-12vix06"> </span> <div class="streaming-reasoning svelte-12vix06"> </div></div>`);
+  var root_34 = from_html(`<div class="streaming-answer svelte-12vix06"><div class="bubble-content svelte-12vix06"> <span class="cursor svelte-12vix06">\u258A</span></div></div>`);
+  var root_44 = from_html(`<div class="bubble-streaming svelte-12vix06"><div class="bubble-avatar svelte-12vix06"></div> <div class="bubble-body svelte-12vix06"><!> <!></div></div>`);
+  var root_54 = from_html(`<div class="loading-indicator svelte-12vix06"><div class="spinner svelte-12vix06"></div> <span class="svelte-12vix06">\u7B49\u5F85\u54CD\u5E94\u2026</span></div>`);
+  var root_64 = from_html(`<div class="messages svelte-12vix06"><!> <!> <!></div>`);
+  function MessageBoard($$anchor, $$props) {
+    push($$props, true);
+    let messagesContainer = state(void 0);
+    let expandedIds = state(proxy(/* @__PURE__ */ new Set()));
     function toggleExpand(id) {
       if (get2(expandedIds).has(id)) {
         get2(expandedIds).delete(id);
@@ -7072,7 +7429,7 @@ ${component_stack}
       set(expandedIds, new Set(get2(expandedIds)), true);
     }
     user_effect(() => {
-      if (appState.messages.length > 0 || appState.streamingContent) {
+      if (appState.messages.length > 0 || appState.isStreaming) {
         requestAnimationFrame(() => {
           if (get2(messagesContainer)) {
             get2(messagesContainer).scrollTop = get2(messagesContainer).scrollHeight;
@@ -7080,7 +7437,7 @@ ${component_stack}
         });
       }
     });
-    var div = root_17();
+    var div = root_64();
     var node = child(div);
     each(
       node,
@@ -7091,304 +7448,131 @@ ${component_stack}
         var fragment = comment();
         var node_1 = first_child(fragment);
         {
+          var consequent = ($$anchor3) => {
+            UserMessage($$anchor3, {
+              get msg() {
+                return get2(msg);
+              }
+            });
+          };
           var consequent_1 = ($$anchor3) => {
-            var div_1 = root_22();
-            var button = child(div_1);
-            var div_2 = sibling(button, 2);
-            var div_3 = child(div_2);
-            var node_2 = child(div_3);
-            {
-              var consequent = ($$anchor4) => {
-                var div_4 = root3();
-                html(div_4, () => get2(msg).html, true);
-                reset(div_4);
-                append($$anchor4, div_4);
-              };
-              var alternate = ($$anchor4) => {
-                var div_5 = root_13();
-                var text2 = child(div_5, true);
-                reset(div_5);
-                template_effect(() => set_text(text2, get2(msg).content));
-                append($$anchor4, div_5);
-              };
-              if_block(node_2, ($$render) => {
-                if (get2(msg).html) $$render(consequent);
-                else $$render(alternate, -1);
-              });
-            }
-            reset(div_3);
+            ToolMessage($$anchor3, {
+              get msg() {
+                return get2(msg);
+              },
+              get expandedIds() {
+                return get2(expandedIds);
+              },
+              onToggleExpand: toggleExpand
+            });
+          };
+          var consequent_2 = ($$anchor3) => {
+            AssistantMessage($$anchor3, {
+              get msg() {
+                return get2(msg);
+              },
+              get expandedIds() {
+                return get2(expandedIds);
+              },
+              onToggleExpand: toggleExpand
+            });
+          };
+          var alternate = ($$anchor3) => {
+            var div_1 = root6();
+            var div_2 = child(div_1);
+            var text2 = child(div_2, true);
             reset(div_2);
             reset(div_1);
-            delegated("click", button, () => rollback(get2(msg)));
+            template_effect(() => set_text(text2, get2(msg).content));
             append($$anchor3, div_1);
           };
-          var alternate_4 = ($$anchor3) => {
-            var div_6 = root_132();
-            var div_7 = sibling(child(div_6), 2);
-            var node_3 = child(div_7);
-            {
-              var consequent_8 = ($$anchor4) => {
-                var fragment_1 = comment();
-                var node_4 = first_child(fragment_1);
-                {
-                  var consequent_3 = ($$anchor5) => {
-                    var div_8 = root_62();
-                    var node_5 = sibling(child(div_8), 2);
-                    each(node_5, 17, () => getQuestions(get2(msg)), index, ($$anchor6, q) => {
-                      var div_9 = root_52();
-                      var div_10 = child(div_9);
-                      var text_1 = child(div_10, true);
-                      reset(div_10);
-                      var div_11 = sibling(div_10, 2);
-                      each(div_11, 21, () => get2(q).options, index, ($$anchor7, opt) => {
-                        var button_1 = root_42();
-                        let classes;
-                        var span = child(button_1);
-                        var text_2 = child(span, true);
-                        reset(span);
-                        var node_6 = sibling(span, 2);
-                        {
-                          var consequent_2 = ($$anchor8) => {
-                            var span_1 = root_32();
-                            var text_3 = child(span_1, true);
-                            reset(span_1);
-                            template_effect(() => set_text(text_3, get2(opt).description));
-                            append($$anchor8, span_1);
-                          };
-                          if_block(node_6, ($$render) => {
-                            if (get2(opt).description) $$render(consequent_2);
-                          });
-                        }
-                        reset(button_1);
-                        template_effect(
-                          ($0) => {
-                            classes = set_class(button_1, 1, "question-option svelte-12vix06", null, classes, $0);
-                            set_text(text_2, get2(opt).label);
-                          },
-                          [
-                            () => ({
-                              selected: get2(q).multiSelect ? (get2(formValues)[get2(msg).id] ?? []).includes(get2(opt).label) : get2(formValues)[get2(msg).id] === get2(opt).label
-                            })
-                          ]
-                        );
-                        delegated("click", button_1, () => selectOption(get2(msg).id, get2(q).multiSelect, get2(opt).label));
-                        append($$anchor7, button_1);
-                      });
-                      reset(div_11);
-                      reset(div_9);
-                      template_effect(() => set_text(text_1, get2(q).question));
-                      append($$anchor6, div_9);
-                    });
-                    var div_12 = sibling(node_5, 2);
-                    var input = child(div_12);
-                    remove_input_defaults(input);
-                    reset(div_12);
-                    var button_2 = sibling(div_12, 2);
-                    reset(div_8);
-                    template_effect(($0) => button_2.disabled = $0, [
-                      () => !get2(formValues)[get2(msg).id] && !otherInputs[get2(msg).id]?.trim()
-                    ]);
-                    bind_value(input, () => otherInputs[get2(msg).id], ($$value) => otherInputs[get2(msg).id] = $$value);
-                    delegated("click", button_2, () => submitAnswer(get2(msg).id, getQuestions(get2(msg))));
-                    append($$anchor5, div_8);
-                  };
-                  var d = user_derived(() => isAskUserQuestion(get2(msg)) && !get2(submittedQuestions).has(get2(msg).id));
-                  var alternate_1 = ($$anchor5) => {
-                    var div_13 = root_10();
-                    var button_3 = child(div_13);
-                    var span_2 = child(button_3);
-                    var text_4 = child(span_2, true);
-                    reset(span_2);
-                    var span_3 = sibling(span_2, 4);
-                    var text_5 = child(span_3, true);
-                    reset(span_3);
-                    var node_7 = sibling(span_3, 2);
-                    {
-                      var consequent_4 = ($$anchor6) => {
-                        var span_4 = root_7();
-                        var text_6 = child(span_4, true);
-                        reset(span_4);
-                        template_effect(() => set_text(text_6, get2(msg).meta.paramsMd));
-                        append($$anchor6, span_4);
-                      };
-                      if_block(node_7, ($$render) => {
-                        if (get2(msg).meta?.paramsMd) $$render(consequent_4);
-                      });
-                    }
-                    reset(button_3);
-                    var node_8 = sibling(button_3, 2);
-                    {
-                      var consequent_7 = ($$anchor6) => {
-                        var div_14 = root_9();
-                        var node_9 = child(div_14);
-                        {
-                          var consequent_5 = ($$anchor7) => {
-                            var pre = root_8();
-                            var text_7 = child(pre, true);
-                            reset(pre);
-                            template_effect(() => set_text(text_7, get2(msg).meta.resultMd));
-                            append($$anchor7, pre);
-                          };
-                          var consequent_6 = ($$anchor7) => {
-                            var pre_1 = root_8();
-                            var text_8 = child(pre_1, true);
-                            reset(pre_1);
-                            template_effect(() => set_text(text_8, get2(msg).content));
-                            append($$anchor7, pre_1);
-                          };
-                          if_block(node_9, ($$render) => {
-                            if (get2(msg).meta?.resultMd) $$render(consequent_5);
-                            else if (get2(msg).content) $$render(consequent_6, 1);
-                          });
-                        }
-                        reset(div_14);
-                        append($$anchor6, div_14);
-                      };
-                      var d_1 = user_derived(() => get2(expandedIds).has(get2(msg).id));
-                      if_block(node_8, ($$render) => {
-                        if (get2(d_1)) $$render(consequent_7);
-                      });
-                    }
-                    reset(div_13);
-                    template_effect(
-                      ($0, $1) => {
-                        set_text(text_4, $0);
-                        set_text(text_5, $1);
-                      },
-                      [
-                        () => get2(expandedIds).has(get2(msg).id) ? "\u25BC" : "\u25B6",
-                        () => getToolName(get2(msg))
-                      ]
-                    );
-                    delegated("click", button_3, () => toggleExpand(get2(msg).id));
-                    append($$anchor5, div_13);
-                  };
-                  if_block(node_4, ($$render) => {
-                    if (get2(d)) $$render(consequent_3);
-                    else $$render(alternate_1, -1);
-                  });
-                }
-                append($$anchor4, fragment_1);
-              };
-              var consequent_11 = ($$anchor4) => {
-                var div_15 = root_122();
-                var button_4 = child(div_15);
-                var span_5 = child(button_4);
-                var text_9 = child(span_5, true);
-                reset(span_5);
-                next(2);
-                reset(button_4);
-                var node_10 = sibling(button_4, 2);
-                {
-                  var consequent_10 = ($$anchor5) => {
-                    var div_16 = root_11();
-                    var node_11 = child(div_16);
-                    {
-                      var consequent_9 = ($$anchor6) => {
-                        var div_17 = root3();
-                        html(div_17, () => get2(msg).html, true);
-                        reset(div_17);
-                        append($$anchor6, div_17);
-                      };
-                      var alternate_2 = ($$anchor6) => {
-                        var div_18 = root_13();
-                        var text_10 = child(div_18, true);
-                        reset(div_18);
-                        template_effect(() => set_text(text_10, get2(msg).content));
-                        append($$anchor6, div_18);
-                      };
-                      if_block(node_11, ($$render) => {
-                        if (get2(msg).html) $$render(consequent_9);
-                        else $$render(alternate_2, -1);
-                      });
-                    }
-                    reset(div_16);
-                    append($$anchor5, div_16);
-                  };
-                  var d_2 = user_derived(() => get2(expandedIds).has(get2(msg).id));
-                  if_block(node_10, ($$render) => {
-                    if (get2(d_2)) $$render(consequent_10);
-                  });
-                }
-                reset(div_15);
-                template_effect(($0) => set_text(text_9, $0), [() => get2(expandedIds).has(get2(msg).id) ? "\u25BC" : "\u25B6"]);
-                delegated("click", button_4, () => toggleExpand(get2(msg).id));
-                append($$anchor4, div_15);
-              };
-              var d_3 = user_derived(() => isThinking(get2(msg)));
-              var consequent_12 = ($$anchor4) => {
-                var div_19 = root3();
-                html(div_19, () => get2(msg).html, true);
-                reset(div_19);
-                append($$anchor4, div_19);
-              };
-              var alternate_3 = ($$anchor4) => {
-                var div_20 = root_13();
-                var text_11 = child(div_20, true);
-                reset(div_20);
-                template_effect(() => set_text(text_11, get2(msg).content));
-                append($$anchor4, div_20);
-              };
-              if_block(node_3, ($$render) => {
-                if (get2(msg).role === "tool") $$render(consequent_8);
-                else if (get2(d_3)) $$render(consequent_11, 1);
-                else if (get2(msg).html) $$render(consequent_12, 2);
-                else $$render(alternate_3, -1);
-              });
-            }
-            reset(div_7);
-            reset(div_6);
-            template_effect(() => set_class(div_6, 1, `bubble bubble-${get2(msg).role ?? ""}`, "svelte-12vix06"));
-            append($$anchor3, div_6);
-          };
           if_block(node_1, ($$render) => {
-            if (get2(msg).role === "user") $$render(consequent_1);
-            else $$render(alternate_4, -1);
+            if (get2(msg).role === "user") $$render(consequent);
+            else if (get2(msg).role === "tool") $$render(consequent_1, 1);
+            else if (get2(msg).role === "assistant") $$render(consequent_2, 2);
+            else $$render(alternate, -1);
           });
         }
         append($$anchor2, fragment);
       },
       ($$anchor2) => {
-        var fragment_2 = comment();
-        var node_12 = first_child(fragment_2);
+        var fragment_4 = comment();
+        var node_2 = first_child(fragment_4);
         {
-          var consequent_13 = ($$anchor3) => {
-            var div_21 = root_14();
-            append($$anchor3, div_21);
+          var consequent_3 = ($$anchor3) => {
+            var div_3 = root_15();
+            append($$anchor3, div_3);
           };
-          if_block(node_12, ($$render) => {
-            if (!appState.isLoading && !appState.streamingContent) $$render(consequent_13);
+          if_block(node_2, ($$render) => {
+            if (!appState.isLoading && !appState.streamingContent) $$render(consequent_3);
           });
         }
-        append($$anchor2, fragment_2);
+        append($$anchor2, fragment_4);
       }
     );
-    var node_13 = sibling(node, 2);
+    var node_3 = sibling(node, 2);
     {
-      var consequent_14 = ($$anchor2) => {
-        var div_22 = root_15();
-        var div_23 = sibling(child(div_22), 2);
-        var div_24 = child(div_23);
-        var text_12 = child(div_24, true);
-        next();
-        reset(div_24);
-        reset(div_23);
-        reset(div_22);
-        template_effect(() => set_text(text_12, appState.streamingContent));
-        append($$anchor2, div_22);
+      var consequent_6 = ($$anchor2) => {
+        var div_4 = root_44();
+        var div_5 = sibling(child(div_4), 2);
+        var node_4 = child(div_5);
+        {
+          var consequent_4 = ($$anchor3) => {
+            var div_6 = root_24();
+            var span = child(div_6);
+            var text_1 = child(span, true);
+            reset(span);
+            var div_7 = sibling(span, 2);
+            var text_2 = child(div_7, true);
+            reset(div_7);
+            reset(div_6);
+            template_effect(
+              ($0) => {
+                set_text(text_1, $0);
+                set_text(text_2, appState.streamingReasoning);
+              },
+              [
+                () => appState.streamingReasoning.split("\n").find((l) => l.trim().length > 0)?.trim().slice(0, 80) ?? "\u601D\u8003\u4E2D\u2026"
+              ]
+            );
+            append($$anchor3, div_6);
+          };
+          if_block(node_4, ($$render) => {
+            if (appState.streamingReasoning) $$render(consequent_4);
+          });
+        }
+        var node_5 = sibling(node_4, 2);
+        {
+          var consequent_5 = ($$anchor3) => {
+            var div_8 = root_34();
+            var div_9 = child(div_8);
+            var text_3 = child(div_9, true);
+            next();
+            reset(div_9);
+            reset(div_8);
+            template_effect(() => set_text(text_3, appState.streamingContent));
+            append($$anchor3, div_8);
+          };
+          if_block(node_5, ($$render) => {
+            if (appState.streamingContent) $$render(consequent_5);
+          });
+        }
+        reset(div_5);
+        reset(div_4);
+        append($$anchor2, div_4);
       };
-      if_block(node_13, ($$render) => {
-        if (appState.streamingContent) $$render(consequent_14);
+      if_block(node_3, ($$render) => {
+        if (appState.streamingReasoning || appState.streamingContent) $$render(consequent_6);
       });
     }
-    var node_14 = sibling(node_13, 2);
+    var node_6 = sibling(node_3, 2);
     {
-      var consequent_15 = ($$anchor2) => {
-        var div_25 = root_16();
-        append($$anchor2, div_25);
+      var consequent_7 = ($$anchor2) => {
+        var div_10 = root_54();
+        append($$anchor2, div_10);
       };
-      if_block(node_14, ($$render) => {
-        if (appState.isLoading && !appState.streamingContent) $$render(consequent_15);
+      if_block(node_6, ($$render) => {
+        if (appState.isLoading && !appState.isStreaming) $$render(consequent_7);
       });
     }
     reset(div);
@@ -7396,20 +7580,19 @@ ${component_stack}
     append($$anchor, div);
     pop();
   }
-  delegate(["click"]);
 
   // resources/webview/components/ChatPage.svelte
-  var root4 = from_html(`<button role="option"><span class="session-item-title svelte-1mroaqi"> </span> <span class="session-item-time svelte-1mroaqi"> </span></button>`);
-  var root_18 = from_html(`<div class="session-empty svelte-1mroaqi">\u6682\u65E0\u5386\u53F2\u5BF9\u8BDD</div>`);
-  var root_23 = from_html(`<div class="session-dropdown svelte-1mroaqi" role="listbox"></div>`);
-  var root_33 = from_html(`<span class="preset-check svelte-1mroaqi">\u2713</span>`);
-  var root_43 = from_html(`<button><span class="preset-item-name svelte-1mroaqi"> </span> <!></button>`);
-  var root_53 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u9884\u8BBE</div>`);
-  var root_63 = from_html(`<div class="preset-dropdown svelte-1mroaqi"></div>`);
-  var root_72 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u914D\u7F6E</div>`);
+  var root7 = from_html(`<button role="option"><span class="session-item-title svelte-1mroaqi"> </span> <span class="session-item-time svelte-1mroaqi"> </span></button>`);
+  var root_16 = from_html(`<div class="session-empty svelte-1mroaqi">\u6682\u65E0\u5386\u53F2\u5BF9\u8BDD</div>`);
+  var root_25 = from_html(`<div class="session-dropdown svelte-1mroaqi" role="listbox"></div>`);
+  var root_35 = from_html(`<span class="preset-check svelte-1mroaqi">\u2713</span>`);
+  var root_45 = from_html(`<button><span class="preset-item-name svelte-1mroaqi"> </span> <!></button>`);
+  var root_55 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u9884\u8BBE</div>`);
+  var root_65 = from_html(`<div class="preset-dropdown svelte-1mroaqi"></div>`);
+  var root_73 = from_html(`<div class="preset-empty svelte-1mroaqi">\u6682\u65E0\u914D\u7F6E</div>`);
   var root_82 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
-  var root_92 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
-  var root_102 = from_html(`<div class="chat-page svelte-1mroaqi"><div class="session-bar svelte-1mroaqi"><button class="session-btn svelte-1mroaqi"><span class="session-title svelte-1mroaqi"> </span> <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <button class="new-chat-btn svelte-1mroaqi" title="\u65B0\u5BF9\u8BDD">+</button> <!></div> <!> <div class="composer svelte-1mroaqi"><div class="input-wrap svelte-1mroaqi"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="3" class="svelte-1mroaqi"></textarea> <div class="composer-footer svelte-1mroaqi"><div class="footer-left svelte-1mroaqi"><!> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div></div> <div class="footer-right"><button class="send-btn svelte-1mroaqi"><!></button></div></div></div></div></div>`);
+  var root_9 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
+  var root_10 = from_html(`<div class="chat-page svelte-1mroaqi"><div class="session-bar svelte-1mroaqi"><button class="session-btn svelte-1mroaqi"><span class="session-title svelte-1mroaqi"> </span> <svg viewBox="0 0 1024 1024" width="12" height="12"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <button class="new-chat-btn svelte-1mroaqi" title="\u65B0\u5BF9\u8BDD">+</button> <!></div> <!> <div class="composer svelte-1mroaqi"><div class="input-wrap svelte-1mroaqi"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="3" class="svelte-1mroaqi"></textarea> <div class="composer-footer svelte-1mroaqi"><div class="footer-left svelte-1mroaqi"><!> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div> <div class="preset-selector svelte-1mroaqi"><button class="badge-btn svelte-1mroaqi"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div></div> <div class="footer-right"><button class="send-btn svelte-1mroaqi"><!></button></div></div></div></div></div>`);
   function ChatPage($$anchor, $$props) {
     push($$props, true);
     let promptText = state("");
@@ -7476,6 +7659,8 @@ ${component_stack}
     function handleKeydown(e) {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
+        const textarea = e.currentTarget;
+        set(promptText, textarea.value, true);
         sendPrompt();
       }
     }
@@ -7506,7 +7691,7 @@ ${component_stack}
       if (days === 1) return "\u6628\u5929";
       return `${d.getMonth() + 1}/${d.getDate()}`;
     }
-    var div = root_102();
+    var div = root_10();
     var div_1 = child(div);
     var button = child(div_1);
     var span = child(button);
@@ -7519,14 +7704,14 @@ ${component_stack}
     var node = sibling(button_1, 2);
     {
       var consequent = ($$anchor2) => {
-        var div_2 = root_23();
+        var div_2 = root_25();
         each(
           div_2,
           21,
           () => appState.sessions,
           (session) => session.id,
           ($$anchor3, session) => {
-            var button_2 = root4();
+            var button_2 = root7();
             let classes_1;
             var span_1 = child(button_2);
             var text_2 = child(span_1, true);
@@ -7550,7 +7735,7 @@ ${component_stack}
             append($$anchor3, button_2);
           },
           ($$anchor3) => {
-            var div_3 = root_18();
+            var div_3 = root_16();
             append($$anchor3, div_3);
           }
         );
@@ -7570,9 +7755,9 @@ ${component_stack}
     MessageBoard(node_1, {});
     var div_4 = sibling(node_1, 2);
     var div_5 = child(div_4);
-    var textarea = child(div_5);
-    remove_textarea_child(textarea);
-    var div_6 = sibling(textarea, 2);
+    var textarea_1 = child(div_5);
+    remove_textarea_child(textarea_1);
+    var div_6 = sibling(textarea_1, 2);
     var div_7 = child(div_6);
     var node_2 = child(div_7);
     ContextMeter(node_2, {});
@@ -7585,14 +7770,14 @@ ${component_stack}
     var node_3 = sibling(button_3, 2);
     {
       var consequent_2 = ($$anchor2) => {
-        var div_9 = root_63();
+        var div_9 = root_65();
         each(
           div_9,
           21,
           () => get2(presets),
           (preset) => preset.name,
           ($$anchor3, preset) => {
-            var button_4 = root_43();
+            var button_4 = root_45();
             let classes_3;
             var span_3 = child(button_4);
             var text_5 = child(span_3, true);
@@ -7600,7 +7785,7 @@ ${component_stack}
             var node_4 = sibling(span_3, 2);
             {
               var consequent_1 = ($$anchor4) => {
-                var span_4 = root_33();
+                var span_4 = root_35();
                 append($$anchor4, span_4);
               };
               if_block(node_4, ($$render) => {
@@ -7616,7 +7801,7 @@ ${component_stack}
             append($$anchor3, button_4);
           },
           ($$anchor3) => {
-            var div_10 = root_53();
+            var div_10 = root_55();
             append($$anchor3, div_10);
           }
         );
@@ -7637,14 +7822,14 @@ ${component_stack}
     var node_5 = sibling(button_5, 2);
     {
       var consequent_4 = ($$anchor2) => {
-        var div_12 = root_63();
+        var div_12 = root_65();
         each(
           div_12,
           21,
           () => get2(profiles),
           (profile) => profile.name,
           ($$anchor3, profile) => {
-            var button_6 = root_43();
+            var button_6 = root_45();
             let classes_5;
             var span_5 = child(button_6);
             var text_7 = child(span_5, true);
@@ -7652,7 +7837,7 @@ ${component_stack}
             var node_6 = sibling(span_5, 2);
             {
               var consequent_3 = ($$anchor4) => {
-                var span_6 = root_33();
+                var span_6 = root_35();
                 append($$anchor4, span_6);
               };
               if_block(node_6, ($$render) => {
@@ -7668,7 +7853,7 @@ ${component_stack}
             append($$anchor3, button_6);
           },
           ($$anchor3) => {
-            var div_13 = root_72();
+            var div_13 = root_73();
             append($$anchor3, div_13);
           }
         );
@@ -7690,7 +7875,7 @@ ${component_stack}
         append($$anchor2, svg_3);
       };
       var alternate = ($$anchor2) => {
-        var svg_4 = root_92();
+        var svg_4 = root_9();
         append($$anchor2, svg_4);
       };
       if_block(node_7, ($$render) => {
@@ -7722,8 +7907,8 @@ ${component_stack}
     );
     delegated("click", button, toggleDropdown);
     delegated("click", button_1, createNewSession);
-    delegated("keydown", textarea, handleKeydown);
-    bind_value(textarea, () => get2(promptText), ($$value) => set(promptText, $$value));
+    delegated("keydown", textarea_1, handleKeydown);
+    bind_value(textarea_1, () => get2(promptText), ($$value) => set(promptText, $$value));
     delegated("click", button_3, togglePresetDropdown);
     delegated("click", button_5, toggleProfileDropdown);
     delegated("click", button_7, sendPrompt);
@@ -7775,13 +7960,13 @@ ${component_stack}
   };
 
   // resources/webview/components/PresetList.svelte
-  var root5 = from_html(`<p class="hint svelte-199frlg">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_19 = from_html(`<p class="hint svelte-199frlg">\u6682\u65E0\u9884\u8BBE\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
-  var root_24 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
-  var root_34 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
-  var root_44 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
-  var root_54 = from_html(`<div class="list-items svelte-199frlg"></div>`);
-  var root_64 = from_html(`<div class="preset-list-panel svelte-199frlg"><div class="list-header svelte-199frlg"><h2 class="svelte-199frlg">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-199frlg"> </span></div> <!> <div class="list-actions svelte-199frlg"><button class="action-btn primary svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u9884\u8BBE</button> <button class="action-btn svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M2.5 7.25a.75.75 0 0 1 1.5 0v4.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-4.5a.75.75 0 0 1 1.5 0v4.5A1.75 1.75 0 0 1 11.75 13h-7.5A1.75 1.75 0 0 1 2.5 11.75v-4.5Zm6.78-4.97a.75.75 0 0 1 0 1.06L7.81 4.81a.75.75 0 0 1-1.06 0L5.28 3.34a.75.75 0 0 1 1.06-1.06l.66.66V.75a.75.75 0 0 1 1.5 0v2.19l.66-.66a.75.75 0 0 1 .72-.22Z"></path></svg> \u5BFC\u5165</button></div></div>`);
+  var root8 = from_html(`<p class="hint svelte-199frlg">\u52A0\u8F7D\u4E2D...</p>`);
+  var root_17 = from_html(`<p class="hint svelte-199frlg">\u6682\u65E0\u9884\u8BBE\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
+  var root_26 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
+  var root_36 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
+  var root_46 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
+  var root_56 = from_html(`<div class="list-items svelte-199frlg"></div>`);
+  var root_66 = from_html(`<div class="preset-list-panel svelte-199frlg"><div class="list-header svelte-199frlg"><h2 class="svelte-199frlg">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-199frlg"> </span></div> <!> <div class="list-actions svelte-199frlg"><button class="action-btn primary svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u9884\u8BBE</button> <button class="action-btn svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M2.5 7.25a.75.75 0 0 1 1.5 0v4.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-4.5a.75.75 0 0 1 1.5 0v4.5A1.75 1.75 0 0 1 11.75 13h-7.5A1.75 1.75 0 0 1 2.5 11.75v-4.5Zm6.78-4.97a.75.75 0 0 1 0 1.06L7.81 4.81a.75.75 0 0 1-1.06 0L5.28 3.34a.75.75 0 0 1 1.06-1.06l.66.66V.75a.75.75 0 0 1 1.5 0v2.19l.66-.66a.75.75 0 0 1 .72-.22Z"></path></svg> \u5BFC\u5165</button></div></div>`);
   function PresetList($$anchor, $$props) {
     push($$props, true);
     let presets = prop($$props, "presets", 19, () => []), activePreset = prop($$props, "activePreset", 3, ""), loading = prop($$props, "loading", 3, false), onselect = prop($$props, "onselect", 3, (_name) => {
@@ -7791,7 +7976,7 @@ ${component_stack}
     }), onnew = prop($$props, "onnew", 3, () => {
     }), onimport = prop($$props, "onimport", 3, () => {
     });
-    var div = root_64();
+    var div = root_66();
     var div_1 = child(div);
     var span = sibling(child(div_1), 2);
     var text2 = child(span, true);
@@ -7800,24 +7985,24 @@ ${component_stack}
     var node = sibling(div_1, 2);
     {
       var consequent = ($$anchor2) => {
-        var p = root5();
+        var p = root8();
         append($$anchor2, p);
       };
       var consequent_1 = ($$anchor2) => {
-        var p_1 = root_19();
+        var p_1 = root_17();
         append($$anchor2, p_1);
       };
       var alternate = ($$anchor2) => {
-        var div_2 = root_54();
+        var div_2 = root_56();
         each(div_2, 21, presets, (preset) => preset.name, ($$anchor3, preset) => {
-          var div_3 = root_44();
+          var div_3 = root_46();
           let classes;
           var div_4 = child(div_3);
           var div_5 = child(div_4);
           var node_1 = child(div_5);
           {
             var consequent_2 = ($$anchor4) => {
-              var span_1 = root_24();
+              var span_1 = root_26();
               append($$anchor4, span_1);
             };
             if_block(node_1, ($$render) => {
@@ -7830,7 +8015,7 @@ ${component_stack}
           var node_2 = sibling(strong, 2);
           {
             var consequent_3 = ($$anchor4) => {
-              var span_2 = root_34();
+              var span_2 = root_36();
               append($$anchor4, span_2);
             };
             if_block(node_2, ($$render) => {
@@ -7888,8 +8073,8 @@ ${component_stack}
   delegate(["click", "keydown"]);
 
   // resources/webview/components/EntryCard.svelte
-  var root6 = from_html(`<option> </option>`);
-  var root_110 = from_html(`<div role="listitem"><div class="entry-header svelte-1y400fn"><div class="entry-drag-order svelte-1y400fn"><span class="drag-handle svelte-1y400fn" title="\u62D6\u62FD\u6392\u5E8F"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M5 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path></svg></span> <span class="entry-index svelte-1y400fn"> </span></div> <input class="entry-name-input svelte-1y400fn" type="text" placeholder="\u6761\u76EE\u540D\u79F0"/> <div class="entry-actions svelte-1y400fn"><select class="entry-role-select svelte-1y400fn"></select> <div class="action-divider svelte-1y400fn"></div> <label class="toggle-label svelte-1y400fn" title="\u542F\u7528/\u7981\u7528"><input type="checkbox" class="svelte-1y400fn"/> <span class="toggle-switch svelte-1y400fn"></span></label> <button class="icon-btn danger svelte-1y400fn" title="\u5220\u9664\u6761\u76EE"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Z"></path></svg></button></div></div> <div class="entry-content svelte-1y400fn"><textarea class="entry-textarea svelte-1y400fn" placeholder="\u8F93\u5165\u63D0\u793A\u8BCD\u5185\u5BB9\uFF0C\u652F\u6301 tool.xxx\u3001char \u7B49\u5B8F"></textarea></div></div>`);
+  var root9 = from_html(`<option> </option>`);
+  var root_18 = from_html(`<div role="listitem"><div class="entry-header svelte-1y400fn"><div class="entry-drag-order svelte-1y400fn"><span class="drag-handle svelte-1y400fn" title="\u62D6\u62FD\u6392\u5E8F"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M5 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path></svg></span> <span class="entry-index svelte-1y400fn"> </span></div> <input class="entry-name-input svelte-1y400fn" type="text" placeholder="\u6761\u76EE\u540D\u79F0"/> <div class="entry-actions svelte-1y400fn"><select class="entry-role-select svelte-1y400fn"></select> <div class="action-divider svelte-1y400fn"></div> <label class="toggle-label svelte-1y400fn" title="\u542F\u7528/\u7981\u7528"><input type="checkbox" class="svelte-1y400fn"/> <span class="toggle-switch svelte-1y400fn"></span></label> <button class="icon-btn danger svelte-1y400fn" title="\u5220\u9664\u6761\u76EE"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Z"></path></svg></button></div></div> <div class="entry-content svelte-1y400fn"><textarea class="entry-textarea svelte-1y400fn" placeholder="\u8F93\u5165\u63D0\u793A\u8BCD\u5185\u5BB9\uFF0C\u652F\u6301 tool.xxx\u3001char \u7B49\u5B8F"></textarea></div></div>`);
   function EntryCard($$anchor, $$props) {
     push($$props, true);
     let entry = prop($$props, "entry", 19, () => ({ name: "", role: "system", content: "", enabled: true })), index2 = prop($$props, "index", 3, 0), isActive = prop($$props, "isActive", 3, false), onupdate = prop($$props, "onupdate", 3, (_entry) => {
@@ -7902,7 +8087,7 @@ ${component_stack}
       { value: "assistant", label: "assistant" },
       { value: "chat_history", label: "chat_history" }
     ];
-    var div = root_110();
+    var div = root_18();
     let classes;
     set_attribute2(div, "draggable", true);
     var div_1 = child(div);
@@ -7916,7 +8101,7 @@ ${component_stack}
     var div_3 = sibling(input, 2);
     var select = child(div_3);
     each(select, 21, () => ROLE_OPTIONS, index, ($$anchor2, opt) => {
-      var option = root6();
+      var option = root9();
       var text_1 = child(option, true);
       reset(option);
       var option_value = {};
@@ -7975,11 +8160,11 @@ ${component_stack}
   delegate(["input", "change", "click"]);
 
   // resources/webview/components/MacroPanel.svelte
-  var root7 = from_html(`<span class="macro-hint svelte-11xah9r">\uFF08\u8BF7\u5148\u9009\u4E2D\u4E00\u4E2A\u6761\u76EE\uFF09</span>`);
-  var root_111 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
-  var root_25 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
-  var root_35 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
-  var root_45 = from_html(`<div class="macro-section svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F <!></button> <!></div>`);
+  var root10 = from_html(`<span class="macro-hint svelte-11xah9r">\uFF08\u8BF7\u5148\u9009\u4E2D\u4E00\u4E2A\u6761\u76EE\uFF09</span>`);
+  var root_19 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
+  var root_27 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
+  var root_37 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
+  var root_47 = from_html(`<div class="macro-section svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F <!></button> <!></div>`);
   function MacroPanel($$anchor, $$props) {
     push($$props, true);
     "use strict";
@@ -8019,14 +8204,14 @@ ${component_stack}
         ]
       }
     ];
-    var div = root_45();
+    var div = root_47();
     var button = child(div);
     var svg = child(button);
     let classes;
     var node = sibling(svg, 2);
     {
       var consequent = ($$anchor2) => {
-        var span = root7();
+        var span = root10();
         append($$anchor2, span);
       };
       if_block(node, ($$render) => {
@@ -8037,15 +8222,15 @@ ${component_stack}
     var node_1 = sibling(button, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var div_1 = root_35();
+        var div_1 = root_37();
         each(div_1, 21, () => MACROS, index, ($$anchor3, group) => {
-          var div_2 = root_25();
+          var div_2 = root_27();
           var span_1 = child(div_2);
           var text2 = child(span_1, true);
           reset(span_1);
           var div_3 = sibling(span_1, 2);
           each(div_3, 21, () => get2(group).items, index, ($$anchor4, macro) => {
-            var button_1 = root_111();
+            var button_1 = root_19();
             var code = child(button_1);
             var text_1 = child(code, true);
             reset(code);
@@ -8078,10 +8263,10 @@ ${component_stack}
   delegate(["click"]);
 
   // resources/webview/components/PresetEditor.svelte
-  var root8 = from_html(`<button> </button>`);
-  var root_112 = from_html(`<div><!></div>`);
-  var root_26 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
-  var root_36 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u6807\u8BC6\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u663E\u793A\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u63CF\u8FF0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">char \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">user \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
+  var root11 = from_html(`<button> </button>`);
+  var root_110 = from_html(`<div><!></div>`);
+  var root_28 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
+  var root_38 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u6807\u8BC6\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u663E\u793A\u540D\u79F0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u63CF\u8FF0</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">char \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f">user \u53D8\u91CF</label> <input class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
   function PresetEditor($$anchor, $$props) {
     push($$props, true);
     let definition = prop($$props, "definition", 19, () => ({
@@ -8204,7 +8389,7 @@ ${component_stack}
     function handleSave() {
       onsave()(get2(editName), deepClone(get2(editDef)));
     }
-    var div = root_36();
+    var div = root_38();
     var div_1 = child(div);
     var button = child(div_1);
     var h2 = sibling(button, 2);
@@ -8237,7 +8422,7 @@ ${component_stack}
     var div_9 = sibling(div_6, 2);
     var div_10 = sibling(child(div_9), 2);
     each(div_10, 21, () => ALL_TOOLS, index, ($$anchor2, tool) => {
-      var button_1 = root8();
+      var button_1 = root11();
       let classes;
       var text_1 = child(button_1, true);
       reset(button_1);
@@ -8268,7 +8453,7 @@ ${component_stack}
     var div_13 = sibling(div_12, 2);
     var node = child(div_13);
     each(node, 17, () => get2(editDef).entries, index, ($$anchor2, entry, i) => {
-      var div_14 = root_112();
+      var div_14 = root_110();
       set_attribute2(div_14, "data-entry-index", i);
       var node_1 = child(div_14);
       {
@@ -8292,7 +8477,7 @@ ${component_stack}
     var node_2 = sibling(node, 2);
     {
       var consequent = ($$anchor2) => {
-        var p = root_26();
+        var p = root_28();
         append($$anchor2, p);
       };
       if_block(node_2, ($$render) => {
@@ -8346,7 +8531,7 @@ ${component_stack}
   delegate(["click", "input"]);
 
   // resources/webview/components/PresetPage.svelte
-  var root9 = from_html(`<div class="page svelte-1bnrgqd"><!></div>`);
+  var root12 = from_html(`<div class="page svelte-1bnrgqd"><!></div>`);
   function PresetPage($$anchor, $$props) {
     push($$props, true);
     let presets = state(proxy([]));
@@ -8456,7 +8641,7 @@ ${component_stack}
         }
       }
     }
-    var div = root9();
+    var div = root12();
     var node = child(div);
     {
       var consequent = ($$anchor2) => {
@@ -8501,18 +8686,18 @@ ${component_stack}
   }
 
   // resources/webview/components/ProfilePage.svelte
-  var root10 = from_html(`<div class="new-profile-bar svelte-1no2ghb"><input class="new-profile-input svelte-1no2ghb" type="text" placeholder="\u8F93\u5165\u914D\u7F6E\u540D\u79F0..."/> <button class="action-btn primary svelte-1no2ghb">\u521B\u5EFA</button> <button class="action-btn svelte-1no2ghb">\u53D6\u6D88</button></div>`);
-  var root_113 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_27 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
-  var root_37 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
-  var root_46 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
-  var root_55 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
-  var root_65 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
-  var root_73 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14" class="spin svelte-1no2ghb"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Z"></path></svg>`);
+  var root13 = from_html(`<div class="new-profile-bar svelte-1no2ghb"><input class="new-profile-input svelte-1no2ghb" type="text" placeholder="\u8F93\u5165\u914D\u7F6E\u540D\u79F0..."/> <button class="action-btn primary svelte-1no2ghb">\u521B\u5EFA</button> <button class="action-btn svelte-1no2ghb">\u53D6\u6D88</button></div>`);
+  var root_111 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
+  var root_29 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
+  var root_39 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
+  var root_48 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
+  var root_57 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
+  var root_67 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
+  var root_74 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14" class="spin svelte-1no2ghb"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Z"></path></svg>`);
   var root_83 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Zm2.5 4.15a.75.75 0 0 1 .1 1.06l-3 3.5a.75.75 0 0 1-1.1.04l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.47-2.88a.75.75 0 0 1 1-.13Z"></path></svg>`);
-  var root_93 = from_html(`<div role="button" tabindex="0"><div class="card-info svelte-1no2ghb"><!></div> <div class="card-actions svelte-1no2ghb"><button class="icon-btn svelte-1no2ghb" title="\u91CD\u547D\u540D"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg></button> <button class="icon-btn svelte-1no2ghb" title="\u7F16\u8F91\u914D\u7F6E\u6587\u4EF6"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn test svelte-1no2ghb" title="\u6D4B\u8BD5\u8FDE\u63A5"><!></button> <button class="icon-btn danger svelte-1no2ghb" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
-  var root_103 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
-  var root_114 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb"> </span></div> <!> <!> <div class="list-actions svelte-1no2ghb"><button class="action-btn primary svelte-1no2ghb"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u914D\u7F6E</button></div></div>`);
+  var root_92 = from_html(`<div role="button" tabindex="0"><div class="card-info svelte-1no2ghb"><!></div> <div class="card-actions svelte-1no2ghb"><button class="icon-btn svelte-1no2ghb" title="\u91CD\u547D\u540D"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg></button> <button class="icon-btn svelte-1no2ghb" title="\u7F16\u8F91\u914D\u7F6E\u6587\u4EF6"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn test svelte-1no2ghb" title="\u6D4B\u8BD5\u8FDE\u63A5"><!></button> <button class="icon-btn danger svelte-1no2ghb" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
+  var root_102 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
+  var root_11 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb"> </span></div> <!> <!> <div class="list-actions svelte-1no2ghb"><button class="action-btn primary svelte-1no2ghb"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u914D\u7F6E</button></div></div>`);
   function ProfilePage($$anchor, $$props) {
     push($$props, true);
     let profiles = state(proxy([]));
@@ -8646,7 +8831,7 @@ ${component_stack}
         set(testingProfile, null);
       }
     }
-    var div = root_114();
+    var div = root_11();
     var div_1 = child(div);
     var span = sibling(child(div_1), 2);
     var text2 = child(span, true);
@@ -8655,7 +8840,7 @@ ${component_stack}
     var node = sibling(div_1, 2);
     {
       var consequent = ($$anchor2) => {
-        var div_2 = root10();
+        var div_2 = root13();
         var input_1 = child(div_2);
         remove_input_defaults(input_1);
         var button = sibling(input_1, 2);
@@ -8675,23 +8860,23 @@ ${component_stack}
     var node_1 = sibling(node, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var p = root_113();
+        var p = root_111();
         append($$anchor2, p);
       };
       var consequent_2 = ($$anchor2) => {
-        var p_1 = root_27();
+        var p_1 = root_29();
         append($$anchor2, p_1);
       };
       var alternate_2 = ($$anchor2) => {
-        var div_3 = root_103();
+        var div_3 = root_102();
         each(div_3, 21, () => get2(profiles), (profile) => profile.name, ($$anchor3, profile) => {
-          var div_4 = root_93();
+          var div_4 = root_92();
           let classes;
           var div_5 = child(div_4);
           var node_2 = child(div_5);
           {
             var consequent_3 = ($$anchor4) => {
-              var input_2 = root_37();
+              var input_2 = root_39();
               remove_input_defaults(input_2);
               delegated("keydown", input_2, handleRenameKeydown);
               event("blur", input_2, confirmRename);
@@ -8700,11 +8885,11 @@ ${component_stack}
               append($$anchor4, input_2);
             };
             var alternate = ($$anchor4) => {
-              var div_6 = root_65();
+              var div_6 = root_67();
               var node_3 = child(div_6);
               {
                 var consequent_4 = ($$anchor5) => {
-                  var span_1 = root_46();
+                  var span_1 = root_48();
                   append($$anchor5, span_1);
                 };
                 if_block(node_3, ($$render) => {
@@ -8717,7 +8902,7 @@ ${component_stack}
               var node_4 = sibling(strong, 2);
               {
                 var consequent_5 = ($$anchor5) => {
-                  var span_2 = root_55();
+                  var span_2 = root_57();
                   append($$anchor5, span_2);
                 };
                 if_block(node_4, ($$render) => {
@@ -8742,7 +8927,7 @@ ${component_stack}
           var node_5 = child(button_4);
           {
             var consequent_6 = ($$anchor4) => {
-              var svg = root_73();
+              var svg = root_74();
               append($$anchor4, svg);
             };
             var alternate_1 = ($$anchor4) => {
@@ -8792,8 +8977,8 @@ ${component_stack}
   delegate(["keydown", "click"]);
 
   // resources/webview/components/ToastNotification.svelte
-  var root11 = from_html(`<div role="alert"><span class="toast-icon svelte-1fwhj3x"></span> <span class="toast-text svelte-1fwhj3x"> </span> <button class="toast-close svelte-1fwhj3x" aria-label="\u5173\u95ED"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg></button></div>`);
-  var root_115 = from_html(`<div class="toast-container svelte-1fwhj3x"></div>`);
+  var root14 = from_html(`<div role="alert"><span class="toast-icon svelte-1fwhj3x"></span> <span class="toast-text svelte-1fwhj3x"> </span> <button class="toast-close svelte-1fwhj3x" aria-label="\u5173\u95ED"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg></button></div>`);
+  var root_112 = from_html(`<div class="toast-container svelte-1fwhj3x"></div>`);
   function ToastNotification($$anchor, $$props) {
     push($$props, true);
     let items2 = user_derived(() => notify.items);
@@ -8810,9 +8995,9 @@ ${component_stack}
     var node = first_child(fragment);
     {
       var consequent = ($$anchor2) => {
-        var div = root_115();
+        var div = root_112();
         each(div, 21, () => get2(items2), (item) => item.id, ($$anchor3, item) => {
-          var div_1 = root11();
+          var div_1 = root14();
           var span = child(div_1);
           html(span, () => ICONS[get2(item).type], true);
           reset(span);
@@ -8841,11 +9026,11 @@ ${component_stack}
   delegate(["click"]);
 
   // resources/webview/App.svelte
-  var root12 = from_html(`<div class="app svelte-w8ccf7"><!> <!> <!></div>`);
+  var root15 = from_html(`<div class="app svelte-w8ccf7"><!> <!> <!></div>`);
   function App($$anchor, $$props) {
     push($$props, false);
     init();
-    var div = root12();
+    var div = root15();
     var node = child(div);
     TabBar(node, {});
     var node_1 = sibling(node, 2);
@@ -8906,11 +9091,16 @@ ${component_stack}
         appState.messages = msg.messages.filter((m) => m.visible !== false);
         appState.currentSessionId = msg.sessionId;
         appState.currentSessionStatus = msg.status;
+        appState.isLoading = false;
         appState.tokenTelemetry = msg.tokenTelemetry ?? null;
         appState.runningProcesses = normalizeProcesses(msg.processes);
         appState.sessions = msg.sessions;
         appState.activePreset = msg.activePreset ?? "default";
         appState.activeProfile = msg.activeProfile ?? "default";
+        if (appState.pendingRollback) {
+          appState.pendingRollback = false;
+          notify.success("\u5DF2\u56DE\u9000\u5230\u6B64");
+        }
         break;
       case "showSessionsList":
         appState.sessions = msg.sessions;
@@ -8987,9 +9177,11 @@ ${component_stack}
   }
   function clearStreamState() {
     appState.streamingContent = "";
+    appState.streamingReasoning = "";
   }
-  function handleStreamChunk(content, _reasoningContent) {
-    appState.streamingContent += content;
+  function handleStreamChunk(content, reasoningContent) {
+    if (content) appState.streamingContent += content;
+    if (reasoningContent) appState.streamingReasoning += reasoningContent;
   }
   api.send("ready");
 })();

@@ -8,6 +8,7 @@ import { mount } from "svelte";
 import App from "./App.svelte";
 import { api } from "./lib/api";
 import { appState } from "./lib/state.svelte";
+import { notify } from "./lib/notification.svelte";
 import type { SessionMessageData } from "./types";
 
 // ─── 启动 ────────────────────────────────────────────────
@@ -51,11 +52,16 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.messages = msg.messages.filter((m) => m.visible !== false);
       appState.currentSessionId = msg.sessionId;
       appState.currentSessionStatus = msg.status;
+      appState.isLoading = false;
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       appState.runningProcesses = normalizeProcesses(msg.processes);
       appState.sessions = msg.sessions;
       appState.activePreset = msg.activePreset ?? "default";
       appState.activeProfile = msg.activeProfile ?? "default";
+      if (appState.pendingRollback) {
+        appState.pendingRollback = false;
+        notify.success("已回退到此");
+      }
       break;
 
     case "showSessionsList":
@@ -148,11 +154,12 @@ function handleAppendMessage(message: SessionMessageData): void {
 
 function clearStreamState(): void {
   appState.streamingContent = "";
+  appState.streamingReasoning = "";
 }
 
-function handleStreamChunk(content: string, _reasoningContent: string): void {
-  // 追加流式内容
-  appState.streamingContent += content;
+function handleStreamChunk(content: string, reasoningContent: string): void {
+  if (content) appState.streamingContent += content;
+  if (reasoningContent) appState.streamingReasoning += reasoningContent;
 }
 
 // 报告就绪
