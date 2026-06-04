@@ -15,7 +15,7 @@ import type { SessionMessageBuilder } from "./session-message-builder";
 import type { SessionNotifier } from "./session-notify";
 import type { SessionEntry, SessionMessage } from "./session-types";
 import type { LlmStreamManager } from "./llm-stream";
-import { accumulateUsage, accumulateUsagePerModel, getTotalTokens } from "./llm-stream";
+import { accumulateUsage } from "./llm-stream";
 import type { PresetManager } from "./preset-manager";
 
 // ─── Activate 选项 ───────────────────────────────────────
@@ -267,9 +267,7 @@ export class SessionActivator {
           assistantRefusal: refusal,
           toolCalls,
           usage: accumulateUsage(entry.usage, responseUsage),
-          usagePerModel: accumulateUsagePerModel(entry.usagePerModel, model, responseUsage),
           lastUsage: responseUsage,
-          activeTokens: getTotalTokens(responseUsage),
           status: refusal ? "failed" : waitingForUser ? "waiting_for_user" : toolCalls ? "processing" : "completed",
           failReason: refusal ? refusal : entry.failReason,
           updateTime: new Date().toISOString(),

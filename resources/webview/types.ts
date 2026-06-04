@@ -84,7 +84,6 @@ export interface SessionMessageData {
 }
 
 export interface TokenTelemetry {
-  activeTokens: number;
   model: string;
   thinkingEnabled: boolean;
   /** 模型的上下文窗口上限（tokens），默认 1,000,000 */
@@ -105,7 +104,6 @@ export interface TokenTelemetry {
     prompt_cache_hit_tokens?: number;
     prompt_cache_miss_tokens?: number;
   };
-  usagePerModel?: Record<string, { prompt_tokens: number; completion_tokens: number; total_tokens: number }>;
 }
 
 export interface ProcessInfo {

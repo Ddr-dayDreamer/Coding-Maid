@@ -259,9 +259,9 @@ test("SessionManager replays normal assistant messages with reasoning content in
   assert.equal(Object.prototype.hasOwnProperty.call(nonThinkingMessages[0] ?? {}, "reasoning_content"), false);
 });
 
-test("SessionManager normalizes legacy sessions without activeTokens to zero", () => {
-  const workspace = createTempDir("deepcode-legacy-active-tokens-workspace-");
-  const home = createTempDir("deepcode-legacy-active-tokens-home-");
+test("SessionManager normalizes legacy sessions without lastUsage", () => {
+  const workspace = createTempDir("deepcode-legacy-last-usage-workspace-");
+  const home = createTempDir("deepcode-legacy-last-usage-home-");
   setHomeDir(home);
 
   const projectCode = workspace.replace(/[\\/]/g, "-").replace(/:/g, "");
@@ -287,13 +287,12 @@ test("SessionManager normalizes legacy sessions without activeTokens to zero", (
 
   const manager = createSessionManager(workspace, "machine-id-legacy");
 
-  assert.equal(manager.getSession("legacy-session")?.activeTokens, 0);
-  assert.equal(manager.getSession("legacy-session")?.usagePerModel, null);
+  assert.equal(manager.getSession("legacy-session")?.usage, null);
 });
 
-test("SessionManager keeps usagePerModel null until response usage is available", async () => {
-  const workspace = createTempDir("deepcode-null-usage-per-model-workspace-");
-  const home = createTempDir("deepcode-null-usage-per-model-home-");
+test("SessionManager keeps usage null until response usage is available", async () => {
+  const workspace = createTempDir("deepcode-null-usage-workspace-");
+  const home = createTempDir("deepcode-null-usage-home-");
   setHomeDir(home);
 
   const manager = createMockedClientSessionManager(workspace, [{ choices: [{ message: { content: "no usage" } }] }]);
@@ -301,7 +300,6 @@ test("SessionManager keeps usagePerModel null until response usage is available"
   const sessionId = await manager.createSession({ text: "" });
 
   assert.equal(manager.getSession(sessionId)?.usage, null);
-  assert.equal(manager.getSession(sessionId)?.usagePerModel, null);
 });
 
 // Skill tests removed — SessionSkills has been deleted.
@@ -1676,8 +1674,7 @@ test("SessionManager accumulates response usage while active tokens track the la
 
   const session = manager.getSession(sessionId);
   const usage = session?.usage as Record<string, any>;
-  const usagePerModel = session?.usagePerModel?.["test-model"] as Record<string, any>;
-  assert.equal(session?.activeTokens, 27);
+  assert.equal(session?.lastUsage?.total_tokens, 27);
   assert.equal(usage.prompt_tokens, 30);
   assert.equal(usage.completion_tokens, 12);
   assert.equal(usage.total_tokens, 42);
@@ -1685,75 +1682,6 @@ test("SessionManager accumulates response usage while active tokens track the la
   assert.equal(usage.completion_tokens_details.reasoning_tokens, 7);
   assert.equal(usage.prompt_cache_hit_tokens, 18);
   assert.equal(usage.prompt_cache_miss_tokens, 12);
-  assert.equal(usagePerModel.prompt_tokens, 30);
-  assert.equal(usagePerModel.completion_tokens, 12);
-  assert.equal(usagePerModel.total_tokens, 42);
-  assert.equal(usagePerModel.prompt_tokens_details.cached_tokens, 18);
-  assert.equal(usagePerModel.completion_tokens_details.reasoning_tokens, 7);
-  assert.equal(usagePerModel.prompt_cache_hit_tokens, 18);
-  assert.equal(usagePerModel.prompt_cache_miss_tokens, 12);
-  assert.equal(usagePerModel.total_reqs, 2);
-});
-
-test("SessionManager stores usage per model across model changes", async () => {
-  const workspace = createTempDir("deepcode-usage-per-model-workspace-");
-  const home = createTempDir("deepcode-usage-per-model-home-");
-  setHomeDir(home);
-
-  let currentModel = "deepseek-v4-pro";
-  const responses = [
-    createChatResponse("pro response", {
-      prompt_tokens: 10,
-      completion_tokens: 5,
-      total_tokens: 15,
-    }),
-    createChatResponse("flash response", {
-      prompt_tokens: 20,
-      completion_tokens: 7,
-      total_tokens: 27,
-      prompt_cache_hit_tokens: 6,
-    }),
-  ];
-  const client = {
-    chat: {
-      completions: {
-        create: async () => {
-          const response = responses.shift();
-          assert.ok(response, "expected a queued chat response");
-          return response;
-        },
-      },
-    },
-  };
-  const manager = new SessionManager({
-    projectRoot: workspace,
-    createOpenAIClient: () => ({
-      client: client as any,
-      model: currentModel,
-      baseURL: "https://api.deepseek.com",
-      thinkingEnabled: false,
-    }),
-    getResolvedSettings: () => ({ model: currentModel }),
-    renderMarkdown: (text) => text,
-    onAssistantMessage: () => {},
-  });
-
-  const sessionId = await manager.createSession({ text: "" });
-  currentModel = "deepseek-v4-flash";
-  await manager.replySession(sessionId, { text: "" });
-
-  const session = manager.getSession(sessionId);
-  assert.deepEqual(Object.keys(session?.usagePerModel ?? {}).sort(), ["deepseek-v4-flash", "deepseek-v4-pro"]);
-  assert.equal(session?.usagePerModel?.["deepseek-v4-pro"]?.prompt_tokens, 10);
-  assert.equal(session?.usagePerModel?.["deepseek-v4-pro"]?.completion_tokens, 5);
-  assert.equal(session?.usagePerModel?.["deepseek-v4-pro"]?.total_reqs, 1);
-  assert.equal(session?.usagePerModel?.["deepseek-v4-flash"]?.prompt_tokens, 20);
-  assert.equal(session?.usagePerModel?.["deepseek-v4-flash"]?.completion_tokens, 7);
-  assert.equal(session?.usagePerModel?.["deepseek-v4-flash"]?.prompt_cache_hit_tokens, 6);
-  assert.equal(session?.usagePerModel?.["deepseek-v4-flash"]?.total_reqs, 1);
-  assert.equal(session?.usage?.prompt_tokens, 30);
-  assert.equal(session?.usage?.completion_tokens, 12);
-  assert.equal(session?.usage?.total_tokens, 42);
 });
 
 test("SessionManager streams chat completions and counts reasoning progress", async () => {
@@ -1814,7 +1742,7 @@ test("SessionManager streams chat completions and counts reasoning progress", as
 
   assert.equal(assistantMessage?.content, "hello");
   assert.equal((assistantMessage?.messageParams as any)?.reasoning_content, "思考");
-  assert.equal(manager.getSession(sessionId)?.activeTokens, 5);
+  assert.equal(manager.getSession(sessionId)?.lastUsage?.total_tokens, 5);
   assert.deepEqual(
     progressEvents.map((event) => event.phase),
     ["start", "update", "update", "end"]

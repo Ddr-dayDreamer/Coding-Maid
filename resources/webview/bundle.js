@@ -6793,7 +6793,7 @@ ${component_stack}
     });
     const R = 9;
     const CIRCUMFERENCE = 2 * Math.PI * R;
-    const activeTokens = user_derived(() => appState.tokenTelemetry?.activeTokens ?? 0);
+    const activeTokens = user_derived(() => appState.tokenTelemetry?.lastUsage?.total_tokens ?? 0);
     const contextLimit = user_derived(() => appState.tokenTelemetry?.contextLimit ?? 1e6);
     const proportion = user_derived(() => get2(contextLimit) > 0 ? Math.min(get2(activeTokens) / get2(contextLimit), 1) : 0);
     const dashOffset = user_derived(() => CIRCUMFERENCE * (1 - get2(proportion)));

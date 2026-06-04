@@ -222,9 +222,7 @@ export class SessionStorage {
       status: this.normalizeSessionStatus(value.status),
       failReason: typeof value.failReason === "string" ? value.failReason : null,
       usage: (value.usage as ModelUsage) ?? null,
-      usagePerModel: this.normalizeUsagePerModel(value),
       lastUsage: (value.lastUsage as ModelUsage) ?? null,
-      activeTokens: typeof value.activeTokens === "number" ? value.activeTokens : 0,
       createTime: typeof value.createTime === "string" ? value.createTime : new Date().toISOString(),
       updateTime: typeof value.updateTime === "string" ? value.updateTime : new Date().toISOString(),
       processes: this.deserializeProcesses(value.processes),
@@ -243,23 +241,6 @@ export class SessionStorage {
       return status;
     }
     return "pending";
-  }
-
-  private normalizeUsagePerModel(entry: Record<string, unknown>): Record<string, ModelUsage> | null {
-    if (!Object.prototype.hasOwnProperty.call(entry, "usagePerModel")) {
-      return null;
-    }
-    if (!isUsageRecord(entry.usagePerModel)) {
-      return null;
-    }
-    const usagePerModel: Record<string, ModelUsage> = {};
-    for (const [model, usage] of Object.entries(entry.usagePerModel)) {
-      if (!model || !isUsageRecord(usage)) {
-        continue;
-      }
-      usagePerModel[model] = usage as ModelUsage;
-    }
-    return usagePerModel;
   }
 
   private deserializeProcesses(value: unknown): Map<string, SessionProcessEntry> | null {

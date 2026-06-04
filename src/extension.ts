@@ -734,10 +734,8 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     model: string;
     thinkingEnabled: boolean;
     reasoningEffort: ReasoningEffort;
-    activeTokens: number;
     contextLimit: number;
     usage: unknown | null;
-    usagePerModel: Record<string, unknown> | null;
     lastUsage: unknown | null;
   } {
     const settings = this.resolveCurrentSettings();
@@ -745,10 +743,8 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       model: settings.model,
       thinkingEnabled: settings.thinkingEnabled ?? false,
       reasoningEffort: settings.reasoningEffort ?? "max",
-      activeTokens: session?.activeTokens ?? 0,
       contextLimit: settings.contextLimit ?? 1_000_000,
       usage: session?.usage ?? null,
-      usagePerModel: (session?.usagePerModel as Record<string, unknown> | null) ?? null,
       lastUsage: session?.lastUsage ?? null,
     };
   }

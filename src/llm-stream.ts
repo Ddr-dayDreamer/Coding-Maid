@@ -47,20 +47,6 @@ export function accumulateUsage(current: ModelUsage | null, next: unknown | null
   return addUsageValue(current, nextObj) as ModelUsage;
 }
 
-export function accumulateUsagePerModel(
-  current: Record<string, ModelUsage> | null | undefined,
-  model: string,
-  next: ModelUsage | null | undefined
-): Record<string, ModelUsage> | null {
-  if (next == null) {
-    return current ?? null;
-  }
-  const usagePerModel = { ...(current ?? {}) };
-  const modelName = model.trim() || "unknown";
-  usagePerModel[modelName] = accumulateUsage(usagePerModel[modelName] ?? null, next)!;
-  return usagePerModel;
-}
-
 function addUsageValue(current: unknown, next: unknown): unknown {
   if (typeof next === "number") {
     return (typeof current === "number" ? current : 0) + next;
@@ -78,13 +64,7 @@ function addUsageValue(current: unknown, next: unknown): unknown {
   return next;
 }
 
-export function getTotalTokens(usage: ModelUsage | null | undefined): number {
-  if (!isUsageRecord(usage)) {
-    return 0;
-  }
-  const totalTokens = usage.total_tokens;
-  return typeof totalTokens === "number" ? totalTokens : 0;
-}
+
 
 // ─── 流结果 ──────────────────────────────────────────────
 

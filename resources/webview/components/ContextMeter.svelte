@@ -43,7 +43,7 @@
   const R = 9;
   const CIRCUMFERENCE = 2 * Math.PI * R; // ≈ 56.55
 
-  const activeTokens = $derived(appState.tokenTelemetry?.activeTokens ?? 0);
+  const activeTokens = $derived(appState.tokenTelemetry?.lastUsage?.total_tokens ?? 0);
   const contextLimit = $derived(appState.tokenTelemetry?.contextLimit ?? 1_000_000);
   const proportion = $derived(contextLimit > 0 ? Math.min(activeTokens / contextLimit, 1) : 0);
   const dashOffset = $derived(CIRCUMFERENCE * (1 - proportion));
