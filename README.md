@@ -96,6 +96,9 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 | `{{editor_selection}}`        | 当前 VS Code 编辑器中选中内容（含定位）    |
 | `{{active_file}}`             | 当前活动编辑器的文件全文                   |
 | `{{attached_files}}`          | 用户附加的所有文件内容                     |
+| `{{active_file_path}}`        | 当前活动编辑器的文件路径                   |
+| `{{attached_files_path}}`     | 用户附加的所有文件路径列表                 |
+| `{{lastUserMessage}}`         | 当前会话中最后一条用户消息原文             |
 | `{{setvar::key::val}}`        | 设置会话级变量                             |
 | `{{getvar::key}}`             | 读取会话级变量                             |
 

@@ -181,6 +181,9 @@ export class SessionActivator {
           console.log("[DEBUG] activate: preset load FAILED, fallback to default:", e);
           preset = opts.presetMgr.ensureDefaultPreset();
         }
+        // 提取最后一条用户消息供 {{lastUserMessage}} 宏使用
+        const lastUserMsg = [...conversationMessages].reverse().find((m) => m.role === "user");
+
         const macroContext = {
           projectRoot: this.projectRoot,
           model: promptToolOptions.model,
@@ -188,6 +191,7 @@ export class SessionActivator {
           editorSelection: opts.editorSelection,
           activeFile: opts.activeFile,
           attachedFiles: opts.attachedFiles,
+          lastUserMessage: lastUserMsg?.content ?? undefined,
         };
         let renderedEntries;
         try {

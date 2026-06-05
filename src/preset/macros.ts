@@ -73,7 +73,10 @@ export class MacroEngine {
    * 7. {{editor_selection}} — 替换为当前 VS Code 编辑器中选中的内容（含定位）
    * 8. {{active_file}} — 替换为当前活动编辑器文件的全文
    * 9. {{attached_files}} — 替换为用户附加的所有文件内容
-   * 10. {{date}} / {{time}} / {{model}} / {{user}} / {{char}} / {{workspace}} — 简单替换
+   * 10. {{active_file_path}} — 替换为当前活动编辑器文件路径
+   * 11. {{attached_files_path}} — 替换为用户附加的所有文件路径
+   * 12. {{lastUserMessage}} — 替换为当前会话中最后一条用户消息原文
+   * 13. {{date}} / {{time}} / {{model}} / {{user}} / {{char}} / {{workspace}} — 简单替换
    */
   render(content: string, context: MacroContext): string {
     if (!content) return content;
@@ -129,7 +132,22 @@ export class MacroEngine {
       return this.readAttachedFiles(context);
     });
 
-    // 10. 简单替换
+    // 10. {{active_file_path}}
+    result = result.replace(/\{\{active_file_path\}\}/g, () => {
+      return this.readActiveFilePath(context);
+    });
+
+    // 11. {{attached_files_path}}
+    result = result.replace(/\{\{attached_files_path\}\}/g, () => {
+      return this.readAttachedFilesPath(context);
+    });
+
+    // 12. {{lastUserMessage}}
+    result = result.replace(/\{\{lastUserMessage\}\}/g, () => {
+      return context.lastUserMessage ?? "";
+    });
+
+    // 13. 简单替换
     result = result.replace(/\{\{date\}\}/g, () => {
       return new Date().toLocaleDateString("zh-CN", {
         year: "numeric",
@@ -258,6 +276,18 @@ ${JSON.stringify(env, null, 2)}
       }
     }
     return parts.join("\n\n");
+  }
+
+  /** 返回当前活动编辑器文件路径（纯文本，无内容） */
+  private readActiveFilePath(context: MacroContext): string {
+    return context.activeFile ?? "";
+  }
+
+  /** 返回用户附加的所有文件路径（每行一个） */
+  private readAttachedFilesPath(context: MacroContext): string {
+    const files = context.attachedFiles;
+    if (!files || files.length === 0) return "";
+    return files.join("\n");
   }
 
   /**

@@ -23,11 +23,11 @@
     },
     {
       group: "运行时",
-      items: ["{{runtime_context}}", "{{global_memory}}", "{{repo_memory}}"],
+      items: ["{{runtime_context}}","{{workspace}}", "{{editor_selection}}", "{{active_file}}", "{{active_file_path}}", "{{attached_files}}", "{{attached_files_path}}"],
     },
     {
       group: "变量",
-      items: ["{{char}}", "{{user}}", "{{model}}", "{{date}}", "{{time}}", "{{workspace}}", "{{editor_selection}}", "{{active_file}}", "{{attached_files}}"],
+      items: ["{{char}}", "{{user}}", "{{model}}", "{{date}}", "{{time}}", "{{lastUserMessage}}", "{{global_memory}}", "{{repo_memory}}"],
     },
   ];
 </script>

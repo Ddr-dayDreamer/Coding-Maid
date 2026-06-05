@@ -8249,8 +8249,12 @@ ${component_stack}
         group: "\u8FD0\u884C\u65F6",
         items: [
           "{{runtime_context}}",
-          "{{global_memory}}",
-          "{{repo_memory}}"
+          "{{workspace}}",
+          "{{editor_selection}}",
+          "{{active_file}}",
+          "{{active_file_path}}",
+          "{{attached_files}}",
+          "{{attached_files_path}}"
         ]
       },
       {
@@ -8261,10 +8265,9 @@ ${component_stack}
           "{{model}}",
           "{{date}}",
           "{{time}}",
-          "{{workspace}}",
-          "{{editor_selection}}",
-          "{{active_file}}",
-          "{{attached_files}}"
+          "{{lastUserMessage}}",
+          "{{global_memory}}",
+          "{{repo_memory}}"
         ]
       }
     ];
