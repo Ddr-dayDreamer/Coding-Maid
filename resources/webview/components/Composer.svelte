@@ -1,7 +1,6 @@
 <script lang="ts">
   import { appState } from "../lib/state.svelte";
   import { api } from "../lib/api";
-  import type { AttachedFile } from "../types";
   import ContextMeter from "./ContextMeter.svelte";
   import PresetQuickSelector from "./PresetQuickSelector.svelte";
   import ProfileQuickSelector from "./ProfileQuickSelector.svelte";
@@ -9,11 +8,6 @@
 
   let promptText = $state("");
   let textareaEl: HTMLTextAreaElement | undefined = $state();
-
-  // ─── 拖入状态 ────────────────────────────────────────
-
-  let isDragOver = $state(false);
-  let dragCounter = $state(0);
 
   // ─── 自动扩展 textarea ──────────────────────────────
 
@@ -83,155 +77,17 @@
   function handleInput() {
     autoResize();
   }
-
-  // ═══════════════════════════════════════════════════════
-  //  拖放处理
-  // ═══════════════════════════════════════════════════════
-
-  function handleDragEnter(e: DragEvent) {
-    e.preventDefault();
-    dragCounter++;
-    isDragOver = true;
-  }
-
-  function handleDragOver(e: DragEvent) {
-    e.preventDefault();
-    // 必须设置 dropEffect 才能接收 drop
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = "copy";
-    }
-  }
-
-  function handleDragLeave(e: DragEvent) {
-    e.preventDefault();
-    dragCounter--;
-    if (dragCounter <= 0) {
-      dragCounter = 0;
-      isDragOver = false;
-    }
-  }
-
-  async function handleDrop(e: DragEvent) {
-    e.preventDefault();
-    dragCounter = 0;
-    isDragOver = false;
-
-    const dt = e.dataTransfer;
-    if (!dt) return;
-
-    const types = dt.types;
-    const hasUriList = types?.includes("text/uri-list");
-    const hasPlainText = types?.includes("text/plain");
-
-    try {
-      if (hasUriList) {
-        // ── 拖入文件（来自 VS Code 文件管理器） ──
-        const uriList = dt.getData("text/uri-list");
-        const filePaths = parseUriList(uriList);
-        if (filePaths.length > 0) {
-          await attachFiles(filePaths);
-          return;
-        }
-      }
-
-      if (hasPlainText) {
-        // ── 拖入代码段 / 文本 ──
-        const text = dt.getData("text/plain");
-        if (text && text.length > 20) {
-          // 只有较长的文本才视为代码段（避免误抓单行路径名）
-          await attachSnippet(text);
-          return;
-        }
-      }
-    } catch {
-      // 静默失败
-    }
-  }
-
-  /** 解析 text/uri-list 为文件绝对路径列表 */
-  function parseUriList(text: string): string[] {
-    return text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("#"))
-      .map((uri) => {
-        if (!uri.startsWith("file://")) return "";
-        const decoded = decodeURIComponent(uri.slice(7)); // 去掉 "file://"
-        // Windows: file:///C:/path → /C:/path → C:/path
-        if (decoded.startsWith("/") && /^\/[A-Za-z]:/.test(decoded)) {
-          return decoded.slice(1);
-        }
-        return decoded;
-      })
-      .filter(Boolean);
-  }
-
-  /** 附加文件：前端更新展示 + 通知后端 */
-  async function attachFiles(filePaths: string[]) {
-    // 去重
-    const existing = new Set(appState.attachedFiles.map((f) => f.filePath));
-    const newFiles: AttachedFile[] = [];
-
-    for (const fp of filePaths) {
-      if (existing.has(fp)) continue;
-      existing.add(fp);
-      const fileName = fp.split(/[\\/]/).pop() || fp;
-      newFiles.push({ filePath: fp, fileName });
-    }
-
-    if (newFiles.length === 0) return;
-
-    // 通知后端
-    api.send("attachFiles", {
-      filePaths: newFiles.map((f) => f.filePath),
-    });
-
-    // 更新前端展示
-    appState.attachedFiles = [...appState.attachedFiles, ...newFiles];
-  }
-
-  /** 附加代码段：写入临时文件 + 通知后端 */
-  async function attachSnippet(content: string) {
-    // 用首行生成展示名
-    const firstLine = content.split("\n")[0].trim().slice(0, 60);
-    const label = firstLine || "代码段";
-
-    try {
-      const result = await api.request<{ filePath: string; fileName: string }>("attachSnippet", {
-        content,
-        fileName: label,
-      });
-
-      appState.attachedFiles = [
-        ...appState.attachedFiles,
-        {
-          filePath: result.filePath,
-          fileName: result.fileName,
-          isSnippet: true,
-        },
-      ];
-    } catch {
-      // 静默失败
-    }
-  }
 </script>
 
-<div
-  class="composer"
-  class:dragover={isDragOver}
-  ondragenter={handleDragEnter}
-  ondragover={handleDragOver}
-  ondragleave={handleDragLeave}
-  ondrop={handleDrop}
->
-  <AttachedFilesBar />
+<div class="composer" class:dragover={appState.isDragOver}>
   <div class="input-wrap">
+    <AttachedFilesBar />
     <textarea
       bind:this={textareaEl}
       bind:value={promptText}
       onkeydown={handleKeydown}
       oninput={handleInput}
-      placeholder="输入消息... (Shift+Enter 换行)"
+      placeholder="输入消息... (Shift+Enter 换行，拖入文件按住 Shift)"
       rows="1"
     ></textarea>
     <div class="composer-footer">
@@ -260,26 +116,12 @@
       </div>
     </div>
   </div>
-
-  <!-- 拖拽释放提示 -->
-  {#if isDragOver}
-    <div class="drop-overlay">
-      <div class="drop-hint">
-        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-          <polyline points="17,8 12,3 7,8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
-        </svg>
-        <span>释放以附加文件</span>
-      </div>
-    </div>
-  {/if}
 </div>
 
 <style>
   .composer {
     flex-shrink: 0;
-    padding: 6px 12px 12px;
+    padding: 6px 6px 6px;
     background: var(--vscode-sideBar-background);
     border-top: 1px solid var(--vscode-panel-border);
   }
@@ -359,38 +201,5 @@
   .composer.dragover .input-wrap {
     border-color: var(--vscode-focusBorder);
     box-shadow: 0 0 0 1px var(--vscode-focusBorder);
-  }
-
-  .drop-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: color-mix(in srgb, var(--vscode-sideBar-background) 85%, transparent);
-    border-radius: 8px;
-    pointer-events: none;
-    animation: fadeIn 0.12s ease;
-  }
-
-  .drop-hint {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    color: var(--vscode-focusBorder);
-    font-size: 13px;
-    font-weight: 500;
-    opacity: 0.9;
-  }
-
-  .drop-hint svg {
-    opacity: 0.6;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
   }
 </style>

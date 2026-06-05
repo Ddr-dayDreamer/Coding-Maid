@@ -69,6 +69,10 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.sessions = msg.sessions;
       break;
 
+    case "attachedFilesCleared":
+      appState.attachedFiles = [];
+      break;
+
     case "sessionStatus":
       appState.currentSessionStatus = msg.status;
       appState.runningProcesses = normalizeProcesses(msg.processes);

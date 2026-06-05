@@ -1001,37 +1001,64 @@
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/AttachedFilesBar.esbuild-svelte-fake-css */
 .attached-bar.svelte-1j8bp8d {
   flex-shrink: 0;
-  padding: 4px 12px 0;
-  background: var(--vscode-sideBar-background);
-  border-top: 1px solid var(--vscode-panel-border);
+  padding: 6px 12px 0;
 }
 .attached-header.svelte-1j8bp8d {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 3px;
+  gap: 8px;
 }
 .attached-label.svelte-1j8bp8d {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
   font-weight: 500;
+  flex-shrink: 0;
 }
-.clear-btn.svelte-1j8bp8d {
+.attached-count.svelte-1j8bp8d {
+  font-weight: 400;
+  opacity: 0.7;
+}
+.attached-actions.svelte-1j8bp8d {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+.action-btn.svelte-1j8bp8d {
   font-size: 10px;
   padding: 1px 6px;
-  border: none;
+  border: 1px solid var(--vscode-panel-border);
   background: transparent;
-  color: var(--vscode-descriptionForeground);
+  color: var(--vscode-foreground);
   cursor: pointer;
-  border-radius: 3px;
-  opacity: 0.6;
-  transition: opacity 0.15s;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition:
+    opacity 0.15s,
+    background 0.15s,
+    border-color 0.15s;
   font-family: inherit;
+  line-height: 1.6;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
 }
-.clear-btn.svelte-1j8bp8d:hover {
+.action-btn.svelte-1j8bp8d:hover:not(:disabled) {
   opacity: 1;
-  color: var(--vscode-errorForeground, #e74c3c);
   background: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-focusBorder);
+}
+.action-btn.svelte-1j8bp8d:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.action-btn.clear.svelte-1j8bp8d:hover {
+  color: var(--vscode-errorForeground, #e74c3c);
+  border-color: var(--vscode-errorForeground, #e74c3c);
 }
 .attached-chips.svelte-1j8bp8d {
   display: flex;
@@ -1056,6 +1083,7 @@
 }
 .chip.svelte-1j8bp8d:hover {
   border-color: var(--vscode-focusBorder);
+  cursor: pointer;
 }
 .chip-icon.svelte-1j8bp8d {
   flex-shrink: 0;
@@ -1093,7 +1121,7 @@
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/Composer.esbuild-svelte-fake-css */
 .composer.svelte-z2mbmf {
   flex-shrink: 0;
-  padding: 6px 12px 12px;
+  padding: 6px 6px 6px;
   background: var(--vscode-sideBar-background);
   border-top: 1px solid var(--vscode-panel-border);
 }
@@ -1161,39 +1189,6 @@ textarea.svelte-z2mbmf::placeholder {
 .composer.dragover.svelte-z2mbmf .input-wrap:where(.svelte-z2mbmf) {
   border-color: var(--vscode-focusBorder);
   box-shadow: 0 0 0 1px var(--vscode-focusBorder);
-}
-.drop-overlay.svelte-z2mbmf {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--vscode-sideBar-background) 85%, transparent);
-  border-radius: 8px;
-  pointer-events: none;
-  animation: svelte-z2mbmf-fadeIn 0.12s ease;
-}
-.drop-hint.svelte-z2mbmf {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--vscode-focusBorder);
-  font-size: 13px;
-  font-weight: 500;
-  opacity: 0.9;
-}
-.drop-hint.svelte-z2mbmf svg:where(.svelte-z2mbmf) {
-  opacity: 0.6;
-}
-@keyframes svelte-z2mbmf-fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/ChatPage.esbuild-svelte-fake-css */
@@ -2091,4 +2086,49 @@ textarea.svelte-z2mbmf::placeholder {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  position: relative;
+}
+.drop-overlay.svelte-w8ccf7 {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 80%, transparent);
+  backdrop-filter: blur(2px);
+  animation: svelte-w8ccf7-fadeIn 0.12s ease;
+  pointer-events: none;
+}
+.drop-hint.svelte-w8ccf7 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 48px;
+  border-radius: 12px;
+  border: 2px dashed var(--vscode-focusBorder);
+  background: color-mix(in srgb, var(--vscode-editor-background) 90%, transparent);
+}
+.drop-hint.svelte-w8ccf7 svg:where(.svelte-w8ccf7) {
+  color: var(--vscode-focusBorder);
+  opacity: 0.7;
+}
+.drop-hint-text.svelte-w8ccf7 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+.drop-hint-sub.svelte-w8ccf7 {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.7;
+}
+@keyframes svelte-w8ccf7-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

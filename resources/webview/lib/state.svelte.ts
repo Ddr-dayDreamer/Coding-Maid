@@ -62,6 +62,9 @@ class AppState {
   /** 拖入的附加文件列表（前端展示用） */
   attachedFiles = $state<AttachedFile[]>([]);
 
+  /** 是否有文件正被拖入界面（用于显示全页叠加层） */
+  isDragOver = $state(false);
+
   /** 流式输出暂存内容（打字机效果） */
   streamingContent = $state("");
 

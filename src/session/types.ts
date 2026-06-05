@@ -205,6 +205,8 @@ export type MacroContext = {
   activeFile?: string;
   /** {{attached_files}} — 用户拖拽/选择的附加文件路径列表 */
   attachedFiles?: string[];
+  /** {{attached_files}} — 代码段附加内容的虚拟路径→内容映射 */
+  attachedSnippetContents?: Record<string, string>;
   /** {{lastUserMessage}} — 当前会话中最后一条用户消息原文 */
   lastUserMessage?: string;
 };

@@ -45,7 +45,7 @@ export function registerSessionHandlers(
 
   registerHandler("createNewSession", async () => {
     ctx.sessionManager.setActiveSessionId(null);
-    ctx.sessionManager.setAttachedFiles([]);
+    ctx.sessionManager.clearAllAttachments();
     const sessions = buildSessionsList(ctx);
     const settings = ctx.resolveCurrentSettings();
     ctx.sendMessage({

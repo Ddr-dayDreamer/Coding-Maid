@@ -1,12 +1,10 @@
 /**
  * 提示词发送处理器
  *
- * 处理 userPrompt、interrupt、attachFiles / attachSnippet。
- * 在发送前捕获编辑器上下文注入 MacroEngine。
+ * 处理 userPrompt、interrupt、attachFiles 等。
+ * 发送后自动清除附加文件。
  */
 
-import * as fs from "fs";
-import * as path from "path";
 import type { HandlerContext } from "../handler-context";
 import type { UserPromptContent } from "../../session/types";
 import { captureEditorSelection, captureActiveFile } from "./editor";
@@ -19,6 +17,9 @@ export function registerPromptHandlers(
     const prompt = String(message.prompt || "").trim();
     if (!prompt) return;
     await handlePrompt(ctx, prompt);
+    // 发送后自动清除附加文件（包含代码段内存内容）
+    ctx.sessionManager.clearAllAttachments();
+    ctx.sendMessage({ type: "attachedFilesCleared" });
   });
 
   registerHandler("interrupt", async () => {
@@ -38,39 +39,6 @@ export function registerPromptHandlers(
     }
   });
 
-  // ─── 代码段拖入：写入临时文件后 attach ────────────
-
-  registerHandler("attachSnippet", async (message) => {
-    const content = String(message.content || "");
-    if (!content) {
-      ctx.respond(message.requestId as string, false, undefined, "Empty content");
-      return;
-    }
-
-    const projectRoot = ctx.getWorkspaceRoot();
-    const attachmentsDir = path.join(projectRoot, ".codingmaid", "attachments");
-    fs.mkdirSync(attachmentsDir, { recursive: true });
-
-    // 从首行生成文件名
-    const firstLine = content
-      .split("\n")[0]
-      .trim()
-      .slice(0, 40)
-      .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fff]/g, "_");
-    const label = firstLine ? `${firstLine}-snippet` : "snippet";
-    const timestamp = Date.now();
-    const filePath = path.join(attachmentsDir, `${label}-${timestamp}.md`);
-
-    fs.writeFileSync(filePath, content, "utf8");
-
-    // 追加到 attachedFiles
-    const current = ctx.sessionManager.getAttachedFiles();
-    ctx.sessionManager.setAttachedFiles([...current, filePath]);
-
-    const fileName = path.basename(filePath);
-    ctx.respond(message.requestId as string, true, { filePath, fileName });
-  });
-
   // ─── 移除单个附加文件 ──────────────────────────────
 
   registerHandler("removeAttachedFile", async (message) => {
@@ -80,10 +48,10 @@ export function registerPromptHandlers(
     }
   });
 
-  // ─── 清空所有附加文件 ──────────────────────────────
+  // ─── 清空所有附加文件（含代码段内存内容） ───────────
 
   registerHandler("clearAttachedFiles", async () => {
-    ctx.sessionManager.setAttachedFiles([]);
+    ctx.sessionManager.clearAllAttachments();
   });
 }
 

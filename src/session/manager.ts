@@ -104,6 +104,8 @@ export class SessionManager {
   private activeFile: string | undefined;
   /** {{attached_files}} 宏所需 */
   private attachedFiles: string[] | undefined;
+  /** 代码段虚拟路径→内容映射（不写磁盘） */
+  private attachedSnippetContents: Record<string, string> = {};
 
   /* 运行时状�?*/
   private activeSessionId: string | null = null;
@@ -204,11 +206,28 @@ export class SessionManager {
     return this.attachedFiles ?? [];
   }
 
-  /** 移除单个附加文件 */
+  /** 获取代码段内容映射 */
+  getAttachedSnippetContents(): Record<string, string> {
+    return this.attachedSnippetContents;
+  }
+
+  /** 存储代码段内容（不写磁盘） */
+  setAttachedSnippet(key: string, content: string): void {
+    this.attachedSnippetContents[key] = content;
+  }
+
+  /** 移除单个附加文件（同时清理内存中的代码段） */
   removeAttachedFile(filePath: string): void {
     if (this.attachedFiles) {
       this.attachedFiles = this.attachedFiles.filter((f) => f !== filePath);
     }
+    delete this.attachedSnippetContents[filePath];
+  }
+
+  /** 清空所有附加文件及代码段内容 */
+  clearAllAttachments(): void {
+    this.attachedFiles = [];
+    this.attachedSnippetContents = {};
   }
 
   addSessionSystemMessage(
@@ -385,6 +404,7 @@ export class SessionManager {
         editorSelection: this.editorSelection,
         activeFile: this.activeFile,
         attachedFiles: this.attachedFiles,
+        attachedSnippetContents: this.attachedSnippetContents,
       });
     } finally {
       this.activationControllers.delete(sessionId);

@@ -6533,11 +6533,8 @@ ${component_stack}
     ((_a = window.__svelte ?? (window.__svelte = {})).v ?? (_a.v = /* @__PURE__ */ new Set())).add(PUBLIC_VERSION);
   }
 
-  // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/flags/legacy.js
-  enable_legacy_mode_flag();
-
   // resources/webview/lib/state.svelte.ts
-  var _currentTab, _currentSessionId, _currentSessionStatus, _sessions, _messages, _tokenTelemetry, _llmStreamProgress, _isLoading, _runningProcesses, _inputHistory, _lastPrompt, _pendingPrompt, _pendingRollback, _activePreset, _activeProfile, _attachedFiles, _streamingContent, _streamingReasoning;
+  var _currentTab, _currentSessionId, _currentSessionStatus, _sessions, _messages, _tokenTelemetry, _llmStreamProgress, _isLoading, _runningProcesses, _inputHistory, _lastPrompt, _pendingPrompt, _pendingRollback, _activePreset, _activeProfile, _attachedFiles, _isDragOver, _streamingContent, _streamingReasoning;
   var AppState = class {
     constructor() {
       __privateAdd(
@@ -6561,6 +6558,7 @@ ${component_stack}
       __privateAdd(this, _activePreset, state("default"));
       __privateAdd(this, _activeProfile, state("default"));
       __privateAdd(this, _attachedFiles, state(proxy([])));
+      __privateAdd(this, _isDragOver, state(false));
       __privateAdd(this, _streamingContent, state(""));
       __privateAdd(this, _streamingReasoning, state(""));
     }
@@ -6660,6 +6658,12 @@ ${component_stack}
     set attachedFiles(value) {
       set(__privateGet(this, _attachedFiles), value, true);
     }
+    get isDragOver() {
+      return get2(__privateGet(this, _isDragOver));
+    }
+    set isDragOver(value) {
+      set(__privateGet(this, _isDragOver), value, true);
+    }
     get streamingContent() {
       return get2(__privateGet(this, _streamingContent));
     }
@@ -6700,6 +6704,7 @@ ${component_stack}
   _activePreset = new WeakMap();
   _activeProfile = new WeakMap();
   _attachedFiles = new WeakMap();
+  _isDragOver = new WeakMap();
   _streamingContent = new WeakMap();
   _streamingReasoning = new WeakMap();
   var appState = new AppState();
@@ -6750,6 +6755,9 @@ ${component_stack}
       vscode.setState(state2);
     }
   };
+
+  // node_modules/.pnpm/svelte@5.56.1_@typescript-eslint+types@8.60.0/node_modules/svelte/src/internal/flags/legacy.js
+  enable_legacy_mode_flag();
 
   // resources/webview/components/TabBar.svelte
   var root = from_html(`<button><span class="tab-label svelte-dv0yh"> </span></button>`);
@@ -7961,11 +7969,57 @@ ${component_stack}
   }
   delegate(["click"]);
 
+  // resources/webview/lib/notification.svelte.ts
+  var items = proxy([]);
+  var DEFAULT_DURATION = 4e3;
+  var counter = 0;
+  function add(type, text2, duration = DEFAULT_DURATION) {
+    const id = `notif-${++counter}-${Date.now()}`;
+    items.push({ id, type, text: text2, duration, createdAt: Date.now() });
+    if (duration > 0) {
+      setTimeout(() => dismiss(id), duration);
+    }
+    return id;
+  }
+  function dismiss(id) {
+    const idx = items.findIndex((n) => n.id === id);
+    if (idx >= 0) {
+      items.splice(idx, 1);
+    }
+  }
+  function clearAll() {
+    items.length = 0;
+  }
+  var notify = {
+    /** 获取响应式通知列表（供组件绑定） */
+    get items() {
+      return items;
+    },
+    success(text2, duration) {
+      return add("success", text2, duration);
+    },
+    error(text2, duration) {
+      return add("error", text2, duration);
+    },
+    warning(text2, duration) {
+      return add("warning", text2, duration);
+    },
+    info(text2, duration) {
+      return add("info", text2, duration);
+    },
+    dismiss,
+    clearAll
+  };
+
   // resources/webview/components/AttachedFilesBar.svelte
-  var root10 = from_html(`<span class="chip svelte-1j8bp8d"><span class="chip-icon svelte-1j8bp8d"> </span> <span class="chip-name svelte-1j8bp8d"> </span> <button class="chip-remove svelte-1j8bp8d" title="\u79FB\u9664">\u2715</button></span>`);
-  var root_19 = from_html(`<div class="attached-bar svelte-1j8bp8d"><div class="attached-header svelte-1j8bp8d"><span class="attached-label svelte-1j8bp8d">\u9644\u52A0\u6587\u4EF6</span> <button class="clear-btn svelte-1j8bp8d" title="\u6E05\u7A7A\u5168\u90E8">\u6E05\u7A7A</button></div> <div class="attached-chips svelte-1j8bp8d"></div></div>`);
+  var root10 = from_html(`<span class="attached-count svelte-1j8bp8d"> </span>`);
+  var root_19 = from_html(`<button class="action-btn clear svelte-1j8bp8d" title="\u6E05\u7A7A\u5168\u90E8">\u6E05\u7A7A</button>`);
+  var root_28 = from_html(`<span class="chip svelte-1j8bp8d"><span class="chip-icon svelte-1j8bp8d"> </span> <span class="chip-name svelte-1j8bp8d"> </span> <button class="chip-remove svelte-1j8bp8d" title="\u79FB\u9664">\u2715</button></span>`);
+  var root_38 = from_html(`<div class="attached-chips svelte-1j8bp8d"></div>`);
+  var root_48 = from_html(`<div class="attached-bar svelte-1j8bp8d"><div class="attached-header svelte-1j8bp8d"><span class="attached-label svelte-1j8bp8d">\u9644\u52A0\u6587\u4EF6-Shift\u62D6\u5165\u6587\u4EF6 <!></span> <div class="attached-actions svelte-1j8bp8d"><button class="action-btn svelte-1j8bp8d" title="\u5C06\u7F16\u8F91\u5668\u4E2D\u9009\u4E2D\u7684\u4EE3\u7801\u9644\u52A0\u4E3A\u4EE3\u7801\u6BB5"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M4.5 2C3.12 2 2 3.12 2 4.5v7C2 12.88 3.12 14 4.5 14h7c1.38 0 2.5-1.12 2.5-2.5v-7C14 3.12 12.88 2 11.5 2h-7zM4 4.5C4 3.67 4.67 3 5.5 3h5c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5h-5A1.5 1.5 0 014 9.5v-5zm2 .5v5h1V5H6zm3 0v5h1V5H9z"></path></svg> \u9644\u52A0\u9009\u4E2D\u4EE3\u7801</button> <!></div></div> <!></div>`);
   function AttachedFilesBar($$anchor, $$props) {
-    push($$props, false);
+    push($$props, true);
+    let attaching = state(false);
     function removeFile(filePath) {
       appState.attachedFiles = appState.attachedFiles.filter((f) => f.filePath !== filePath);
       api.send("removeAttachedFile", { filePath });
@@ -7975,73 +8029,118 @@ ${component_stack}
       api.send("clearAttachedFiles");
     }
     function getDisplayName(file) {
-      if (file.fileName.endsWith("-snippet") || file.fileName.includes("snippet")) {
-        return file.fileName.replace(/-\d+\.md$/, "");
+      const name = file.fileName;
+      if (name.endsWith("-snippet") || name.includes("snippet")) {
+        return name.replace(/-\d+\.md$/, "");
       }
-      return file.fileName;
+      return name;
     }
     function getIcon(file) {
       return file.isSnippet ? "\u2702" : "\u{1F4C4}";
     }
-    init();
-    var fragment = comment();
-    var node = first_child(fragment);
+    async function attachEditorSelection() {
+      if (get2(attaching)) return;
+      set(attaching, true);
+      try {
+        const result = await api.request("captureSelectionSnippet", {}, 3e3);
+        appState.attachedFiles = [
+          ...appState.attachedFiles,
+          {
+            filePath: result.filePath,
+            fileName: result.fileName,
+            isSnippet: true
+          }
+        ];
+      } catch {
+        notify.info("\u8BF7\u5148\u5728\u7F16\u8F91\u5668\u4E2D\u9009\u62E9\u4EE3\u7801", 2e3);
+      } finally {
+        set(attaching, false);
+      }
+    }
+    var div = root_48();
+    var div_1 = child(div);
+    var span = child(div_1);
+    var node = sibling(child(span));
     {
       var consequent = ($$anchor2) => {
-        var div = root_19();
-        var div_1 = child(div);
-        var button = sibling(child(div_1), 2);
-        reset(div_1);
-        var div_2 = sibling(div_1, 2);
-        each(div_2, 5, () => appState.attachedFiles, (file) => file.filePath, ($$anchor3, file) => {
-          var span = root10();
-          var span_1 = child(span);
-          var text2 = child(span_1, true);
-          reset(span_1);
-          var span_2 = sibling(span_1, 2);
-          var text_1 = child(span_2, true);
+        var span_1 = root10();
+        var text2 = child(span_1);
+        reset(span_1);
+        template_effect(() => set_text(text2, `(${appState.attachedFiles.length ?? ""})`));
+        append($$anchor2, span_1);
+      };
+      if_block(node, ($$render) => {
+        if (appState.attachedFiles.length > 0) $$render(consequent);
+      });
+    }
+    reset(span);
+    var div_2 = sibling(span, 2);
+    var button = child(div_2);
+    var node_1 = sibling(button, 2);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var button_1 = root_19();
+        delegated("click", button_1, clearAll2);
+        append($$anchor2, button_1);
+      };
+      if_block(node_1, ($$render) => {
+        if (appState.attachedFiles.length > 0) $$render(consequent_1);
+      });
+    }
+    reset(div_2);
+    reset(div_1);
+    var node_2 = sibling(div_1, 2);
+    {
+      var consequent_2 = ($$anchor2) => {
+        var div_3 = root_38();
+        each(div_3, 21, () => appState.attachedFiles, (file) => file.filePath, ($$anchor3, file) => {
+          var span_2 = root_28();
+          var span_3 = child(span_2);
+          var text_1 = child(span_3, true);
+          reset(span_3);
+          var span_4 = sibling(span_3, 2);
+          var text_2 = child(span_4, true);
+          reset(span_4);
+          var button_2 = sibling(span_4, 2);
           reset(span_2);
-          var button_1 = sibling(span_2, 2);
-          reset(span);
           template_effect(
             ($0, $1) => {
-              set_attribute2(span, "title", get2(file).filePath);
-              set_text(text2, $0);
-              set_text(text_1, $1);
+              set_attribute2(span_2, "title", `\u53CC\u51FB\u79FB\u9664\uFF1A${get2(file).filePath ?? ""}`);
+              set_text(text_1, $0);
+              set_text(text_2, $1);
             },
             [
               () => getIcon(get2(file)),
               () => getDisplayName(get2(file))
             ]
           );
-          delegated("click", button_1, () => removeFile(get2(file).filePath));
-          append($$anchor3, span);
+          delegated("dblclick", span_2, () => removeFile(get2(file).filePath));
+          delegated("click", button_2, () => removeFile(get2(file).filePath));
+          append($$anchor3, span_2);
         });
-        reset(div_2);
-        reset(div);
-        delegated("click", button, clearAll2);
-        append($$anchor2, div);
+        reset(div_3);
+        append($$anchor2, div_3);
       };
-      if_block(node, ($$render) => {
-        if (appState.attachedFiles.length > 0) $$render(consequent);
+      if_block(node_2, ($$render) => {
+        if (appState.attachedFiles.length > 0) $$render(consequent_2);
       });
     }
-    append($$anchor, fragment);
+    reset(div);
+    template_effect(() => button.disabled = get2(attaching));
+    delegated("click", button, attachEditorSelection);
+    append($$anchor, div);
     pop();
   }
-  delegate(["click"]);
+  delegate(["click", "dblclick"]);
 
   // resources/webview/components/Composer.svelte
   var root11 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
   var root_110 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
-  var root_28 = from_html(`<div class="drop-overlay svelte-z2mbmf"><div class="drop-hint svelte-z2mbmf"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" class="svelte-z2mbmf"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline points="17,8 12,3 7,8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> <span>\u91CA\u653E\u4EE5\u9644\u52A0\u6587\u4EF6</span></div></div>`);
-  var root_38 = from_html(`<div><!> <div class="input-wrap svelte-z2mbmf"><textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C)" rows="1" class="svelte-z2mbmf"></textarea> <div class="composer-footer svelte-z2mbmf"><div class="footer-left svelte-z2mbmf"><!> <!> <!></div> <div class="footer-right"><button class="send-btn svelte-z2mbmf"><!></button></div></div></div> <!></div>`);
+  var root_29 = from_html(`<div><div class="input-wrap svelte-z2mbmf"><!> <textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C\uFF0C\u62D6\u5165\u6587\u4EF6\u6309\u4F4F Shift)" rows="1" class="svelte-z2mbmf"></textarea> <div class="composer-footer svelte-z2mbmf"><div class="footer-left svelte-z2mbmf"><!> <!> <!></div> <div class="footer-right"><button class="send-btn svelte-z2mbmf"><!></button></div></div></div></div>`);
   function Composer($$anchor, $$props) {
     push($$props, true);
     let promptText = state("");
     let textareaEl = state(void 0);
-    let isDragOver = state(false);
-    let dragCounter = state(0);
     const MAX_HEIGHT_RATIO = 0.5;
     function autoResize() {
       const el = get2(textareaEl);
@@ -8091,98 +8190,12 @@ ${component_stack}
     function handleInput() {
       autoResize();
     }
-    function handleDragEnter(e) {
-      e.preventDefault();
-      update(dragCounter);
-      set(isDragOver, true);
-    }
-    function handleDragOver(e) {
-      e.preventDefault();
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = "copy";
-      }
-    }
-    function handleDragLeave(e) {
-      e.preventDefault();
-      update(dragCounter, -1);
-      if (get2(dragCounter) <= 0) {
-        set(dragCounter, 0);
-        set(isDragOver, false);
-      }
-    }
-    async function handleDrop(e) {
-      e.preventDefault();
-      set(dragCounter, 0);
-      set(isDragOver, false);
-      const dt = e.dataTransfer;
-      if (!dt) return;
-      const types = dt.types;
-      const hasUriList = types?.includes("text/uri-list");
-      const hasPlainText = types?.includes("text/plain");
-      try {
-        if (hasUriList) {
-          const uriList = dt.getData("text/uri-list");
-          const filePaths = parseUriList(uriList);
-          if (filePaths.length > 0) {
-            await attachFiles(filePaths);
-            return;
-          }
-        }
-        if (hasPlainText) {
-          const text2 = dt.getData("text/plain");
-          if (text2 && text2.length > 20) {
-            await attachSnippet(text2);
-            return;
-          }
-        }
-      } catch {
-      }
-    }
-    function parseUriList(text2) {
-      return text2.split("\n").map((line) => line.trim()).filter((line) => line && !line.startsWith("#")).map((uri) => {
-        if (!uri.startsWith("file://")) return "";
-        const decoded = decodeURIComponent(uri.slice(7));
-        if (decoded.startsWith("/") && /^\/[A-Za-z]:/.test(decoded)) {
-          return decoded.slice(1);
-        }
-        return decoded;
-      }).filter(Boolean);
-    }
-    async function attachFiles(filePaths) {
-      const existing = new Set(appState.attachedFiles.map((f) => f.filePath));
-      const newFiles = [];
-      for (const fp of filePaths) {
-        if (existing.has(fp)) continue;
-        existing.add(fp);
-        const fileName = fp.split(/[\\/]/).pop() || fp;
-        newFiles.push({ filePath: fp, fileName });
-      }
-      if (newFiles.length === 0) return;
-      api.send("attachFiles", { filePaths: newFiles.map((f) => f.filePath) });
-      appState.attachedFiles = [...appState.attachedFiles, ...newFiles];
-    }
-    async function attachSnippet(content) {
-      const firstLine = content.split("\n")[0].trim().slice(0, 60);
-      const label = firstLine || "\u4EE3\u7801\u6BB5";
-      try {
-        const result = await api.request("attachSnippet", { content, fileName: label });
-        appState.attachedFiles = [
-          ...appState.attachedFiles,
-          {
-            filePath: result.filePath,
-            fileName: result.fileName,
-            isSnippet: true
-          }
-        ];
-      } catch {
-      }
-    }
-    var div = root_38();
+    var div = root_29();
     let classes;
-    var node = child(div);
+    var div_1 = child(div);
+    var node = child(div_1);
     AttachedFilesBar(node, {});
-    var div_1 = sibling(node, 2);
-    var textarea_1 = child(div_1);
+    var textarea_1 = sibling(node, 2);
     remove_textarea_child(textarea_1);
     bind_this(textarea_1, ($$value) => set(textareaEl, $$value), () => get2(textareaEl));
     var div_2 = sibling(textarea_1, 2);
@@ -8215,29 +8228,15 @@ ${component_stack}
     reset(div_4);
     reset(div_2);
     reset(div_1);
-    var node_5 = sibling(div_1, 2);
-    {
-      var consequent_1 = ($$anchor2) => {
-        var div_5 = root_28();
-        append($$anchor2, div_5);
-      };
-      if_block(node_5, ($$render) => {
-        if (get2(isDragOver)) $$render(consequent_1);
-      });
-    }
     reset(div);
     template_effect(
       ($0) => {
-        classes = set_class(div, 1, "composer svelte-z2mbmf", null, classes, { dragover: get2(isDragOver) });
+        classes = set_class(div, 1, "composer svelte-z2mbmf", null, classes, { dragover: appState.isDragOver });
         button.disabled = $0;
         set_attribute2(button, "title", appState.isProcessing ? "\u4E2D\u65AD" : "\u53D1\u9001");
       },
       [() => !get2(promptText).trim() && !appState.isProcessing]
     );
-    event("dragenter", div, handleDragEnter);
-    event("dragover", div, handleDragOver);
-    event("dragleave", div, handleDragLeave);
-    event("drop", div, handleDrop);
     delegated("keydown", textarea_1, handleKeydown);
     delegated("input", textarea_1, handleInput);
     bind_value(textarea_1, () => get2(promptText), ($$value) => set(promptText, $$value));
@@ -8261,54 +8260,12 @@ ${component_stack}
     append($$anchor, div);
   }
 
-  // resources/webview/lib/notification.svelte.ts
-  var items = proxy([]);
-  var DEFAULT_DURATION = 4e3;
-  var counter = 0;
-  function add(type, text2, duration = DEFAULT_DURATION) {
-    const id = `notif-${++counter}-${Date.now()}`;
-    items.push({ id, type, text: text2, duration, createdAt: Date.now() });
-    if (duration > 0) {
-      setTimeout(() => dismiss(id), duration);
-    }
-    return id;
-  }
-  function dismiss(id) {
-    const idx = items.findIndex((n) => n.id === id);
-    if (idx >= 0) {
-      items.splice(idx, 1);
-    }
-  }
-  function clearAll() {
-    items.length = 0;
-  }
-  var notify = {
-    /** 获取响应式通知列表（供组件绑定） */
-    get items() {
-      return items;
-    },
-    success(text2, duration) {
-      return add("success", text2, duration);
-    },
-    error(text2, duration) {
-      return add("error", text2, duration);
-    },
-    warning(text2, duration) {
-      return add("warning", text2, duration);
-    },
-    info(text2, duration) {
-      return add("info", text2, duration);
-    },
-    dismiss,
-    clearAll
-  };
-
   // resources/webview/components/PresetList.svelte
   var root13 = from_html(`<p class="hint svelte-199frlg">\u52A0\u8F7D\u4E2D...</p>`);
   var root_111 = from_html(`<p class="hint svelte-199frlg">\u6682\u65E0\u9884\u8BBE\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
-  var root_29 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
+  var root_210 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
   var root_39 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
-  var root_48 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
+  var root_49 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
   var root_56 = from_html(`<div class="list-items svelte-199frlg"></div>`);
   var root_65 = from_html(`<div class="preset-list-panel svelte-199frlg"><div class="list-header svelte-199frlg"><h2 class="svelte-199frlg">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-199frlg"> </span></div> <!> <div class="list-actions svelte-199frlg"><button class="action-btn primary svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u9884\u8BBE</button> <button class="action-btn svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M2.5 7.25a.75.75 0 0 1 1.5 0v4.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-4.5a.75.75 0 0 1 1.5 0v4.5A1.75 1.75 0 0 1 11.75 13h-7.5A1.75 1.75 0 0 1 2.5 11.75v-4.5Zm6.78-4.97a.75.75 0 0 1 0 1.06L7.81 4.81a.75.75 0 0 1-1.06 0L5.28 3.34a.75.75 0 0 1 1.06-1.06l.66.66V.75a.75.75 0 0 1 1.5 0v2.19l.66-.66a.75.75 0 0 1 .72-.22Z"></path></svg> \u5BFC\u5165</button></div></div>`);
   function PresetList($$anchor, $$props) {
@@ -8339,14 +8296,14 @@ ${component_stack}
       var alternate = ($$anchor2) => {
         var div_2 = root_56();
         each(div_2, 21, presets, (preset) => preset.name, ($$anchor3, preset) => {
-          var div_3 = root_48();
+          var div_3 = root_49();
           let classes;
           var div_4 = child(div_3);
           var div_5 = child(div_4);
           var node_1 = child(div_5);
           {
             var consequent_2 = ($$anchor4) => {
-              var span_1 = root_29();
+              var span_1 = root_210();
               append($$anchor4, span_1);
             };
             if_block(node_1, ($$render) => {
@@ -8523,9 +8480,9 @@ ${component_stack}
   // resources/webview/components/MacroPanel.svelte
   var root15 = from_html(`<span class="macro-hint svelte-11xah9r">\uFF08\u8BF7\u5148\u9009\u4E2D\u4E00\u4E2A\u6761\u76EE\uFF09</span>`);
   var root_113 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
-  var root_210 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
+  var root_211 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
   var root_310 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
-  var root_49 = from_html(`<div class="macro-section svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F <!></button> <!></div>`);
+  var root_410 = from_html(`<div class="macro-section svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F <!></button> <!></div>`);
   function MacroPanel($$anchor, $$props) {
     push($$props, true);
     let disabled = prop($$props, "disabled", 3, false), oninsert = prop($$props, "oninsert", 3, (_macro) => {
@@ -8567,7 +8524,7 @@ ${component_stack}
         ]
       }
     ];
-    var div = root_49();
+    var div = root_410();
     var button = child(div);
     var svg = child(button);
     let classes;
@@ -8587,7 +8544,7 @@ ${component_stack}
       var consequent_1 = ($$anchor2) => {
         var div_1 = root_310();
         each(div_1, 21, () => MACROS, index, ($$anchor3, group) => {
-          var div_2 = root_210();
+          var div_2 = root_211();
           var span_1 = child(div_2);
           var text2 = child(span_1, true);
           reset(span_1);
@@ -8628,7 +8585,7 @@ ${component_stack}
   // resources/webview/components/PresetEditor.svelte
   var root16 = from_html(`<button> </button>`);
   var root_114 = from_html(`<div><!></div>`);
-  var root_211 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
+  var root_212 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
   var root_311 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
   function PresetEditor($$anchor, $$props) {
     push($$props, true);
@@ -8843,7 +8800,7 @@ ${component_stack}
     var node_2 = sibling(node, 2);
     {
       var consequent = ($$anchor2) => {
-        var p = root_211();
+        var p = root_212();
         append($$anchor2, p);
       };
       if_block(node_2, ($$render) => {
@@ -9047,9 +9004,9 @@ ${component_stack}
   // resources/webview/components/ProfilePage.svelte
   var root18 = from_html(`<div class="new-profile-bar svelte-1no2ghb"><input class="new-profile-input svelte-1no2ghb" type="text" placeholder="\u8F93\u5165\u914D\u7F6E\u540D\u79F0..."/> <button class="action-btn primary svelte-1no2ghb">\u521B\u5EFA</button> <button class="action-btn svelte-1no2ghb">\u53D6\u6D88</button></div>`);
   var root_115 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_212 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
+  var root_213 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
   var root_312 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
-  var root_410 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
+  var root_411 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
   var root_57 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
   var root_66 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
   var root_73 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14" class="spin svelte-1no2ghb"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Z"></path></svg>`);
@@ -9223,7 +9180,7 @@ ${component_stack}
         append($$anchor2, p);
       };
       var consequent_2 = ($$anchor2) => {
-        var p_1 = root_212();
+        var p_1 = root_213();
         append($$anchor2, p_1);
       };
       var alternate_2 = ($$anchor2) => {
@@ -9248,7 +9205,7 @@ ${component_stack}
               var node_3 = child(div_6);
               {
                 var consequent_4 = ($$anchor5) => {
-                  var span_1 = root_410();
+                  var span_1 = root_411();
                   append($$anchor5, span_1);
                 };
                 if_block(node_3, ($$render) => {
@@ -9385,11 +9342,71 @@ ${component_stack}
   delegate(["click"]);
 
   // resources/webview/App.svelte
-  var root20 = from_html(`<div class="app svelte-w8ccf7"><!> <!> <!></div>`);
+  var root20 = from_html(`<div class="drop-overlay svelte-w8ccf7"><div class="drop-hint svelte-w8ccf7"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" class="svelte-w8ccf7"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline points="17,8 12,3 7,8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> <span class="drop-hint-text svelte-w8ccf7">\u6309\u4F4F Shift \u5E76\u91CA\u653E\u4EE5\u9644\u52A0\u6587\u4EF6</span> <span class="drop-hint-sub svelte-w8ccf7">\u4ECE VS Code \u8D44\u6E90\u7BA1\u7406\u5668\u62D6\u5165\u6587\u4EF6</span></div></div>`);
+  var root_117 = from_html(`<div class="app svelte-w8ccf7"><!> <!> <!> <!></div>`);
   function App($$anchor, $$props) {
-    push($$props, false);
-    init();
-    var div = root20();
+    push($$props, true);
+    let dragCounter = state(0);
+    function handleDragEnter(e) {
+      e.preventDefault();
+      update(dragCounter);
+      appState.isDragOver = true;
+    }
+    function handleDragOver(e) {
+      e.preventDefault();
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = "copy";
+      }
+    }
+    function handleDragLeave(e) {
+      e.preventDefault();
+      update(dragCounter, -1);
+      if (get2(dragCounter) <= 0) {
+        set(dragCounter, 0);
+        appState.isDragOver = false;
+      }
+    }
+    async function handleDrop(e) {
+      e.preventDefault();
+      set(dragCounter, 0);
+      appState.isDragOver = false;
+      const dt = e.dataTransfer;
+      if (!dt) return;
+      try {
+        const uriList = dt.getData("text/uri-list");
+        if (uriList) {
+          const filePaths = parseUriList(uriList);
+          if (filePaths.length > 0) {
+            await attachFiles(filePaths);
+          }
+        }
+      } catch {
+      }
+    }
+    function parseUriList(text2) {
+      return text2.split("\n").map((line) => line.trim()).filter((line) => line && !line.startsWith("#")).map((uri) => {
+        if (!uri.startsWith("file://")) return "";
+        const decoded = decodeURIComponent(uri.slice(7));
+        if (decoded.startsWith("/") && /^\/[A-Za-z]:/.test(decoded)) {
+          return decoded.slice(1);
+        }
+        return decoded;
+      }).filter(Boolean);
+    }
+    async function attachFiles(filePaths) {
+      const existing = new Set(appState.attachedFiles.map((f) => f.filePath));
+      const newFiles = [];
+      for (const fp of filePaths) {
+        if (existing.has(fp)) continue;
+        existing.add(fp);
+        const fileName = fp.split(/[\\/]/).pop() || fp;
+        newFiles.push({ filePath: fp, fileName });
+      }
+      if (newFiles.length === 0) return;
+      api.send("attachFiles", { filePaths: newFiles.map((f) => f.filePath) });
+      appState.attachedFiles = [...appState.attachedFiles, ...newFiles];
+    }
+    var div = root_117();
     var node = child(div);
     TabBar(node, {});
     var node_1 = sibling(node, 2);
@@ -9411,7 +9428,21 @@ ${component_stack}
     }
     var node_2 = sibling(node_1, 2);
     ToastNotification(node_2, {});
+    var node_3 = sibling(node_2, 2);
+    {
+      var consequent_3 = ($$anchor2) => {
+        var div_1 = root20();
+        append($$anchor2, div_1);
+      };
+      if_block(node_3, ($$render) => {
+        if (appState.isDragOver) $$render(consequent_3);
+      });
+    }
     reset(div);
+    event("dragenter", div, handleDragEnter);
+    event("dragover", div, handleDragOver);
+    event("dragleave", div, handleDragLeave);
+    event("drop", div, handleDrop);
     append($$anchor, div);
     pop();
   }
@@ -9464,6 +9495,9 @@ ${component_stack}
         break;
       case "showSessionsList":
         appState.sessions = msg.sessions;
+        break;
+      case "attachedFilesCleared":
+        appState.attachedFiles = [];
         break;
       case "sessionStatus":
         appState.currentSessionStatus = msg.status;

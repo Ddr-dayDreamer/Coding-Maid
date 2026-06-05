@@ -262,8 +262,16 @@ ${JSON.stringify(env, null, 2)}
   private readAttachedFiles(context: MacroContext): string {
     const files = context.attachedFiles;
     if (!files || files.length === 0) return "";
+    const snippetContents = context.attachedSnippetContents ?? {};
     const parts: string[] = [];
     for (const filePath of files) {
+      // 优先使用内存中的代码段内容
+      const inlineContent = snippetContents[filePath];
+      if (inlineContent !== undefined) {
+        parts.push(`[${filePath}]\n\`\`\`\n${inlineContent}\n\`\`\``);
+        continue;
+      }
+      // 回退到磁盘读取
       try {
         const result = readFileContent({ filePath });
         if (!result.content) continue;
