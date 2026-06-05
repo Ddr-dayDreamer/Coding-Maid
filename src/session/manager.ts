@@ -199,6 +199,18 @@ export class SessionManager {
     this.attachedFiles = filePaths;
   }
 
+  /** 获取附加文件路径列表 */
+  getAttachedFiles(): string[] {
+    return this.attachedFiles ?? [];
+  }
+
+  /** 移除单个附加文件 */
+  removeAttachedFile(filePath: string): void {
+    if (this.attachedFiles) {
+      this.attachedFiles = this.attachedFiles.filter((f) => f !== filePath);
+    }
+  }
+
   addSessionSystemMessage(
     sessionId: string,
     content: string,

@@ -5,7 +5,7 @@
  * 注意：此文件必须使用 .svelte.ts 后缀才能使用 $state。
  */
 
-import type { SessionSummary, TokenTelemetry, LlmStreamProgressData, SessionMessageData } from "../types";
+import type { SessionSummary, TokenTelemetry, LlmStreamProgressData, SessionMessageData, AttachedFile } from "../types";
 
 // ─── Tab 页面 ────────────────────────────────────────────
 
@@ -58,6 +58,9 @@ class AppState {
 
   /** 当前使用的连接配置名称 */
   activeProfile = $state("default");
+
+  /** 拖入的附加文件列表（前端展示用） */
+  attachedFiles = $state<AttachedFile[]>([]);
 
   /** 流式输出暂存内容（打字机效果） */
   streamingContent = $state("");

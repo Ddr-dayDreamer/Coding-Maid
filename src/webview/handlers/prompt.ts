@@ -1,10 +1,12 @@
 /**
  * 提示词发送处理器
  *
- * 处理 userPrompt、interrupt、attachFiles。
+ * 处理 userPrompt、interrupt、attachFiles / attachSnippet。
  * 在发送前捕获编辑器上下文注入 MacroEngine。
  */
 
+import * as fs from "fs";
+import * as path from "path";
 import type { HandlerContext } from "../handler-context";
 import type { UserPromptContent } from "../../session/types";
 import { captureEditorSelection, captureActiveFile } from "./editor";
@@ -23,11 +25,65 @@ export function registerPromptHandlers(
     ctx.sessionManager.interruptActiveSession();
   });
 
+  // ─── 附加文件（追加模式） ─────────────────────────
+
   registerHandler("attachFiles", async (message) => {
     const filePaths = message.filePaths;
-    if (Array.isArray(filePaths)) {
-      ctx.sessionManager.setAttachedFiles(filePaths.map(String));
+    if (Array.isArray(filePaths) && filePaths.length > 0) {
+      const current = ctx.sessionManager.getAttachedFiles();
+      const newPaths = filePaths
+        .map(String)
+        .filter((p) => !current.includes(p));
+      ctx.sessionManager.setAttachedFiles([...current, ...newPaths]);
     }
+  });
+
+  // ─── 代码段拖入：写入临时文件后 attach ────────────
+
+  registerHandler("attachSnippet", async (message) => {
+    const content = String(message.content || "");
+    if (!content) {
+      ctx.respond(message.requestId as string, false, undefined, "Empty content");
+      return;
+    }
+
+    const projectRoot = ctx.getWorkspaceRoot();
+    const attachmentsDir = path.join(projectRoot, ".codingmaid", "attachments");
+    fs.mkdirSync(attachmentsDir, { recursive: true });
+
+    // 从首行生成文件名
+    const firstLine = content
+      .split("\n")[0]
+      .trim()
+      .slice(0, 40)
+      .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fff]/g, "_");
+    const label = firstLine ? `${firstLine}-snippet` : "snippet";
+    const timestamp = Date.now();
+    const filePath = path.join(attachmentsDir, `${label}-${timestamp}.md`);
+
+    fs.writeFileSync(filePath, content, "utf8");
+
+    // 追加到 attachedFiles
+    const current = ctx.sessionManager.getAttachedFiles();
+    ctx.sessionManager.setAttachedFiles([...current, filePath]);
+
+    const fileName = path.basename(filePath);
+    ctx.respond(message.requestId as string, true, { filePath, fileName });
+  });
+
+  // ─── 移除单个附加文件 ──────────────────────────────
+
+  registerHandler("removeAttachedFile", async (message) => {
+    const filePath = String(message.filePath || "");
+    if (filePath) {
+      ctx.sessionManager.removeAttachedFile(filePath);
+    }
+  });
+
+  // ─── 清空所有附加文件 ──────────────────────────────
+
+  registerHandler("clearAttachedFiles", async () => {
+    ctx.sessionManager.setAttachedFiles([]);
   });
 }
 

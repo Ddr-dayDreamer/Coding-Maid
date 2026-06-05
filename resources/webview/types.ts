@@ -156,3 +156,14 @@ export interface ProfileMeta {
   name: string;
   filePath: string;
 }
+
+// ─── 附加文件类型 ───────────────────────────
+
+export interface AttachedFile {
+  /** 文件绝对路径 */
+  filePath: string;
+  /** 显示用文件名 */
+  fileName: string;
+  /** 是否为代码段（非实体文件） */
+  isSnippet?: boolean;
+}

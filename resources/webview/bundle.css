@@ -59,54 +59,192 @@
   color: var(--vscode-foreground);
 }
 
-/* fakecss:F:/projects/Coding-Maid/resources/webview/components/ContextMeter.esbuild-svelte-fake-css */
-.context-meter.svelte-vvns5x {
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/SessionBar.esbuild-svelte-fake-css */
+.session-area.svelte-13uwhhy {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  cursor: default;
-  line-height: 0;
-}
-.ring-svg.svelte-vvns5x {
-  display: block;
+  z-index: 10;
   flex-shrink: 0;
 }
-.ring-svg.svelte-vvns5x circle.active:where(.svelte-vvns5x) {
-  transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
-}
-.meter-tooltip.svelte-vvns5x {
-  position: fixed;
-  z-index: 1000;
-  min-width: 200px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  line-height: 1.5;
-  white-space: nowrap;
-  background: var(--vscode-editorWidget-background, #252526);
-  border: 1px solid var(--vscode-editorWidget-border, #454545);
-  color: var(--vscode-editorWidget-foreground, #ccc);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  pointer-events: none;
-}
-.meter-tooltip-header.svelte-vvns5x {
-  font-weight: 600;
-  margin-bottom: 4px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--vscode-editorWidget-border, #454545);
-  color: var(--vscode-editor-foreground, #eee);
-}
-.meter-row.svelte-vvns5x {
+.trigger-strip.svelte-13uwhhy {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 6px;
+  cursor: pointer;
+  background: transparent;
+  transition: height 0.15s ease, background 0.15s ease;
+  position: relative;
+}
+.trigger-strip.svelte-13uwhhy:hover,
+.trigger-strip.active.svelte-13uwhhy {
+  height: 10px;
+  background: var(--vscode-list-hoverBackground);
+}
+.strip-icon.svelte-13uwhhy {
+  opacity: 0.3;
+  transition: opacity 0.15s;
+}
+.trigger-strip.svelte-13uwhhy:hover .strip-icon:where(.svelte-13uwhhy),
+.trigger-strip.active.svelte-13uwhhy .strip-icon:where(.svelte-13uwhhy) {
+  opacity: 0.7;
+}
+.session-bar.svelte-13uwhhy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    height 0.2s ease,
+    opacity 0.2s ease,
+    padding 0.2s ease;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid transparent;
+}
+.session-bar.visible.svelte-13uwhhy {
+  height: 36px;
+  padding: 6px 10px;
+  opacity: 1;
+  border-bottom-color: var(--vscode-panel-border);
+}
+.session-btn.svelte-13uwhhy {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  text-align: left;
+  min-width: 0;
+}
+.session-btn.svelte-13uwhhy:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.session-title.svelte-13uwhhy {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-arrow.svelte-13uwhhy {
+  flex-shrink: 0;
+  transition: transform 0.15s;
+  fill: var(--vscode-descriptionForeground);
+}
+.session-arrow.open.svelte-13uwhhy {
+  transform: rotate(180deg);
+}
+.new-chat-btn.svelte-13uwhhy {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.new-chat-btn.svelte-13uwhhy:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.session-dropdown.svelte-13uwhhy {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 6px;
+  right: 6px;
+  z-index: 100;
+  background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.session-item.svelte-13uwhhy {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
 }
-.meter-row.svelte-vvns5x span:where(.svelte-vvns5x):first-child {
-  color: var(--vscode-descriptionForeground, #999);
+.session-item.svelte-13uwhhy:hover {
+  background: var(--vscode-list-hoverBackground);
 }
-.meter-empty.svelte-vvns5x {
-  color: var(--vscode-descriptionForeground, #999);
-  font-style: italic;
+.session-item.active.svelte-13uwhhy {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+.session-item-title.svelte-13uwhhy {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-item-time.svelte-13uwhhy {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  margin-left: 8px;
+}
+.session-delete-btn.svelte-13uwhhy {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  display: none;
+  place-items: center;
+  padding: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.session-item.svelte-13uwhhy:hover .session-delete-btn:where(.svelte-13uwhhy) {
+  display: grid;
+}
+.session-delete-btn.svelte-13uwhhy:hover {
+  opacity: 1;
+  color: var(--vscode-errorForeground, #e74c3c);
+  background: var(--vscode-list-hoverBackground);
+}
+.session-delete-btn.confirm.svelte-13uwhhy {
+  display: grid;
+  font-size: 11px;
+  width: auto;
+  padding: 0 6px;
+  color: var(--vscode-errorForeground, #e74c3c);
+  opacity: 1;
+  font-weight: 500;
+}
+.session-empty.svelte-13uwhhy {
+  padding: 16px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
 }
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/UserMessage.esbuild-svelte-fake-css */
@@ -646,209 +784,61 @@
   }
 }
 
-/* fakecss:F:/projects/Coding-Maid/resources/webview/components/ChatPage.esbuild-svelte-fake-css */
-.chat-page.svelte-1mroaqi {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
-}
-.session-bar.svelte-1mroaqi {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--vscode-panel-border);
-  flex-shrink: 0;
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/ContextMeter.esbuild-svelte-fake-css */
+.context-meter.svelte-vvns5x {
   position: relative;
-  z-index: 10;
-  background: var(--vscode-sideBar-background);
-}
-.session-btn.svelte-1mroaqi {
-  flex: 1;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: none;
-  background: transparent;
-  color: var(--vscode-foreground);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 4px;
-  text-align: left;
-  min-width: 0;
+  cursor: default;
+  line-height: 0;
 }
-.session-btn.svelte-1mroaqi:hover {
-  background: var(--vscode-list-hoverBackground);
-}
-.session-title.svelte-1mroaqi {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.session-arrow.svelte-1mroaqi {
-  flex-shrink: 0;
-  transition: transform 0.15s;
-  fill: var(--vscode-descriptionForeground);
-}
-.session-arrow.open.svelte-1mroaqi {
-  transform: rotate(180deg);
-}
-.new-chat-btn.svelte-1mroaqi {
-  width: 26px;
-  height: 26px;
-  border-radius: 4px;
-  border: none;
-  background: transparent;
-  color: var(--vscode-foreground);
-  cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  display: grid;
-  place-items: center;
+.ring-svg.svelte-vvns5x {
+  display: block;
   flex-shrink: 0;
 }
-.new-chat-btn.svelte-1mroaqi:hover {
-  background: var(--vscode-list-hoverBackground);
+.ring-svg.svelte-vvns5x circle.active:where(.svelte-vvns5x) {
+  transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
 }
-.session-dropdown.svelte-1mroaqi {
-  position: absolute;
-  top: 100%;
-  left: 6px;
-  right: 6px;
-  z-index: 100;
-  background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
-  border: 1px solid var(--vscode-panel-border);
+.meter-tooltip.svelte-vvns5x {
+  position: fixed;
+  z-index: 1000;
+  min-width: 200px;
+  padding: 8px 10px;
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  max-height: 300px;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-.session-item.svelte-1mroaqi {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  background: transparent;
-  color: var(--vscode-foreground);
-  cursor: pointer;
-  font-size: 12px;
-  text-align: left;
-}
-.session-item.svelte-1mroaqi:hover {
-  background: var(--vscode-list-hoverBackground);
-}
-.session-item.active.svelte-1mroaqi {
-  background: var(--vscode-list-activeSelectionBackground);
-  color: var(--vscode-list-activeSelectionForeground);
-}
-.session-item-title.svelte-1mroaqi {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 11px;
+  line-height: 1.5;
   white-space: nowrap;
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--vscode-editorWidget-border, #454545);
+  color: var(--vscode-editorWidget-foreground, #ccc);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
-.session-item-time.svelte-1mroaqi {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-  margin-left: 8px;
+.meter-tooltip-header.svelte-vvns5x {
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--vscode-editorWidget-border, #454545);
+  color: var(--vscode-editor-foreground, #eee);
 }
-.session-delete-btn.svelte-1mroaqi {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  margin-left: 4px;
-  border: none;
-  background: transparent;
-  color: var(--vscode-descriptionForeground);
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 12px;
-  line-height: 1;
-  display: none;
-  place-items: center;
-  padding: 0;
-  opacity: 0.6;
-  transition: opacity 0.15s;
-}
-.session-item.svelte-1mroaqi:hover .session-delete-btn:where(.svelte-1mroaqi) {
-  display: grid;
-}
-.session-delete-btn.svelte-1mroaqi:hover {
-  opacity: 1;
-  color: var(--vscode-errorForeground, #e74c3c);
-  background: var(--vscode-list-hoverBackground);
-}
-.session-delete-btn.confirm.svelte-1mroaqi {
-  display: grid;
-  font-size: 11px;
-  width: auto;
-  padding: 0 6px;
-  color: var(--vscode-errorForeground, #e74c3c);
-  opacity: 1;
-  font-weight: 500;
-}
-.session-empty.svelte-1mroaqi {
-  padding: 16px;
-  text-align: center;
-  color: var(--vscode-descriptionForeground);
-  font-size: 12px;
-}
-.composer.svelte-1mroaqi {
-  flex-shrink: 0;
-  padding: 6px 12px 12px;
-  background: var(--vscode-sideBar-background);
-  border-top: 1px solid var(--vscode-panel-border);
-}
-.input-wrap.svelte-1mroaqi {
+.meter-row.svelte-vvns5x {
   display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  border: 1px solid var(--vscode-panel-border);
-  background: var(--vscode-input-background);
-  transition: border-color 0.15s;
-}
-.input-wrap.svelte-1mroaqi:focus-within {
-  border-color: var(--vscode-focusBorder);
-}
-textarea.svelte-1mroaqi {
-  width: 100%;
-  min-height: 56px;
-  max-height: 200px;
-  resize: none;
-  border: none;
-  background: transparent;
-  color: var(--vscode-input-foreground);
-  padding: 10px 12px 4px;
-  font-size: 13px;
-  line-height: 18px;
-  outline: none;
-  font-family: var(--vscode-font-family);
-}
-textarea.svelte-1mroaqi::placeholder {
-  color: var(--vscode-input-placeholderForeground);
-}
-.composer-footer.svelte-1mroaqi {
-  display: flex;
-  height: 34px;
-  align-items: center;
   justify-content: space-between;
-  padding: 0 8px 4px;
+  gap: 16px;
 }
-.footer-left.svelte-1mroaqi {
-  display: flex;
-  gap: 6px;
-  align-items: center;
+.meter-row.svelte-vvns5x span:where(.svelte-vvns5x):first-child {
+  color: var(--vscode-descriptionForeground, #999);
 }
-.badge-btn.svelte-1mroaqi {
+.meter-empty.svelte-vvns5x {
+  color: var(--vscode-descriptionForeground, #999);
+  font-style: italic;
+}
+
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/PresetQuickSelector.esbuild-svelte-fake-css */
+.quick-selector.svelte-afcpaa {
+  position: relative;
+}
+.badge-btn.svelte-afcpaa {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
@@ -863,21 +853,18 @@ textarea.svelte-1mroaqi::placeholder {
   align-items: center;
   gap: 3px;
 }
-.badge-btn.svelte-1mroaqi:hover {
+.badge-btn.svelte-afcpaa:hover {
   border-color: var(--vscode-focusBorder);
   background: var(--vscode-list-hoverBackground);
 }
-.preset-selector.svelte-1mroaqi {
-  position: relative;
-}
-.preset-arrow.svelte-1mroaqi {
+.arrow.svelte-afcpaa {
   fill: currentColor;
   transition: transform 0.15s;
 }
-.preset-arrow.open.svelte-1mroaqi {
+.arrow.open.svelte-afcpaa {
   transform: rotate(180deg);
 }
-.preset-dropdown.svelte-1mroaqi {
+.dropdown.svelte-afcpaa {
   position: absolute;
   bottom: calc(100% + 4px);
   left: 0;
@@ -891,7 +878,7 @@ textarea.svelte-1mroaqi::placeholder {
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
   padding: 4px 0;
 }
-.preset-item.svelte-1mroaqi {
+.dropdown-item.svelte-afcpaa {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -904,31 +891,255 @@ textarea.svelte-1mroaqi::placeholder {
   font-size: 12px;
   text-align: left;
 }
-.preset-item.svelte-1mroaqi:hover {
+.dropdown-item.svelte-afcpaa:hover {
   background: var(--vscode-list-hoverBackground);
 }
-.preset-item.active.svelte-1mroaqi {
+.dropdown-item.active.svelte-afcpaa {
   background: var(--vscode-list-activeSelectionBackground);
   color: var(--vscode-list-activeSelectionForeground);
 }
-.preset-item-name.svelte-1mroaqi {
+.item-name.svelte-afcpaa {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.preset-check.svelte-1mroaqi {
+.check.svelte-afcpaa {
   flex-shrink: 0;
   margin-left: 8px;
   font-weight: 600;
 }
-.preset-empty.svelte-1mroaqi {
+.empty.svelte-afcpaa {
   padding: 12px;
   text-align: center;
   color: var(--vscode-descriptionForeground);
   font-size: 12px;
 }
-.send-btn.svelte-1mroaqi {
+
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/ProfileQuickSelector.esbuild-svelte-fake-css */
+.quick-selector.svelte-hh7eb2 {
+  position: relative;
+}
+.badge-btn.svelte-hh7eb2 {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-panel-border);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: inherit;
+  line-height: 1.6;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.badge-btn.svelte-hh7eb2:hover {
+  border-color: var(--vscode-focusBorder);
+  background: var(--vscode-list-hoverBackground);
+}
+.arrow.svelte-hh7eb2 {
+  fill: currentColor;
+  transition: transform 0.15s;
+}
+.arrow.open.svelte-hh7eb2 {
+  transform: rotate(180deg);
+}
+.dropdown.svelte-hh7eb2 {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 180px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+  padding: 4px 0;
+}
+.dropdown-item.svelte-hh7eb2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+.dropdown-item.svelte-hh7eb2:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.dropdown-item.active.svelte-hh7eb2 {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+.item-name.svelte-hh7eb2 {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.check.svelte-hh7eb2 {
+  flex-shrink: 0;
+  margin-left: 8px;
+  font-weight: 600;
+}
+.empty.svelte-hh7eb2 {
+  padding: 12px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/AttachedFilesBar.esbuild-svelte-fake-css */
+.attached-bar.svelte-1j8bp8d {
+  flex-shrink: 0;
+  padding: 4px 12px 0;
+  background: var(--vscode-sideBar-background);
+  border-top: 1px solid var(--vscode-panel-border);
+}
+.attached-header.svelte-1j8bp8d {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.attached-label.svelte-1j8bp8d {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 500;
+}
+.clear-btn.svelte-1j8bp8d {
+  font-size: 10px;
+  padding: 1px 6px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  font-family: inherit;
+}
+.clear-btn.svelte-1j8bp8d:hover {
+  opacity: 1;
+  color: var(--vscode-errorForeground, #e74c3c);
+  background: var(--vscode-list-hoverBackground);
+}
+.attached-chips.svelte-1j8bp8d {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+.chip.svelte-1j8bp8d {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  border-radius: 4px;
+  background: var(--vscode-badge-background, var(--vscode-input-background));
+  color: var(--vscode-badge-foreground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-panel-border);
+  max-width: 220px;
+  cursor: default;
+  transition: border-color 0.15s;
+}
+.chip.svelte-1j8bp8d:hover {
+  border-color: var(--vscode-focusBorder);
+}
+.chip-icon.svelte-1j8bp8d {
+  flex-shrink: 0;
+  font-size: 11px;
+  opacity: 0.7;
+}
+.chip-name.svelte-1j8bp8d {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip-remove.svelte-1j8bp8d {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  padding: 0;
+  font-size: 9px;
+  line-height: 1;
+  border-radius: 3px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+.chip-remove.svelte-1j8bp8d:hover {
+  opacity: 1;
+  color: var(--vscode-errorForeground, #e74c3c);
+  background: var(--vscode-list-hoverBackground);
+}
+
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/Composer.esbuild-svelte-fake-css */
+.composer.svelte-z2mbmf {
+  flex-shrink: 0;
+  padding: 6px 12px 12px;
+  background: var(--vscode-sideBar-background);
+  border-top: 1px solid var(--vscode-panel-border);
+}
+.input-wrap.svelte-z2mbmf {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-input-background);
+  transition: border-color 0.15s;
+}
+.input-wrap.svelte-z2mbmf:focus-within {
+  border-color: var(--vscode-focusBorder);
+}
+textarea.svelte-z2mbmf {
+  width: 100%;
+  min-height: 28px;
+  max-height: 50vh;
+  resize: none;
+  border: none;
+  background: transparent;
+  color: var(--vscode-input-foreground);
+  padding: 10px 12px 4px;
+  font-size: 13px;
+  line-height: 18px;
+  outline: none;
+  font-family: var(--vscode-font-family);
+  overflow-y: hidden;
+  box-sizing: border-box;
+}
+textarea.svelte-z2mbmf::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+.composer-footer.svelte-z2mbmf {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 4px;
+}
+.footer-left.svelte-z2mbmf {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.send-btn.svelte-z2mbmf {
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -940,12 +1151,58 @@ textarea.svelte-1mroaqi::placeholder {
   color: var(--vscode-foreground);
   transition: background 0.15s;
 }
-.send-btn.svelte-1mroaqi:hover:not(:disabled) {
+.send-btn.svelte-z2mbmf:hover:not(:disabled) {
   background: var(--vscode-button-hoverBackground, var(--vscode-toolbar-hoverBackground));
 }
-.send-btn.svelte-1mroaqi:disabled {
+.send-btn.svelte-z2mbmf:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.composer.dragover.svelte-z2mbmf .input-wrap:where(.svelte-z2mbmf) {
+  border-color: var(--vscode-focusBorder);
+  box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+.drop-overlay.svelte-z2mbmf {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 85%, transparent);
+  border-radius: 8px;
+  pointer-events: none;
+  animation: svelte-z2mbmf-fadeIn 0.12s ease;
+}
+.drop-hint.svelte-z2mbmf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--vscode-focusBorder);
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+.drop-hint.svelte-z2mbmf svg:where(.svelte-z2mbmf) {
+  opacity: 0.6;
+}
+@keyframes svelte-z2mbmf-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/ChatPage.esbuild-svelte-fake-css */
+.chat-page.svelte-1mroaqi {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/PresetList.esbuild-svelte-fake-css */

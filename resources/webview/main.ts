@@ -46,6 +46,7 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.sessions = msg.sessions;
       appState.activePreset = msg.activePreset ?? "default";
       appState.activeProfile = msg.activeProfile ?? "default";
+      appState.attachedFiles = [];
       break;
 
     case "loadSession":
