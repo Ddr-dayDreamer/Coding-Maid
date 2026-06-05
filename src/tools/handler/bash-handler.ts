@@ -1,5 +1,4 @@
 import { spawn } from "child_process";
-import { DEFAULT_BASH_TIMEOUT_MS, clampBashTimeoutMs } from "../../common/bash-timeout";
 import { killProcessTree } from "../../common/process-tree";
 import type { ProcessTimeoutControl, ProcessTimeoutInfo, ToolExecutionContext, ToolExecutionResult } from "../types";
 import {
@@ -10,6 +9,19 @@ import {
   rewriteWindowsNullRedirect,
   toNativeCwd,
 } from "../../common/shell-utils";
+
+const DEFAULT_BASH_TIMEOUT_MS = 10 * 60 * 1000;
+const MIN_BASH_TIMEOUT_MS = 60 * 1000;
+const BASH_TIMEOUT_INCREMENT_MS = 5 * 60 * 1000;
+const BASH_TIMEOUT_DECREMENT_MS = 60 * 1000;
+
+function clampBashTimeoutMs(timeoutMs: number, minTimeoutMs: number = MIN_BASH_TIMEOUT_MS): number {
+  if (!Number.isFinite(timeoutMs)) {
+    return DEFAULT_BASH_TIMEOUT_MS;
+  }
+  const minimum = Number.isFinite(minTimeoutMs) ? Math.max(1, Math.round(minTimeoutMs)) : MIN_BASH_TIMEOUT_MS;
+  return Math.max(minimum, Math.round(timeoutMs));
+}
 
 const MAX_OUTPUT_CHARS = 30000;
 const MAX_CAPTURE_CHARS = 10 * 1024 * 1024;

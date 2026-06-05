@@ -17,12 +17,22 @@ import * as os from "os";
 import * as crypto from "crypto";
 import { fileURLToPath } from "url";
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "openai/resources/chat/completions";
-import { supportsMultimodal } from "./common/model-capabilities";
 import type { SessionMessage, SessionMessageRole, MessageMeta, UserPromptContent } from "./session-types";
 import type { SessionStorage } from "./session-storage";
 import type { SessionFileHistory } from "./session-file-history";
 
 // ─── 工具 ────────────────────────────────────────────────
+
+const NON_MULTIMODAL_MODELS = new Set([
+  "deepseek-v4-pro",
+  "deepseek-v4-flash",
+  "deepseek-chat",
+  "deepseek-reasoner",
+]);
+
+function supportsMultimodal(model: string): boolean {
+  return !NON_MULTIMODAL_MODELS.has(model.trim());
+}
 
 function getExtensionRoot(): string {
   if (typeof __dirname !== "undefined") {

@@ -19,8 +19,6 @@
   "files": [
     "out/extension.js",
     "resources/**",
-    "templates/tools/**",
-    "templates/prompts/**",
     "templates/**",
     "README.md",
     "LICENSE"

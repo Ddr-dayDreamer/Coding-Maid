@@ -5,10 +5,99 @@
  * 从 session.ts 拆分。
  */
 
-import { launchNotifyScript } from "./common/notify";
+import { spawn } from "child_process";
+import type { SpawnOptions } from "child_process";
 import type { SessionEntry } from "./session-types";
 import type { SessionStorage } from "./session-storage";
 import type { CreateOpenAIClient } from "./tools/types";
+
+// ─── 桌面通知 ────────────────────────────────────────────
+
+type NotifyChildProcess = {
+  once(event: "error", listener: (error: NodeJS.ErrnoException) => void): NotifyChildProcess;
+  unref(): void;
+};
+
+type NotifySpawn = (
+  command: string,
+  args: string[],
+  options: Pick<SpawnOptions, "cwd" | "detached" | "env" | "stdio">
+) => NotifyChildProcess;
+
+function formatDurationSeconds(durationMs: number): string {
+  const safeMs = Number.isFinite(durationMs) ? Math.max(0, durationMs) : 0;
+  return String(Math.floor(safeMs / 1000));
+}
+
+type NotifyContext = {
+  status?: string;
+  failReason?: string;
+  body?: string;
+  title?: string;
+};
+
+function buildNotifyEnv(
+  durationMs: number,
+  baseEnv: NodeJS.ProcessEnv = process.env,
+  context: NotifyContext = {}
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...baseEnv,
+    DURATION: formatDurationSeconds(durationMs),
+  };
+  delete env.STATUS;
+  delete env.FAIL_REASON;
+  delete env.BODY;
+  delete env.TITLE;
+
+  if (context.status) {
+    env.STATUS = context.status;
+  }
+  if (context.failReason) {
+    env.FAIL_REASON = context.failReason;
+  }
+  if (context.body) {
+    env.BODY = context.body;
+  }
+  if (context.title) {
+    env.TITLE = context.title;
+  }
+  return env;
+}
+
+function launchNotifyScript(
+  notifyPath: string | undefined,
+  durationMs: number,
+  workingDirectory?: string,
+  spawnProcess: NotifySpawn = spawn as unknown as NotifySpawn,
+  configuredEnv: Record<string, string> = {},
+  context: NotifyContext = {}
+): void {
+  const commandPath = notifyPath?.trim();
+  if (!commandPath) {
+    return;
+  }
+
+  const options = {
+    cwd: workingDirectory,
+    detached: process.platform !== "win32",
+    env: buildNotifyEnv(durationMs, { ...process.env, ...configuredEnv }, context),
+    stdio: "ignore" as const,
+  };
+
+  try {
+    const child = spawnProcess(commandPath, [], options);
+    child.once("error", (error) => {
+      if (process.platform === "win32") {
+        return;
+      }
+      console.error(`Notify script failed: ${error.message}`);
+    });
+    child.unref();
+  } catch {
+    // Silently ignore notification failures
+  }
+}
 
 const DEFAULT_NEW_PROMPT_API_URL = "https://codingmaid.vegamo.cn/api/plugin/new";
 const NEW_PROMPT_REPORT_TIMEOUT_MS = 3000;
