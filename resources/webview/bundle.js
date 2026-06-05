@@ -8382,6 +8382,7 @@ ${component_stack}
     }), ondelete = prop($$props, "ondelete", 3, () => {
     }), onfocus = prop($$props, "onfocus", 3, () => {
     });
+    let textareaEl = state(void 0);
     const ROLE_OPTIONS = [
       { value: "system", label: "system" },
       { value: "user", label: "user" },
@@ -8390,12 +8391,13 @@ ${component_stack}
     ];
     var div = root_112();
     let classes;
-    set_attribute2(div, "draggable", true);
     var div_1 = child(div);
     var div_2 = child(div_1);
-    var span = sibling(child(div_2), 2);
-    var text2 = child(span, true);
-    reset(span);
+    var span = child(div_2);
+    set_attribute2(span, "draggable", true);
+    var span_1 = sibling(span, 2);
+    var text2 = child(span_1, true);
+    reset(span_1);
     reset(div_2);
     var input = sibling(div_2, 2);
     remove_input_defaults(input);
@@ -8429,6 +8431,7 @@ ${component_stack}
     var textarea = child(div_4);
     remove_textarea_child(textarea);
     set_attribute2(textarea, "rows", 4);
+    bind_this(textarea, ($$value) => set(textareaEl, $$value), () => get2(textareaEl));
     reset(div_4);
     reset(div);
     template_effect(() => {
@@ -8441,9 +8444,10 @@ ${component_stack}
       set_checked(input_1, entry().enabled);
       set_value(textarea, entry().content ?? "");
     });
-    event("dragstart", div, (e) => {
+    event("dragstart", span, (e) => {
       e.dataTransfer.setData("text/plain", String(index2()));
       e.dataTransfer.effectAllowed = "move";
+      e.stopPropagation();
     });
     delegated("input", input, (e) => onupdate()({ ...entry(), name: e.target.value }));
     delegated("change", select, (e) => onupdate()({ ...entry(), role: e.target.value }));
@@ -8452,8 +8456,8 @@ ${component_stack}
       ondelete()?.apply(this, $$args);
     });
     delegated("input", textarea, (e) => onupdate()({ ...entry(), content: e.target.value }));
-    event("focus", textarea, function(...$$args) {
-      onfocus()?.apply(this, $$args);
+    event("focus", textarea, () => {
+      if (get2(textareaEl)) onfocus()(get2(textareaEl));
     });
     append($$anchor, div);
     pop();
@@ -8478,20 +8482,18 @@ ${component_stack}
   ];
 
   // resources/webview/components/MacroPanel.svelte
-  var root15 = from_html(`<span class="macro-hint svelte-11xah9r">\uFF08\u8BF7\u5148\u9009\u4E2D\u4E00\u4E2A\u6761\u76EE\uFF09</span>`);
-  var root_113 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
-  var root_211 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
-  var root_310 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
-  var root_410 = from_html(`<div class="macro-section svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F <!></button> <!></div>`);
+  var root15 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
+  var root_113 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
+  var root_211 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
+  var root_310 = from_html(`<div class="macro-inline svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F</button> <!></div>`);
   function MacroPanel($$anchor, $$props) {
     push($$props, true);
-    let disabled = prop($$props, "disabled", 3, false), oninsert = prop($$props, "oninsert", 3, (_macro) => {
+    let oninsert = prop($$props, "oninsert", 3, (_macro) => {
     });
     let open = state(false);
     const MACROS = [
       {
         group: "\u5DE5\u5177\u6587\u6863",
-        // 工具列表来自 src/tools/builtin-tools.ts（唯一数据源）
         items: BUILTIN_TOOLS.map((t) => `{{tool.${t}}}`)
       },
       {
@@ -8524,42 +8526,33 @@ ${component_stack}
         ]
       }
     ];
-    var div = root_410();
+    var div = root_310();
     var button = child(div);
     var svg = child(button);
     let classes;
-    var node = sibling(svg, 2);
+    next();
+    reset(button);
+    var node = sibling(button, 2);
     {
       var consequent = ($$anchor2) => {
-        var span = root15();
-        append($$anchor2, span);
-      };
-      if_block(node, ($$render) => {
-        if (disabled()) $$render(consequent);
-      });
-    }
-    reset(button);
-    var node_1 = sibling(button, 2);
-    {
-      var consequent_1 = ($$anchor2) => {
-        var div_1 = root_310();
+        var div_1 = root_211();
         each(div_1, 21, () => MACROS, index, ($$anchor3, group) => {
-          var div_2 = root_211();
-          var span_1 = child(div_2);
-          var text2 = child(span_1, true);
-          reset(span_1);
-          var div_3 = sibling(span_1, 2);
+          var div_2 = root_113();
+          var span = child(div_2);
+          var text2 = child(span, true);
+          reset(span);
+          var div_3 = sibling(span, 2);
           each(div_3, 21, () => get2(group).items, index, ($$anchor4, macro) => {
-            var button_1 = root_113();
+            var button_1 = root15();
             var code = child(button_1);
             var text_1 = child(code, true);
             reset(code);
             reset(button_1);
-            template_effect(() => {
-              button_1.disabled = disabled();
-              set_text(text_1, get2(macro));
+            template_effect(() => set_text(text_1, get2(macro)));
+            delegated("mousedown", button_1, (e) => {
+              e.preventDefault();
+              oninsert()(get2(macro));
             });
-            delegated("click", button_1, () => oninsert()(get2(macro)));
             append($$anchor4, button_1);
           });
           reset(div_3);
@@ -8570,8 +8563,8 @@ ${component_stack}
         reset(div_1);
         append($$anchor2, div_1);
       };
-      if_block(node_1, ($$render) => {
-        if (get2(open)) $$render(consequent_1);
+      if_block(node, ($$render) => {
+        if (get2(open)) $$render(consequent);
       });
     }
     reset(div);
@@ -8580,13 +8573,13 @@ ${component_stack}
     append($$anchor, div);
     pop();
   }
-  delegate(["click"]);
+  delegate(["click", "mousedown"]);
 
   // resources/webview/components/PresetEditor.svelte
   var root16 = from_html(`<button> </button>`);
-  var root_114 = from_html(`<div><!></div>`);
+  var root_114 = from_html(`<div><!> <!></div>`);
   var root_212 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
-  var root_311 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <!> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
+  var root_311 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
   function PresetEditor($$anchor, $$props) {
     push($$props, true);
     let definition = prop($$props, "definition", 19, () => ({
@@ -8619,6 +8612,7 @@ ${component_stack}
       entries: []
     }));
     let activeEntryIndex = state(null);
+    let activeTextarea = state(null);
     user_effect(() => {
       set(editName, presetName());
       set(editDef, deepClone(definition()), true);
@@ -8698,7 +8692,17 @@ ${component_stack}
     function insertMacro(macro) {
       if (get2(activeEntryIndex) === null) return;
       const entry = { ...get2(editDef).entries[get2(activeEntryIndex)] };
-      entry.content += macro;
+      const ta = get2(activeTextarea);
+      if (ta) {
+        const start = ta.selectionStart ?? entry.content.length;
+        const end = ta.selectionEnd ?? start;
+        entry.content = entry.content.slice(0, start) + macro + entry.content.slice(end);
+        requestAnimationFrame(() => {
+          ta.setSelectionRange(start + macro.length, start + macro.length);
+        });
+      } else {
+        entry.content += macro;
+      }
       updateEntry(get2(activeEntryIndex), entry);
     }
     function toggleTool(toolId) {
@@ -8791,35 +8795,37 @@ ${component_stack}
           },
           onupdate: (e) => updateEntry(i, e),
           ondelete: () => deleteEntry(i),
-          onfocus: () => set(activeEntryIndex, i, true)
+          onfocus: (el) => {
+            set(activeEntryIndex, i, true);
+            set(activeTextarea, el, true);
+          }
+        });
+      }
+      var node_2 = sibling(node_1, 2);
+      {
+        var consequent = ($$anchor3) => {
+          MacroPanel($$anchor3, { oninsert: insertMacro });
+        };
+        if_block(node_2, ($$render) => {
+          if (get2(activeEntryIndex) === i) $$render(consequent);
         });
       }
       reset(div_14);
       append($$anchor2, div_14);
     });
-    var node_2 = sibling(node, 2);
+    var node_3 = sibling(node, 2);
     {
-      var consequent = ($$anchor2) => {
+      var consequent_1 = ($$anchor2) => {
         var p = root_212();
         append($$anchor2, p);
       };
-      if_block(node_2, ($$render) => {
-        if (get2(editDef).entries.length === 0) $$render(consequent);
+      if_block(node_3, ($$render) => {
+        if (get2(editDef).entries.length === 0) $$render(consequent_1);
       });
     }
     reset(div_13);
     reset(div_11);
-    var node_3 = sibling(div_11, 2);
-    {
-      let $0 = user_derived(() => get2(activeEntryIndex) === null);
-      MacroPanel(node_3, {
-        get disabled() {
-          return get2($0);
-        },
-        oninsert: insertMacro
-      });
-    }
-    var div_15 = sibling(node_3, 2);
+    var div_15 = sibling(div_11, 2);
     var button_3 = child(div_15);
     var button_4 = sibling(button_3, 2);
     reset(div_15);
@@ -9006,7 +9012,7 @@ ${component_stack}
   var root_115 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
   var root_213 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
   var root_312 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
-  var root_411 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
+  var root_410 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
   var root_57 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
   var root_66 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
   var root_73 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14" class="spin svelte-1no2ghb"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Z"></path></svg>`);
@@ -9205,7 +9211,7 @@ ${component_stack}
               var node_3 = child(div_6);
               {
                 var consequent_4 = ($$anchor5) => {
-                  var span_1 = root_411();
+                  var span_1 = root_410();
                   append($$anchor5, span_1);
                 };
                 if_block(node_3, ($$render) => {
@@ -9347,18 +9353,24 @@ ${component_stack}
   function App($$anchor, $$props) {
     push($$props, true);
     let dragCounter = state(0);
+    function isChatTab() {
+      return appState.currentTab === "chat";
+    }
     function handleDragEnter(e) {
+      if (!isChatTab()) return;
       e.preventDefault();
       update(dragCounter);
       appState.isDragOver = true;
     }
     function handleDragOver(e) {
+      if (!isChatTab()) return;
       e.preventDefault();
       if (e.dataTransfer) {
         e.dataTransfer.dropEffect = "copy";
       }
     }
     function handleDragLeave(e) {
+      if (!isChatTab()) return;
       e.preventDefault();
       update(dragCounter, -1);
       if (get2(dragCounter) <= 0) {
@@ -9367,6 +9379,7 @@ ${component_stack}
       }
     }
     async function handleDrop(e) {
+      if (!isChatTab()) return;
       e.preventDefault();
       set(dragCounter, 0);
       appState.isDragOver = false;

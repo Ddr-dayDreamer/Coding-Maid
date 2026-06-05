@@ -17,6 +17,8 @@
     onfocus: () => void;
   } = $props();
 
+  let textareaEl: HTMLTextAreaElement | undefined = $state();
+
   const ROLE_OPTIONS: { value: PresetEntryRole; label: string }[] = [
     { value: "system", label: "system" },
     { value: "user", label: "user" },
@@ -27,15 +29,17 @@
 
 <div class="entry-card" class:active={isActive} class:disabled={!entry.enabled}
   role="listitem"
-  draggable={true}
-  ondragstart={(e) => {
-    e.dataTransfer.setData("text/plain", String(index));
-    e.dataTransfer.effectAllowed = "move";
-  }}
 >
   <div class="entry-header">
     <div class="entry-drag-order">
-      <span class="drag-handle" title="拖拽排序">
+      <span class="drag-handle" title="拖拽排序"
+        draggable={true}
+        ondragstart={(e) => {
+          e.dataTransfer.setData("text/plain", String(index));
+          e.dataTransfer.effectAllowed = "move";
+          e.stopPropagation();
+        }}
+      >
         <svg viewBox="0 0 16 16" width="14" height="14">
           <path fill="currentColor" d="M5 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/>
         </svg>
@@ -78,12 +82,15 @@
 
   <div class="entry-content">
     <textarea
+      bind:this={textareaEl}
       class="entry-textarea"
       value={entry.content ?? ""}
       placeholder="输入提示词内容，支持 tool.xxx、char 等宏"
       rows={4}
       oninput={(e) => onupdate({ ...entry, content: e.target.value })}
-      onfocus={onfocus}
+      onfocus={() => {
+        if (textareaEl) onfocus(textareaEl);
+      }}
     ></textarea>
   </div>
 </div>
@@ -125,11 +132,6 @@
     align-items: center;
     gap: 2px;
     flex-shrink: 0;
-    cursor: grab;
-  }
-
-  .entry-drag-order:active {
-    cursor: grabbing;
   }
 
   .drag-handle {
@@ -145,6 +147,11 @@
     color: var(--vscode-foreground);
     opacity: 0.3;
     transition: opacity 0.1s;
+    cursor: grab;
+  }
+
+  .drag-handle:active {
+    cursor: grabbing;
   }
 
   .entry-card:hover .drag-handle {

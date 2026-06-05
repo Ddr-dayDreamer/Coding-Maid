@@ -2,10 +2,8 @@
   import { BUILTIN_TOOLS } from "../../../src/tools/builtin-tools";
 
   let {
-    disabled = false,
     oninsert = (_macro: string) => {},
   }: {
-    disabled: boolean;
     oninsert: (macro: string) => void;
   } = $props();
 
@@ -14,7 +12,6 @@
   const MACROS = [
     {
       group: "工具文档",
-      // 工具列表来自 src/tools/builtin-tools.ts（唯一数据源）
       items: BUILTIN_TOOLS.map((t) => `{{tool.${t}}}`),
     },
     {
@@ -32,15 +29,12 @@
   ];
 </script>
 
-<div class="macro-section">
+<div class="macro-inline">
   <button class="macro-toggle" onclick={() => (open = !open)}>
     <svg viewBox="0 0 16 16" width="12" height="12" class:rotated={open}>
       <path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"/>
     </svg>
     插入宏
-    {#if disabled}
-      <span class="macro-hint">（请先选中一个条目）</span>
-    {/if}
   </button>
 
   {#if open}
@@ -50,7 +44,7 @@
           <span class="macro-group-label">{group.group}</span>
           <div class="macro-items">
             {#each group.items as macro}
-              <button class="macro-btn" {disabled} onclick={() => oninsert(macro)}>
+              <button class="macro-btn" onmousedown={(e) => { e.preventDefault(); oninsert(macro); }}>
                 <code>{macro}</code>
               </button>
             {/each}
@@ -62,26 +56,25 @@
 </div>
 
 <style>
-  .macro-section {
-    flex-shrink: 0;
-    border-top: 1px solid var(--vscode-panel-border);
-    padding-top: 8px;
-    margin-top: 8px;
+  .macro-inline {
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-top: 6px;
+    background: var(--vscode-editor-background);
   }
 
   .macro-toggle {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 8px;
+    padding: 2px 4px;
     border: none;
     border-radius: 4px;
     background: transparent;
     color: var(--vscode-foreground);
-    font-size: 12px;
+    font-size: 11px;
     cursor: pointer;
-    width: 100%;
-    text-align: left;
     transition: background 0.1s;
   }
 
@@ -97,16 +90,13 @@
     transform: rotate(90deg);
   }
 
-  .macro-hint {
-    font-size: 11px;
-    color: var(--vscode-descriptionForeground);
-  }
-
   .macro-groups {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 8px 0;
+    padding: 8px 0 4px;
+    max-height: 30vh;
+    overflow-y: auto;
   }
 
   .macro-group {
@@ -138,18 +128,9 @@
     transition: border-color 0.1s, background 0.1s;
   }
 
-  .macro-btn:hover:not(:disabled) {
+  .macro-btn:hover {
     border-color: var(--vscode-focusBorder);
     background: var(--vscode-list-hoverBackground);
-  }
-
-  .macro-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .macro-btn {
-    max-width: 100%;
   }
 
   .macro-btn code {

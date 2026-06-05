@@ -1385,10 +1385,6 @@ textarea.svelte-z2mbmf::placeholder {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  cursor: grab;
-}
-.entry-drag-order.svelte-1y400fn:active {
-  cursor: grabbing;
 }
 .drag-handle.svelte-1y400fn {
   display: flex;
@@ -1403,6 +1399,10 @@ textarea.svelte-z2mbmf::placeholder {
   color: var(--vscode-foreground);
   opacity: 0.3;
   transition: opacity 0.1s;
+  cursor: grab;
+}
+.drag-handle.svelte-1y400fn:active {
+  cursor: grabbing;
 }
 .entry-card.svelte-1y400fn:hover .drag-handle:where(.svelte-1y400fn) {
   opacity: 0.6;
@@ -1538,25 +1538,24 @@ textarea.svelte-z2mbmf::placeholder {
 }
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/MacroPanel.esbuild-svelte-fake-css */
-.macro-section.svelte-11xah9r {
-  flex-shrink: 0;
-  border-top: 1px solid var(--vscode-panel-border);
-  padding-top: 8px;
-  margin-top: 8px;
+.macro-inline.svelte-11xah9r {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-top: 6px;
+  background: var(--vscode-editor-background);
 }
 .macro-toggle.svelte-11xah9r {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 2px 4px;
   border: none;
   border-radius: 4px;
   background: transparent;
   color: var(--vscode-foreground);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
-  width: 100%;
-  text-align: left;
   transition: background 0.1s;
 }
 .macro-toggle.svelte-11xah9r:hover {
@@ -1568,15 +1567,13 @@ textarea.svelte-z2mbmf::placeholder {
 .macro-toggle.svelte-11xah9r svg.rotated:where(.svelte-11xah9r) {
   transform: rotate(90deg);
 }
-.macro-hint.svelte-11xah9r {
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-}
 .macro-groups.svelte-11xah9r {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px 0;
+  padding: 8px 0 4px;
+  max-height: 30vh;
+  overflow-y: auto;
 }
 .macro-group.svelte-11xah9r {
   display: flex;
@@ -1603,16 +1600,9 @@ textarea.svelte-z2mbmf::placeholder {
   cursor: pointer;
   transition: border-color 0.1s, background 0.1s;
 }
-.macro-btn.svelte-11xah9r:hover:not(:disabled) {
+.macro-btn.svelte-11xah9r:hover {
   border-color: var(--vscode-focusBorder);
   background: var(--vscode-list-hoverBackground);
-}
-.macro-btn.svelte-11xah9r:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.macro-btn.svelte-11xah9r {
-  max-width: 100%;
 }
 .macro-btn.svelte-11xah9r code:where(.svelte-11xah9r) {
   font-size: 11px;

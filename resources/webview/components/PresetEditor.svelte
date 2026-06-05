@@ -31,6 +31,7 @@
     entries: [],
   });
   let activeEntryIndex = $state<number | null>(null);
+  let activeTextarea: HTMLTextAreaElement | null = $state(null);
 
   // 当外部 prop 变化时同步（$state 只捕获初始化值，实际值由 $effect 维护）
   $effect(() => {
@@ -135,7 +136,18 @@
   function insertMacro(macro: string) {
     if (activeEntryIndex === null) return;
     const entry = { ...editDef.entries[activeEntryIndex] };
-    entry.content += macro;
+    const ta = activeTextarea;
+    if (ta) {
+      const start = ta.selectionStart ?? entry.content.length;
+      const end = ta.selectionEnd ?? start;
+      entry.content = entry.content.slice(0, start) + macro + entry.content.slice(end);
+      // 更新后恢复光标位置到插入内容后面
+      requestAnimationFrame(() => {
+        ta.setSelectionRange(start + macro.length, start + macro.length);
+      });
+    } else {
+      entry.content += macro;
+    }
     updateEntry(activeEntryIndex, entry);
   }
 
@@ -239,8 +251,14 @@
             isActive={activeEntryIndex === i}
             onupdate={(e) => updateEntry(i, e)}
             ondelete={() => deleteEntry(i)}
-            onfocus={() => (activeEntryIndex = i)}
+            onfocus={(el) => {
+              activeEntryIndex = i;
+              activeTextarea = el;
+            }}
           />
+          {#if activeEntryIndex === i}
+            <MacroPanel oninsert={insertMacro} />
+          {/if}
         </div>
       {/each}
       {#if editDef.entries.length === 0}
@@ -248,9 +266,6 @@
       {/if}
     </div>
   </div>
-
-  <!-- 宏插入面板 -->
-  <MacroPanel disabled={activeEntryIndex === null} oninsert={insertMacro} />
 
   <!-- 底部操作 -->
   <div class="editor-footer">

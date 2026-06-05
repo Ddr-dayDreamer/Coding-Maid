@@ -12,13 +12,19 @@
 
   let dragCounter = $state(0);
 
+  function isChatTab(): boolean {
+    return appState.currentTab === "chat";
+  }
+
   function handleDragEnter(e: DragEvent) {
+    if (!isChatTab()) return;
     e.preventDefault();
     dragCounter++;
     appState.isDragOver = true;
   }
 
   function handleDragOver(e: DragEvent) {
+    if (!isChatTab()) return;
     e.preventDefault();
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = "copy";
@@ -26,6 +32,7 @@
   }
 
   function handleDragLeave(e: DragEvent) {
+    if (!isChatTab()) return;
     e.preventDefault();
     dragCounter--;
     if (dragCounter <= 0) {
@@ -35,6 +42,7 @@
   }
 
   async function handleDrop(e: DragEvent) {
+    if (!isChatTab()) return;
     e.preventDefault();
     dragCounter = 0;
     appState.isDragOver = false;
