@@ -1,39 +1,19 @@
 /**
  * LLM 流式通信
  *
- * 封装 chat.completions.create 的流式调用，处理 Token 估算、进度通知、调试日志。
+ * 封装 chat.completions.create 的流式调用，处理 Token 估算、进度通知。
  * 从 session.ts 拆分。
  */
 
 import * as crypto from "crypto";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { logOpenAIChatCompletionDebug, normalizeDebugError } from "./common/debug-logger";
+import { logLlmCompletion } from "./common/debug-logger";
 import type { CreateOpenAIClient } from "./tools/types";
 import type { ModelUsage, LlmStreamProgress } from "./session-types";
-
-// ─── 内部类型 ────────────────────────────────────────────
-
-type ChatCompletionDebugOptions = {
-  enabled?: boolean;
-  location: string;
-  baseURL?: string;
-  params?: Record<string, unknown>;
-};
 
 // ─── 工具函数 ────────────────────────────────────────────
 
 function isUsageRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function summarizeCompletionOptions(options?: Record<string, unknown>): Record<string, unknown> | undefined {
-  if (!options) {
-    return undefined;
-  }
-  return {
-    ...options,
-    signal: options.signal instanceof AbortSignal ? { aborted: options.signal.aborted } : options.signal,
-  };
 }
 
 export function accumulateUsage(current: ModelUsage | null, next: unknown | null | undefined): ModelUsage | null {
@@ -146,7 +126,7 @@ export class LlmStreamManager {
     request: Record<string, unknown>,
     options?: Record<string, unknown>,
     sessionId?: string,
-    debug?: ChatCompletionDebugOptions
+    debug?: { enabled?: boolean; location: string; baseURL?: string; params?: Record<string, unknown> }
   ): Promise<StreamResult> {
     const { client, baseURL } = this.createClient();
     if (!client) {
@@ -177,36 +157,12 @@ export class LlmStreamManager {
         ) => Promise<unknown>
       )(streamRequest, options);
     } catch (error) {
-      this.logDebug(debug, {
-        timestamp: new Date().toISOString(),
-        location: debug?.location ?? "LlmStreamManager.createStream:create",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        baseURL,
-        durationMs: Date.now() - startedAtMs,
-        params: { ...debug?.params, options: summarizeCompletionOptions(options) },
-        request: streamRequest,
-        error: normalizeDebugError(error),
-      });
       this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
       throw error;
     }
 
     if (!response || typeof (response as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] !== "function") {
       this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
-      this.logDebug(debug, {
-        timestamp: new Date().toISOString(),
-        location: debug?.location ?? "LlmStreamManager.createStream",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        baseURL,
-        durationMs: Date.now() - startedAtMs,
-        params: { ...debug?.params, options: summarizeCompletionOptions(options) },
-        request: streamRequest,
-        response,
-      });
       return response as StreamResult;
     }
 
@@ -214,7 +170,6 @@ export class LlmStreamManager {
     let reasoningContent = "";
     let refusal: string | null = null;
     let usage: ModelUsage | null = null;
-    const responseChunks: unknown[] = [];
     const toolCallsByIndex = new Map<
       number,
       {
@@ -234,9 +189,6 @@ export class LlmStreamManager {
 
     try {
       for await (const chunk of response as AsyncIterable<Record<string, unknown>>) {
-        if (debug?.enabled) {
-          responseChunks.push(chunk);
-        }
         if ("usage" in chunk && chunk.usage != null) {
           usage = chunk.usage as ModelUsage;
         }
@@ -304,21 +256,6 @@ export class LlmStreamManager {
           }
         }
       }
-    } catch (error) {
-      this.logDebug(debug, {
-        timestamp: new Date().toISOString(),
-        location: debug?.location ?? "LlmStreamManager.createStream:stream",
-        requestId,
-        sessionId,
-        model: typeof request.model === "string" ? request.model : undefined,
-        baseURL,
-        durationMs: Date.now() - startedAtMs,
-        params: { ...debug?.params, options: summarizeCompletionOptions(options) },
-        request: streamRequest,
-        responseChunks,
-        error: normalizeDebugError(error),
-      });
-      throw error;
     } finally {
       this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
     }
@@ -341,17 +278,16 @@ export class LlmStreamManager {
       choices: [{ message }],
       usage,
     };
-    this.logDebug(debug, {
-      timestamp: new Date().toISOString(),
+    logLlmCompletion({
+      enabled: debug?.enabled,
       location: debug?.location ?? "LlmStreamManager.createStream",
       requestId,
       sessionId,
       model: typeof request.model === "string" ? request.model : undefined,
       baseURL,
       durationMs: Date.now() - startedAtMs,
-      params: { ...debug?.params, options: summarizeCompletionOptions(options) },
+      params: debug?.params,
       request: streamRequest,
-      responseChunks,
       response: finalResponse,
     });
     return finalResponse;
@@ -378,15 +314,4 @@ export class LlmStreamManager {
     }>;
   }
 
-  // ─── 调试日志 ──────────────────────────────────────────
-
-  private logDebug(
-    debug: ChatCompletionDebugOptions | undefined,
-    entry: Parameters<typeof logOpenAIChatCompletionDebug>[0]
-  ): void {
-    if (!debug?.enabled) {
-      return;
-    }
-    logOpenAIChatCompletionDebug(entry);
-  }
 }

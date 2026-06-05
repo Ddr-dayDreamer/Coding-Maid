@@ -33,71 +33,17 @@ export function logOpenAIChatCompletionDebug(entry: OpenAIChatCompletionDebugEnt
   }
 }
 
-/**
- * 通用调试日志条目
- */
-export type DebugLogEntry = {
-  timestamp: string;
-  location: string;
-  sessionId?: string;
-  message: string;
-  data?: unknown;
-};
-
-/**
- * 通用调试日志（受 codingmaid.debugEnabled 控制）
- *
- * 用法：
- * ```ts
- * import { logDebug } from "./common/debug-logger";
- * logDebug("handleRestoreSession", "消息已找到", { sessionId, messageId });
- * ```
- *
- * 输出的 JSONL 在 ~/.codingmaid/logs/debug.log，每行一条。
- */
-export function logDebug(location: string, message: string, data?: Record<string, unknown>): void {
-  const entry: DebugLogEntry = {
-    timestamp: new Date().toISOString(),
-    location,
-    sessionId: data?.sessionId as string | undefined,
-    message,
-    data,
-  };
-  logOpenAIChatCompletionDebug({
-    timestamp: entry.timestamp,
-    location: entry.location,
-    sessionId: entry.sessionId,
-    request: { message: entry.message, ...(entry.data ?? {}) },
-  });
-}
-
 export function getDebugLogPath(): string {
   return path.join(os.homedir(), ".codingmaid", "logs", DEBUG_LOG_FILE);
 }
 
 // ─── Prompt 调试日志 ──────────────────────────────────────
 
-const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
-
 /**
- * 轮转日志文件：超过大小时将旧文件重命名为 .1
- */
-function rotateLogFile(filePath: string): void {
-  try {
-    const stat = fs.statSync(filePath);
-    if (stat.size < MAX_LOG_SIZE) return;
-    const rotated = filePath + ".1";
-    try { fs.unlinkSync(rotated); } catch { /* 可能不存在 */ }
-    fs.renameSync(filePath, rotated);
-  } catch {
-    // 文件还不存在，忽略
-  }
-}
-
-/**
- * 写入完整的 LLM 请求结构到 prompt-debug.log
+ * 写入 LLM 请求结构到独立的 prompt 文件
  *
- * 每次 LLM 调用写入一段可读格式的日志，包含时间戳和完整请求体。
+ * 每次调用新建一个文件 prompt-{sessionId}-i{iteration}.json，
+ * 避免单个文件过大难以浏览。
  * 通过 `codingmaid.debugEnabled: true` 启用。
  */
 export function logPromptDebug(
@@ -106,14 +52,12 @@ export function logPromptDebug(
   sessionId: string
 ): void {
   try {
-    const logDir = path.join(os.homedir(), ".codingmaid", "logs");
+    const logDir = path.join(os.homedir(), ".codingmaid", "logs", "prompts");
     fs.mkdirSync(logDir, { recursive: true });
-    const logPath = path.join(logDir, "prompt-debug.log");
-    rotateLogFile(logPath);
-    const header = `[${new Date().toISOString()}] Session: ${sessionId}  Iteration: ${iteration}`;
-    const separator = "─".repeat(60);
+    const safeId = sessionId.replace(/[<>:"/\\|?*]/g, "_");
+    const logPath = path.join(logDir, `prompt-${safeId}-i${iteration}.json`);
     const body = JSON.stringify(toSerializable(fullRequest), null, 2);
-    fs.appendFileSync(logPath, `${separator}\n${header}\n${separator}\n${body}\n\n`, "utf8");
+    fs.writeFileSync(logPath, body, "utf8");
   } catch {
     // Debug logging must never affect runtime behavior.
   }
@@ -131,6 +75,50 @@ export function normalizeDebugError(error: unknown): { name: string; message: st
     name: "UnknownError",
     message: String(error),
   };
+}
+
+// ─── LLM 流式完成调试日志 ──────────────────────────────
+
+/**
+ * LLM 流式完成调试日志选项（只记录最终结果，不含流式中间 chunk）
+ */
+export type LlmCompletionDebugOptions = {
+  enabled?: boolean;
+  location: string;
+  requestId?: string;
+  sessionId?: string;
+  model?: string;
+  baseURL?: string;
+  durationMs?: number;
+  params?: Record<string, unknown>;
+  request: Record<string, unknown>;
+};
+
+/**
+ * 记录 LLM 完成调试日志（受 enabled 控制）
+ *
+ * 只记录最终回复内容，不含流式中间 chunk，避免日志过于冗长。
+ */
+export function logLlmCompletion(
+  ctx: LlmCompletionDebugOptions & {
+    response?: unknown;
+    error?: { name: string; message: string; stack?: string };
+  }
+): void {
+  if (!ctx.enabled) return;
+  logOpenAIChatCompletionDebug({
+    timestamp: new Date().toISOString(),
+    location: ctx.location,
+    requestId: ctx.requestId,
+    sessionId: ctx.sessionId,
+    model: ctx.model,
+    baseURL: ctx.baseURL,
+    durationMs: ctx.durationMs,
+    params: ctx.params,
+    request: ctx.request,
+    response: ctx.response,
+    error: ctx.error,
+  });
 }
 
 function toSerializable(value: unknown): unknown {

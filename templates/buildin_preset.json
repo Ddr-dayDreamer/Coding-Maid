@@ -25,33 +25,33 @@
     },
     {
       "name": "skill_agent-drift-guard/技能-防止跑题",
-      "role": "system",
+      "role": "user",
       "content": "{{skill.agent-drift-guard}}",
       "enabled": true
     },
     {
       "name": "skill_plan-and-execute/技能-计划与执行",
-      "role": "system",
+      "role": "user",
       "content": "{{skill.plan-and-execute}}",
       "enabled": true
     },
     {
       "name": "your env/运行环境",
-      "role": "system",
-      "content": "current environment: \n{{runtime_context}}  {{date}}",
+      "role": "user",
+      "content": "<system>:current environment: \n{{runtime_context}}  {{date}}",
       "enabled": true
     },
     {
       "name": "time/时间",
-      "role": "system",
-      "content": "current time: \n{{date}}",
+      "role": "user",
+      "content": "<system>:current time: \n{{date}}",
       "enabled": true
     },
     {
       "name": "project commands/项目指令",
-      "role": "system",
+      "role": "user",
       "content": "{{agents_md}}",
-      "enabled": true
+      "enabled": false
     }
   ]
 }

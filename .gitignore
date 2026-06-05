@@ -7,3 +7,5 @@ deploy.ps1
 rfc
 resources/webview/bundle.js
 dist/
+.deprecated/
+.github/
