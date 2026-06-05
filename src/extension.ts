@@ -26,10 +26,10 @@ import {
   getActiveProfile,
   createProfileFromTemplate,
   type ConnectionProfile,
-} from "./common/connection-profiles";
-import { getActivePreset, setActivePreset } from "./common/global-settings";
-import { setShellIfWindows } from "./common/shell-utils";
-import { generateEncryptionKey, deriveKeyFromSeed } from "./common/crypto-utils";
+} from "./utils/connection-profiles";
+import { getActivePreset, setActivePreset } from "./utils/global-settings";
+import { setShellIfWindows } from "./utils/shell-utils";
+import { generateEncryptionKey, deriveKeyFromSeed } from "./utils/crypto-utils";
 
 const CRYPTO_KEY_STORAGE_KEY = "codingmaid.cryptoKey";
 
@@ -122,6 +122,7 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     this.registerHandler("importPreset", this.handleImportPreset);
 
     // 连接配置管理
+    this.registerHandler("attachFiles", this.handleAttachFiles);
     this.registerHandler("listProfiles", this.handleListProfiles);
     this.registerHandler("getProfile", this.handleGetProfile);
     this.registerHandler("deleteProfile", this.handleDeleteProfile);
@@ -389,6 +390,13 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     if (sessionId && messageId) await this.handleRestoreSession(sessionId, messageId);
   };
 
+  private handleAttachFiles = async (message: Record<string, unknown>): Promise<void> => {
+    const filePaths = message.filePaths;
+    if (Array.isArray(filePaths)) {
+      this.sessionManager.setAttachedFiles(filePaths.map(String));
+    }
+  };
+
   private handlePrompt(prompt: string): Promise<void> {
     return this._handlePromptWithImages(prompt, []);
   }
@@ -400,6 +408,10 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     const displayPrompt = prompt || (imageUrls.length > 0 ? "粘贴的图像" : "");
     webview.postMessage({ type: "userMessage", content: displayPrompt });
     webview.postMessage({ type: "loading", value: true });
+
+    // 捕获编辑器状态，供宏使用
+    this.sessionManager.setEditorSelection(this.captureEditorSelection());
+    this.sessionManager.setActiveFile(this.captureActiveFile());
 
     try {
       const userPrompt: UserPromptContent = { text: prompt, imageUrls };
@@ -750,6 +762,31 @@ class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       return workspace.uri.fsPath;
     }
     return process.cwd();
+  }
+
+  /**
+   * 捕获当前 VS Code 编辑器中的选中位置（文件路径 + 行号范围）。
+   * 无选中时返回 undefined。
+   */
+  private captureEditorSelection(): { filePath: string; startLine: number; endLine: number } | undefined {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.selection.isEmpty) return undefined;
+
+    const document = editor.document;
+    const selection = editor.selection;
+
+    return {
+      filePath: document.uri.fsPath,
+      startLine: selection.start.line + 1, // 1-based
+      endLine: selection.end.line + 1,     // 1-based
+    };
+  }
+
+  /** 捕获当前活动编辑器的文件路径，无活动编辑器时返回 undefined */
+  private captureActiveFile(): string | undefined {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return undefined;
+    return editor.document.uri.fsPath;
   }
 
   private serializeProcesses(

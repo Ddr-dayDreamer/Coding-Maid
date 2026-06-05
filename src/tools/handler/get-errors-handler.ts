@@ -8,7 +8,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
-import { posixPathToWindowsPath } from "../../common/shell-utils";
+import { posixPathToWindowsPath } from "../../utils/shell-utils";
 
 export async function handleGetErrors(
   args: Record<string, unknown>,

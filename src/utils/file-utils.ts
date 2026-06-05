@@ -141,3 +141,74 @@ function toDiffLines(content: string | null): string[] {
   }
   return lines;
 }
+
+// ─── 文件读取 + 行数控制（供宏引擎使用） ──────────────────
+
+export type ReadFileContentOptions = {
+  /** 文件绝对路径 */
+  filePath: string;
+  /** 起始行（1-based），不传则从第一行开始 */
+  startLine?: number;
+  /** 结束行（1-based，含），不传则到最后一行 */
+  endLine?: number;
+  /** 超过此行数时截断，默认 100 */
+  maxLines?: number;
+  /** 截断时保留的开头行数，默认 50 */
+  headLines?: number;
+  /** 截断时保留的末尾行数，默认 20 */
+  tailLines?: number;
+};
+
+export type ReadFileContentResult = {
+  /** 最终输出的文本内容 */
+  content: string;
+  /** 文件总行数 */
+  totalLines: number;
+  /** 是否被截断 */
+  truncated: boolean;
+  /** 省略的行数（仅截断时有效） */
+  omittedLines: number;
+};
+
+/**
+ * 读取文件并提取指定行范围，超过阈值时自动截断中间部分。
+ *
+ * 用于 {{editor_selection}}、{{active_file}}、{{attached_files}} 等宏，
+ * 保证确定性的输出以支持模型输入缓存。
+ */
+export function readFileContent(options: ReadFileContentOptions): ReadFileContentResult {
+  const { filePath, maxLines = 100, headLines = 50, tailLines = 20 } = options;
+  const raw = fs.readFileSync(filePath, "utf8");
+  const allLines = raw.split("\n");
+  const totalLines = allLines.length;
+
+  const startIdx = options.startLine ? Math.max(options.startLine - 1, 0) : 0;
+  const endIdx = options.endLine ? Math.min(options.endLine, totalLines) : totalLines;
+
+  if (startIdx >= endIdx) {
+    return { content: "", totalLines, truncated: false, omittedLines: 0 };
+  }
+
+  const rangeLines = allLines.slice(startIdx, endIdx);
+  const rangeTotal = rangeLines.length;
+
+  if (rangeTotal <= maxLines) {
+    return {
+      content: rangeLines.join("\n"),
+      totalLines,
+      truncated: false,
+      omittedLines: 0,
+    };
+  }
+
+  const omitted = rangeTotal - headLines - tailLines;
+  const head = rangeLines.slice(0, headLines);
+  const tail = rangeLines.slice(rangeTotal - tailLines);
+
+  return {
+    content: [...head, `// ... (${omitted} lines omitted) ...`, ...tail].join("\n"),
+    totalLines,
+    truncated: true,
+    omittedLines: omitted,
+  };
+}

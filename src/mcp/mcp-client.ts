@@ -4,7 +4,7 @@ import { createInterface } from "readline";
 import type { Interface } from "readline";
 import * as os from "os";
 import * as path from "path";
-import { killProcessTree } from "../common/process-tree";
+import { killProcessTree } from "../utils/process-tree";
 
 type JsonRpcRequest = {
   jsonrpc: "2.0";
@@ -137,7 +137,7 @@ export class McpClient {
 
       if (isWindows) {
         // On Windows, shell: true lets cmd.exe resolve the command via
-        // PATHEXT (npx â†’ npx.cmd, etc.) without blindly appending .cmd,
+        // PATHEXT (npx â†?npx.cmd, etc.) without blindly appending .cmd,
         // which would break absolute paths like process.execPath.
         this.process = spawn(this.command, args, {
           stdio: ["pipe", "pipe", "pipe"],
@@ -370,7 +370,7 @@ export class McpClient {
   }
 
   private handleSingleMessage(msg: object): void {
-    // Handle notifications (no id field â€” server-initiated)
+    // Handle notifications (no id field â€?server-initiated)
     if (!("id" in msg)) {
       const notification = msg as unknown as JsonRpcNotification;
       if (this.notificationHandler && typeof notification.method === "string") {

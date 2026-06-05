@@ -8247,7 +8247,11 @@ ${component_stack}
       },
       {
         group: "\u8FD0\u884C\u65F6",
-        items: ["{{runtime_context}}", "{{agents_md}}"]
+        items: [
+          "{{runtime_context}}",
+          "{{global_memory}}",
+          "{{repo_memory}}"
+        ]
       },
       {
         group: "\u53D8\u91CF",
@@ -8257,7 +8261,10 @@ ${component_stack}
           "{{model}}",
           "{{date}}",
           "{{time}}",
-          "{{workspace}}"
+          "{{workspace}}",
+          "{{editor_selection}}",
+          "{{active_file}}",
+          "{{attached_files}}"
         ]
       }
     ];

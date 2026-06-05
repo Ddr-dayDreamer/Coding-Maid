@@ -1,14 +1,14 @@
 /**
  * 文件历史/Checkpoint 管理
  *
- * 通过 GitFileHistory 实现 AI 文件变更的可撤回机制。
- * 从 session.ts 拆分。
+ * 通过 GitFileHistory 实现 AI 文件变更的可撤回机制�?
+ * �?session.ts 拆分�?
  */
 
 import * as path from "path";
-import { GitFileHistory } from "./common/file-history";
-import type { SessionMessage, UndoTarget } from "./session-types";
-import type { SessionStorage } from "./session-storage";
+import { GitFileHistory } from "../utils/file-history";
+import type { SessionMessage, UndoTarget } from "./types";
+import type { SessionStorage } from "./storage";
 
 // ─── SessionFileHistory ──────────────────────────────────
 
@@ -32,7 +32,7 @@ export class SessionFileHistory {
     return path.join(projectDir, "file-history", ".git");
   }
 
-  // ─── 会话初始化 ────────────────────────────────────────
+  // ─── 会话初始�?────────────────────────────────────────
 
   ensureSession(sessionId: string): string | undefined {
     return this.getFileHistory().ensureSession(sessionId);
@@ -97,11 +97,11 @@ export class SessionFileHistory {
     return message.role === "user" && message.visible;
   }
 
-  // ─── 删除会话（清理 git 分支） ────────────────────────
+  // ─── 删除会话（清�?git 分支�?────────────────────────
 
   /**
-   * 删除会话对应的 file-history git 分支。
-   * 在会话索引条目和消息文件删除后调用，避免 git 数据残留。
+   * 删除会话对应�?file-history git 分支�?
+   * 在会话索引条目和消息文件删除后调用，避免 git 数据残留�?
    */
   deleteSession(sessionId: string): void {
     this.getFileHistory().deleteSessionBranch(sessionId);
@@ -122,14 +122,14 @@ export class SessionFileHistory {
   }
 
   /**
-   * 统一回退到指定消息：先恢复文件 checkpoint，再截断对话。
-   * 文件恢复失败不阻塞对话回退。
+   * 统一回退到指定消息：先恢复文�?checkpoint，再截断对话�?
+   * 文件恢复失败不阻塞对话回退�?
    */
   rollbackToMessage(sessionId: string, messageId: string): { keptMessages: SessionMessage[]; checkpointHash?: string } {
     const messages = this.storage.listSessionMessages(sessionId);
     let targetIndex = messages.findIndex((message) => message.id === messageId);
 
-    // 如果精确 ID 找不到（前端临时 ID 场景），降级到最后一个用户消息
+    // 如果精确 ID 找不到（前端临时 ID 场景），降级到最后一个用户消�?
     if (targetIndex === -1) {
       for (let index = messages.length - 1; index >= 0; index -= 1) {
         if (messages[index]?.role === "user") {
@@ -146,7 +146,7 @@ export class SessionFileHistory {
     const targetMessage = messages[targetIndex];
     const checkpointHash = targetMessage?.checkpointHash;
 
-    // 先恢复文件（需要在截断对话之前读取 checkpointHash）
+    // 先恢复文件（需要在截断对话之前读取 checkpointHash�?
     if (checkpointHash) {
       try {
         this.restore(sessionId, checkpointHash);
@@ -155,7 +155,7 @@ export class SessionFileHistory {
       }
     }
 
-    // 再截断对话消息
+    // 再截断对话消�?
     const keptMessages = messages.slice(0, targetIndex);
     this.storage.saveSessionMessages(sessionId, keptMessages);
 

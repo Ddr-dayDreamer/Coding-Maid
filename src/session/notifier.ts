@@ -7,9 +7,9 @@
 
 import { spawn } from "child_process";
 import type { SpawnOptions } from "child_process";
-import type { SessionEntry } from "./session-types";
-import type { SessionStorage } from "./session-storage";
-import type { CreateOpenAIClient } from "./tools/types";
+import type { SessionEntry } from "./types";
+import type { SessionStorage } from "./storage";
+import type { CreateOpenAIClient } from "../tools/types";
 
 // ─── 桌面通知 ────────────────────────────────────────────
 

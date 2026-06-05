@@ -5,8 +5,8 @@
  */
 
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import type { CreateOpenAIClient, ProcessTimeoutControl, ProcessTimeoutInfo } from "./tools/types";
-import type { McpServerConfig } from "./settings";
+import type { CreateOpenAIClient, ProcessTimeoutControl, ProcessTimeoutInfo } from "../tools/types";
+import type { McpServerConfig } from "../settings";
 
 // ─── Session 状态 ────────────────────────────────────────
 
@@ -181,6 +181,16 @@ export type PresetMeta = {
 };
 
 /** 宏解析上下文 */
+/** {{editor_selection}} 宏所需 — 编辑器选中内容的定位信息 */
+export type EditorSelectionInfo = {
+  /** 文件绝对路径 */
+  filePath: string;
+  /** 选中起始行（1-based） */
+  startLine: number;
+  /** 选中结束行（1-based，含） */
+  endLine: number;
+};
+
 export type MacroContext = {
   projectRoot: string;
   model: string;
@@ -189,4 +199,10 @@ export type MacroContext = {
   charName?: string;
   /** {{user}} 默认值（优先级：setvar > 此字段 > "用户"） */
   userName?: string;
+  /** {{editor_selection}} — 当前 VS Code 编辑器中选中的位置 */
+  editorSelection?: EditorSelectionInfo;
+  /** {{active_file}} — 当前活动编辑器的文件路径 */
+  activeFile?: string;
+  /** {{attached_files}} — 用户拖拽/选择的附加文件路径列表 */
+  attachedFiles?: string[];
 };

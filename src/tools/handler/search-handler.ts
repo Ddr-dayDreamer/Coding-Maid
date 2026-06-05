@@ -13,7 +13,7 @@ import * as fs from "fs";
 import * as path from "path";
 import ignore from "ignore";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
-import { posixPathToWindowsPath } from "../../common/shell-utils";
+import { posixPathToWindowsPath } from "../../utils/shell-utils";
 
 // ─── 常量 ───────────────────────────────────────────────
 

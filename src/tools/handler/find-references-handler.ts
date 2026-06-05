@@ -1,25 +1,25 @@
 /**
- * find_references �?handler 实现
+ * find_references �?handler 实现
  *
- * 利用 VS Code Language Server 查找符号的引�?定义/实现�? * 需�?vscode 模块（extension host 提供）�? */
+ * 利用 VS Code Language Server 查找符号的引�?定义/实现�? * 需�?vscode 模块（extension host 提供）�? */
 
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
-import { posixPathToWindowsPath } from "../../common/shell-utils";
+import { posixPathToWindowsPath } from "../../utils/shell-utils";
 
 /**
- * 解析 filePath + lineContent 找到符号的精确位置。 */
+ * 解析 filePath + lineContent 找到符号的精确位置�?*/
 function resolveSymbolPosition(
   filePath: string,
   symbol: string,
   lineContent: string | undefined,
   projectRoot: string,
 ): { uri: vscode.Uri; position: vscode.Position } | { error: string } {
-  // 在 Windows 上归一化 Git Bash 风格路径
+  // �?Windows 上归一�?Git Bash 风格路径
   const normalizedPath = process.platform === "win32" ? posixPathToWindowsPath(filePath) : filePath;
-  // 解析为绝对路径
+  // 解析为绝对路�?
   const absPath = path.isAbsolute(normalizedPath) ? normalizedPath : path.resolve(projectRoot, normalizedPath);
   const normalized = path.resolve(absPath);
 
@@ -37,23 +37,23 @@ function resolveSymbolPosition(
 
   const lines = content.split("\n");
 
-  // 如果�?lineContent，用它定位行
+  // 如果�?lineContent，用它定位行
   if (lineContent) {
     const lowerLineContent = lineContent.toLowerCase();
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].toLowerCase().includes(lowerLineContent)) {
-        // 在该行中�?symbol 的列位置
+        // 在该行中�?symbol 的列位置
         const col = lines[i].indexOf(symbol, lines[i].toLowerCase().indexOf(lowerLineContent));
         if (col !== -1) {
           return { uri, position: new vscode.Position(i, col) };
         }
-        // lineContent 匹配了但 symbol 不在该行? 用行�?        return { uri, position: new vscode.Position(i, 0) };
+        // lineContent 匹配了但 symbol 不在该行? 用行�?        return { uri, position: new vscode.Position(i, 0) };
       }
     }
     return { error: `lineContent "${lineContent}" not found in ${normalized}` };
   }
 
-  // 没有 lineContent，在整个文件中搜�?symbol
+  // 没有 lineContent，在整个文件中搜�?symbol
   for (let i = 0; i < lines.length; i++) {
     const col = lines[i].indexOf(symbol);
     if (col !== -1) {

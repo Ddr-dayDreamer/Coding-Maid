@@ -16,7 +16,7 @@ import type {
   SessionProcessEntry,
   SessionStatus,
   ModelUsage,
-} from "./session-types";
+} from "./types";
 
 // ─── 常量 ────────────────────────────────────────────────
 

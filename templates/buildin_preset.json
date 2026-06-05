@@ -48,9 +48,9 @@
       "enabled": true
     },
     {
-      "name": "project commands/项目指令",
+      "name": "memory/记忆",
       "role": "user",
-      "content": "{{agents_md}}",
+      "content": "{{global_memory}}\n{{repo_memory}}",
       "enabled": false
     }
   ]

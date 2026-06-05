@@ -2,8 +2,8 @@ import * as fs from "fs";
 import * as path from "path";
 import ignore from "ignore";
 import type { ToolExecutionContext, ToolExecutionFollowUpMessage, ToolExecutionResult } from "../types";
-import { readTextFileWithMetadata } from "../../common/file-utils";
-import { createSnippet, isAbsoluteFilePath, markFileRead, normalizeFilePath } from "../../common/state";
+import { readTextFileWithMetadata } from "../../utils/file-utils";
+import { createSnippet, isAbsoluteFilePath, markFileRead, normalizeFilePath } from "../../utils/state";
 
 const DEFAULT_LINE_LIMIT = 2000;
 const MAX_LINE_LENGTH = 2000;

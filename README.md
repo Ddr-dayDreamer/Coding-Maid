@@ -85,13 +85,17 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 | `{{skill.agent-drift-guard}}` | 内建 skill 文档（agent-drift-guard）       |
 | `{{skill.plan-and-execute}}`  | 内建 skill 文档（plan-and-execute）        |
 | `{{runtime_context}}`         | 运行时环境信息（日期、系统、路径、版本等） |
-| `{{agents_md}}`               | AGENTS.md 指令内容                         |
+| `{{global_memory}}`          | 全局记忆目录中的文件内容                   |
+| `{{repo_memory}}`            | 项目记忆目录中的文件内容                   |
 | `{{date}}`                    | 当前日期                                   |
 | `{{time}}`                    | 当前准确时间                               |
 | `{{model}}`                   | 当前模型名                                 |
 | `{{user}}`                    | 当前用户名，在预设里自己定义               |
 | `{{char}}`                    | 当前角色名，在预设里自己定义               |
 | `{{workspace}}`               | 工作区路径                                 |
+| `{{editor_selection}}`        | 当前 VS Code 编辑器中选中内容（含定位）    |
+| `{{active_file}}`             | 当前活动编辑器的文件全文                   |
+| `{{attached_files}}`          | 用户附加的所有文件内容                     |
 | `{{setvar::key::val}}`        | 设置会话级变量                             |
 | `{{getvar::key}}`             | 读取会话级变量                             |
 

@@ -17,9 +17,9 @@ import * as os from "os";
 import * as crypto from "crypto";
 import { fileURLToPath } from "url";
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "openai/resources/chat/completions";
-import type { SessionMessage, SessionMessageRole, MessageMeta, UserPromptContent } from "./session-types";
-import type { SessionStorage } from "./session-storage";
-import type { SessionFileHistory } from "./session-file-history";
+import type { SessionMessage, SessionMessageRole, MessageMeta, UserPromptContent } from "./types";
+import type { SessionStorage } from "./storage";
+import type { SessionFileHistory } from "./file-history";
 
 // ─── 工具 ────────────────────────────────────────────────
 

@@ -6,9 +6,9 @@
  */
 
 import * as crypto from "crypto";
-import { logLlmCompletion } from "./common/debug-logger";
-import type { CreateOpenAIClient } from "./tools/types";
-import type { ModelUsage, LlmStreamProgress } from "./session-types";
+import { logLlmCompletion } from "../utils/debug-logger";
+import type { CreateOpenAIClient } from "../tools/types";
+import type { ModelUsage, LlmStreamProgress } from "../session/types";
 
 // ─── 工具函数 ────────────────────────────────────────────
 

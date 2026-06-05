@@ -1,25 +1,25 @@
 /**
- * rename_symbol — handler 实现
+ * rename_symbol �?handler 实现
  *
- * 利用 VS Code Language Server 跨文件安全重命名符号。
- * 需要 vscode 模块（extension host 提供）。
+ * 利用 VS Code Language Server 跨文件安全重命名符号�?
+ * 需�?vscode 模块（extension host 提供）�?
  */
 
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
-import { posixPathToWindowsPath } from "../../common/shell-utils";
+import { posixPathToWindowsPath } from "../../utils/shell-utils";
 
 /**
- * 解析 filePath + lineContent 找到符号的精确位置。 */
+ * 解析 filePath + lineContent 找到符号的精确位置�?*/
 function resolveSymbolPosition(
   filePath: string,
   symbol: string,
   lineContent: string,
   projectRoot: string,
 ): { uri: vscode.Uri; position: vscode.Position } | { error: string } {
-  // 在 Windows 上归一化 Git Bash 风格路径
+  // �?Windows 上归一�?Git Bash 风格路径
   const normalizedPath = process.platform === "win32" ? posixPathToWindowsPath(filePath) : filePath;
   const absPath = path.isAbsolute(normalizedPath) ? normalizedPath : path.resolve(projectRoot, normalizedPath);
   const normalized = path.resolve(absPath);
@@ -93,7 +93,7 @@ export async function handleRenameSymbol(
   }
 
   try {
-    // 调用 VS Code LSP 获取重命名编辑
+    // 调用 VS Code LSP 获取重命名编�?
     const edit = await vscode.commands.executeCommand<vscode.WorkspaceEdit | null>(
       "vscode.executeDocumentRename",
       resolved.uri,
@@ -125,9 +125,9 @@ export async function handleRenameSymbol(
       };
     }
 
-    // 格式化输出
+    // 格式化输�?
     const lines: string[] = [];
-    lines.push(`Renamed "${symbol}" → "${newName}" across ${affectedFiles} file${affectedFiles > 1 ? "s" : ""}:`);
+    lines.push(`Renamed "${symbol}" �?"${newName}" across ${affectedFiles} file${affectedFiles > 1 ? "s" : ""}:`);
     lines.push("");
 
     for (const [uri, textEdits] of changes) {

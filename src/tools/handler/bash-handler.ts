@@ -1,5 +1,5 @@
 import { spawn } from "child_process";
-import { killProcessTree } from "../../common/process-tree";
+import { killProcessTree } from "../../utils/process-tree";
 import type { ProcessTimeoutControl, ProcessTimeoutInfo, ToolExecutionContext, ToolExecutionResult } from "../types";
 import {
   buildDisableExtglobCommand,
@@ -8,7 +8,7 @@ import {
   resolveShellPath,
   rewriteWindowsNullRedirect,
   toNativeCwd,
-} from "../../common/shell-utils";
+} from "../../utils/shell-utils";
 
 const DEFAULT_BASH_TIMEOUT_MS = 10 * 60 * 1000;
 const MIN_BASH_TIMEOUT_MS = 60 * 1000;

@@ -11,10 +11,10 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import type { PresetDefinition, PresetEntry, PresetMeta, MacroContext, SessionMessage } from "./session-types";
-import type { SessionMessageBuilder } from "./session-message-builder";
-import { MacroEngine } from "./preset-macros";
-import { registry } from "./tools/index";
+import type { PresetDefinition, PresetEntry, PresetMeta, MacroContext, SessionMessage } from "../session/types";
+import type { SessionMessageBuilder } from "../session/message-builder";
+import { MacroEngine } from "./macros";
+import { registry } from "../tools/index";
 
 // ─── 常量 ────────────────────────────────────────────────
 

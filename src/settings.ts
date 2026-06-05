@@ -7,17 +7,17 @@ import {
   deleteProfile,
   setActiveProfile,
   ensureDefaultProfile,
-} from "./common/connection-profiles";
+} from "./utils/connection-profiles";
 import {
   type CodingMaidSettings,
   type McpServerConfig,
   loadGlobalSettings,
-} from "./common/global-settings";
+} from "./utils/global-settings";
 
 // ─── Re-export types for backward compatibility ─────────────────────────────
 
-export type { ReasoningEffort } from "./common/connection-profiles";
-export type { McpServerConfig } from "./common/global-settings";
+export type { ReasoningEffort } from "./utils/connection-profiles";
+export type { McpServerConfig } from "./utils/global-settings";
 
 /**
  * 解析后的运行时设置 — 由 resolveSettingsWithCryptoKey() 返回。
@@ -85,8 +85,8 @@ export {
   ensureDefaultProfile,
   ensureInitialConfig,
   migratePlaintextApiKeys,
-} from "./common/connection-profiles";
+} from "./utils/connection-profiles";
 
-export { loadGlobalSettings } from "./common/global-settings";
+export { loadGlobalSettings } from "./utils/global-settings";
 
-export type { CodingMaidSettings } from "./common/global-settings";
+export type { CodingMaidSettings } from "./utils/global-settings";

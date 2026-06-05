@@ -1,36 +1,36 @@
 /**
- * 会话管理器 — 编排层
+ * 会话管理�?�?编排�?
  *
- * 负责会话生命周期的协调，将具体操作委托给子模块。
+ * 负责会话生命周期的协调，将具体操作委托给子模块�?
  *
  * 子模块：
- * - SessionStorage          → 持久化
- * - SessionFileHistory      → 文件变更可撤回
- * - SessionProcessManager   → 进程追踪
- * - SessionMessageBuilder   → 消息构建 + OpenAI 装配
- * - LlmStreamManager        → LLM 流式调用
- * - SessionActivator        → LLM 主循环 + 上下文压缩
- * - SessionNotifier         → 提示上报 + 任务完成通知
+ * - SessionStorage          �?持久�?
+ * - SessionFileHistory      �?文件变更可撤�?
+ * - SessionProcessManager   �?进程追踪
+ * - SessionMessageBuilder   �?消息构建 + OpenAI 装配
+ * - LlmStreamManager        �?LLM 流式调用
+ * - SessionActivator        �?LLM 主循�?+ 上下文压�?
+ * - SessionNotifier         �?提示上报 + 任务完成通知
  */
 
 import * as crypto from "crypto";
-import { getExtensionRoot } from "./prompt";
-import type { ToolDefinition } from "./prompt";
-import { ToolExecutor } from "./tools/executor";
-import type { CreateOpenAIClient } from "./tools/types";
-import { McpManager } from "./mcp/mcp-manager";
-import type { McpServerConfig } from "./settings";
-import { getActivePreset } from "./common/global-settings";
-import { killProcessTree } from "./common/process-tree";
+import { getExtensionRoot } from "../prompt";
+import type { ToolDefinition } from "../prompt";
+import { ToolExecutor } from "../tools/executor";
+import type { CreateOpenAIClient } from "../tools/types";
+import { McpManager } from "../mcp/mcp-manager";
+import type { McpServerConfig } from "../settings";
+import { getActivePreset } from "../utils/global-settings";
+import { killProcessTree } from "../utils/process-tree";
 
-import { SessionStorage } from "./session-storage";
-import { SessionFileHistory } from "./session-file-history";
-import { SessionProcessManager } from "./session-process";
-import { SessionMessageBuilder } from "./session-message-builder";
-import { LlmStreamManager } from "./llm-stream";
-import { SessionActivator } from "./session-activator";
-import { SessionNotifier } from "./session-notify";
-import { PresetManager } from "./preset-manager";
+import { SessionStorage } from "./storage";
+import { SessionFileHistory } from "./file-history";
+import { SessionProcessManager } from "./process";
+import { SessionMessageBuilder } from "./message-builder";
+import { LlmStreamManager } from "../llm/stream";
+import { SessionActivator } from "./activator";
+import { SessionNotifier } from "./notifier";
+import { PresetManager } from "../preset/manager";
 import type {
   SessionMessage,
   SessionEntry,
@@ -40,7 +40,7 @@ import type {
   SessionManagerOptions,
   BashTimeoutAdjustment,
   UndoTarget,
-} from "./session-types";
+} from "./types";
 
 // ─── 类型 re-export ──────────────────────────────────────
 
@@ -58,7 +58,7 @@ export type {
   UserPromptContent,
   SessionManagerOptions,
   LlmStreamProgress,
-} from "./session-types";
+} from "./types";
 
 // ─── SessionManager ──────────────────────────────────────
 
@@ -83,7 +83,7 @@ export class SessionManager {
   private readonly onMcpStatusChanged?: () => void;
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
 
-  /* 子模块 */
+  /* 子模�?*/
   private readonly storage: SessionStorage;
   private readonly fileHistory: SessionFileHistory;
   private readonly processMgr: SessionProcessManager;
@@ -98,10 +98,17 @@ export class SessionManager {
   private readonly mcpManager = new McpManager();
   private mcpToolDefinitions: ToolDefinition[] = [];
 
-  /* 运行时状态 */
+  /** {{editor_selection}} 宏所需 — 由 extension.ts 在每次 prompt 前更新 */
+  private editorSelection: { filePath: string; startLine: number; endLine: number } | undefined;
+  /** {{active_file}} 宏所需 */
+  private activeFile: string | undefined;
+  /** {{attached_files}} 宏所需 */
+  private attachedFiles: string[] | undefined;
+
+  /* 运行时状�?*/
   private activeSessionId: string | null = null;
   private activePromptController: AbortController | null = null;
-  /** 由 runActivate 创建，供 interruptSession 中止 LLM 请求 */
+  /** �?runActivate 创建，供 interruptSession 中止 LLM 请求 */
   private readonly activationControllers = new Map<string, AbortController>();
 
   constructor(options: SessionManagerOptions) {
@@ -139,9 +146,9 @@ export class SessionManager {
     this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  MCP
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   async initMcpServers(servers?: Record<string, McpServerConfig>): Promise<void> {
     this.mcpManager.setOnToolsListChanged(() => {
@@ -165,9 +172,9 @@ export class SessionManager {
     this.mcpManager.disconnect();
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  会话状态
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
+  //  会话状�?
+  // ══════════════════════════════════════════════════════�?
 
   getActiveSessionId(): string | null {
     return this.activeSessionId;
@@ -175,6 +182,21 @@ export class SessionManager {
 
   setActiveSessionId(sessionId: string | null): void {
     this.activeSessionId = sessionId;
+  }
+
+  /** 设置当前编辑器选中位置（由 extension.ts 在每次 prompt 前调用） */
+  setEditorSelection(selection: { filePath: string; startLine: number; endLine: number } | undefined): void {
+    this.editorSelection = selection;
+  }
+
+  /** 设置当前活动文件路径（{{active_file}} 宏所需） */
+  setActiveFile(filePath: string | undefined): void {
+    this.activeFile = filePath;
+  }
+
+  /** 设置附加文件路径列表（{{attached_files}} 宏所需） */
+  setAttachedFiles(filePaths: string[] | undefined): void {
+    this.attachedFiles = filePaths;
   }
 
   addSessionSystemMessage(
@@ -188,9 +210,9 @@ export class SessionManager {
     this.onAssistantMessage(message, false);
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  用户提示词处理
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
+  //  用户提示词处�?
+  // ══════════════════════════════════════════════════════�?
 
   async handleUserPrompt(userPrompt: UserPromptContent): Promise<void> {
     console.log("[DEBUG] handleUserPrompt enter", JSON.stringify({ text: userPrompt.text?.slice(0, 50) }));
@@ -215,13 +237,13 @@ export class SessionManager {
     }
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  创建会话
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   /**
-   * 创建会话索引（同步，不触发 LLM）。
-   * 消息发送统一由 sendMessage 处理。
+   * 创建会话索引（同步，不触�?LLM）�?
+   * 消息发送统一�?sendMessage 处理�?
    */
   createSession(userPrompt: UserPromptContent): string {
     this.notifier.reportNewPrompt();
@@ -260,13 +282,13 @@ export class SessionManager {
     return sessionId;
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  回复会话
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   /**
-   * 统一发送消息（首次和后续对话共用）。
-   * 不负责创建会话索引，由调用方保证 session 已存在。
+   * 统一发送消息（首次和后续对话共用）�?
+   * 不负责创建会话索引，由调用方保证 session 已存在�?
    */
   async sendMessage(
     sessionId: string,
@@ -277,7 +299,7 @@ export class SessionManager {
     this.throwIfAborted(signal);
     const now = new Date().toISOString();
 
-    // 更新会话状态
+    // 更新会话状�?
     this.storage.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
       status: "pending",
@@ -285,7 +307,7 @@ export class SessionManager {
       updateTime: now,
     }));
 
-    // /continue → 直接继续 LLM 主循环，不加新消息
+    // /continue �?直接继续 LLM 主循环，不加新消�?
     if (this.isContinuePrompt(userPrompt)) {
       await this.runActivate(sessionId, controller);
       return;
@@ -295,10 +317,10 @@ export class SessionManager {
     this.fileHistory.ensureSession(sessionId);
 
     console.log("[DEBUG] sendMessage: appending user msg, sessionId =", sessionId);
-    // 增量保存：只追加用户消息，预设由 SessionActivator 运行时注入
+    // 增量保存：只追加用户消息，预设由 SessionActivator 运行时注�?
     const newUserMsg = this.messageBuilder.buildUserMessage(sessionId, userPrompt);
     this.storage.appendSessionMessage(sessionId, newUserMsg);
-    // 将真实消息（含 checkpointHash）发回前端，替换本地创建的假气泡
+    // 将真实消息（�?checkpointHash）发回前端，替换本地创建的假气泡
     this.onAssistantMessage(newUserMsg, false);
     console.log("[DEBUG] sendMessage: user msg appended, calling runActivate");
 
@@ -308,8 +330,8 @@ export class SessionManager {
   }
 
   /**
-   * 回复会话（公开接口，委托给 sendMessage）。
-   * 如 session 不存在则自动创建。
+   * 回复会话（公开接口，委托给 sendMessage）�?
+   * �?session 不存在则自动创建�?
    */
   async replySession(
     sessionId: string,
@@ -325,14 +347,14 @@ export class SessionManager {
   }
 
   /**
-   * 激活会话主循环（公开供测试 mock）
-   * 委托给 SessionActivator.activate()
+   * 激活会话主循环（公开供测�?mock�?
+   * 委托�?SessionActivator.activate()
    */
   async activateSession(sessionId: string, controller?: AbortController): Promise<void> {
     await this.runActivate(sessionId, controller);
   }
 
-  /** 委托给 SessionActivator 执行主循环 */
+  /** 委托�?SessionActivator 执行主循�?*/
   private async runActivate(sessionId: string, controller?: AbortController): Promise<void> {
     const ctrl = controller ?? new AbortController();
     this.activationControllers.set(sessionId, ctrl);
@@ -348,15 +370,18 @@ export class SessionManager {
         debugEnabled: this.getResolvedSettings().debugEnabled,
         presetMgr: this.presetMgr,
         activePreset: getActivePreset(),
+        editorSelection: this.editorSelection,
+        activeFile: this.activeFile,
+        attachedFiles: this.attachedFiles,
       });
     } finally {
       this.activationControllers.delete(sessionId);
     }
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  中断
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   interruptActiveSession(): void {
     this.activePromptController?.abort();
@@ -397,9 +422,9 @@ export class SessionManager {
     this.onAssistantMessage(this.messageBuilder.buildUserMessage(sessionId, { text: contentParts.join(" ") }), false);
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  Bash 超时调整
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   adjustActiveBashTimeout(deltaMs: number): BashTimeoutAdjustment | null {
     const sessionId = this.activeSessionId;
@@ -429,9 +454,9 @@ export class SessionManager {
     return this.processMgr.buildAdjustment(selectedPid, adjustment.info);
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  查询
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   listSessions(): SessionEntry[] {
     return this.storage.loadSessionsIndex().entries;
@@ -472,9 +497,9 @@ export class SessionManager {
     return keptMessages;
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  工具消息追加
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   private async appendToolMessages(sessionId: string, toolCalls: unknown[]): Promise<{ waitingForUser: boolean }> {
     const toolExecutions = await this.toolExecutor.executeToolCalls(sessionId, toolCalls, {
@@ -543,9 +568,9 @@ export class SessionManager {
     return { waitingForUser };
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  删除会话
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   /**
    * 删除指定会话：从索引移除 + 删除消息文件
@@ -554,16 +579,16 @@ export class SessionManager {
   deleteSession(sessionId: string): SessionEntry[] {
     this.storage.deleteSession(sessionId);
     this.fileHistory.deleteSession(sessionId);
-    // 如果删除的是当前活跃会话，清空
+    // 如果删除的是当前活跃会话，清�?
     if (this.activeSessionId === sessionId) {
       this.activeSessionId = null;
     }
     return this.listSessions();
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
   //  内部工具
-  // ═══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════�?
 
   private getPromptToolOptions(): { model: string; availableTools?: string[] } {
     const base = { model: this.getResolvedSettings().model };

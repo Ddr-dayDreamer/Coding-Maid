@@ -1,14 +1,14 @@
 import * as fs from "fs";
 import { z } from "zod";
-import { buildThinkingRequestOptions } from "../../common/openai-thinking";
+import { buildThinkingRequestOptions } from "../../utils/openai-thinking";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
 import {
   buildDiffPreview,
   hasFileChangedSinceState,
   readTextFileWithMetadata,
   writeTextFile,
-} from "../../common/file-utils";
-import { executeValidatedTool, semanticBoolean } from "../../common/runtime";
+} from "../../utils/file-utils";
+import { executeValidatedTool, semanticBoolean } from "../../utils/runtime";
 import {
   createSnippet,
   getFileState,
@@ -18,7 +18,7 @@ import {
   isFullFileView,
   normalizeFilePath,
   recordFileState,
-} from "../../common/state";
+} from "../../utils/state";
 
 const MAX_CANDIDATE_COUNT = 5;
 const REPLACE_ALL_MATCH_THRESHOLD = 5;

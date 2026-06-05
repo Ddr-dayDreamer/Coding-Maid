@@ -6,18 +6,18 @@
  */
 
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { buildThinkingRequestOptions } from "./common/openai-thinking";
-import { getExtensionRoot, getTools } from "./prompt";
-import type { ToolDefinition } from "./prompt";
-import type { CreateOpenAIClient } from "./tools/types";
-import type { SessionStorage } from "./session-storage";
-import type { SessionMessageBuilder } from "./session-message-builder";
-import type { SessionNotifier } from "./session-notify";
-import type { SessionEntry, SessionMessage } from "./session-types";
-import type { LlmStreamManager } from "./llm-stream";
-import { accumulateUsage } from "./llm-stream";
-import { logPromptDebug } from "./common/debug-logger";
-import type { PresetManager } from "./preset-manager";
+import { buildThinkingRequestOptions } from "../utils/openai-thinking";
+import { getExtensionRoot, getTools } from "../prompt";
+import type { ToolDefinition } from "../prompt";
+import type { CreateOpenAIClient } from "../tools/types";
+import type { SessionStorage } from "./storage";
+import type { SessionMessageBuilder } from "./message-builder";
+import type { SessionNotifier } from "./notifier";
+import type { SessionEntry, SessionMessage } from "./types";
+import type { LlmStreamManager } from "../llm/stream";
+import { accumulateUsage } from "../llm/stream";
+import { logPromptDebug } from "../utils/debug-logger";
+import type { PresetManager } from "../preset/manager";
 
 // ─── Activate 选项 ───────────────────────────────────────
 
@@ -35,6 +35,12 @@ export type ActivateOptions = {
   debugEnabled: boolean;
   /** 通知回调，用于向前端推送非消息类的提示（如错误通知） */
   onNotify?: (level: "success" | "error" | "warning" | "info", text: string, duration?: number) => void;
+  /** {{editor_selection}} 宏所需 — 当前 VS Code 编辑器中选中的位置 */
+  editorSelection?: { filePath: string; startLine: number; endLine: number };
+  /** {{active_file}} 宏所需 — 当前活动编辑器文件路径 */
+  activeFile?: string;
+  /** {{attached_files}} 宏所需 — 用户附加的文件路径列表 */
+  attachedFiles?: string[];
 };
 
 // ─── SessionActivator ────────────────────────────────────
@@ -179,6 +185,9 @@ export class SessionActivator {
           projectRoot: this.projectRoot,
           model: promptToolOptions.model,
           extensionRoot: getExtensionRoot(),
+          editorSelection: opts.editorSelection,
+          activeFile: opts.activeFile,
+          attachedFiles: opts.attachedFiles,
         };
         let renderedEntries;
         try {

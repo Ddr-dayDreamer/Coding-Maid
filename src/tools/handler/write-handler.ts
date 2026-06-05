@@ -8,9 +8,9 @@ import {
   normalizeContent,
   readTextFileWithMetadata,
   writeTextFile,
-} from "../../common/file-utils";
-import { executeValidatedTool } from "../../common/runtime";
-import { getFileState, isAbsoluteFilePath, isFullFileView, normalizeFilePath, recordFileState } from "../../common/state";
+} from "../../utils/file-utils";
+import { executeValidatedTool } from "../../utils/runtime";
+import { getFileState, isAbsoluteFilePath, isFullFileView, normalizeFilePath, recordFileState } from "../../utils/state";
 
 const writeSchema = z.strictObject({
   file_path: z.string().min(1, "file_path is required."),
