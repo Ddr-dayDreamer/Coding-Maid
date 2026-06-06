@@ -17,7 +17,7 @@ import * as os from "os";
 import * as crypto from "crypto";
 import { fileURLToPath } from "url";
 import type { ChatCompletionMessageParam, ChatCompletionContentPart } from "openai/resources/chat/completions";
-import type { SessionMessage, SessionMessageRole, MessageMeta, UserPromptContent } from "./types";
+import type { SessionMessage, SessionMessageRole, MessageMeta, UserPromptContent, PendingApprovalItem } from "./types";
 import type { SessionStorage } from "./storage";
 import type { SessionFileHistory } from "./file-history";
 
@@ -159,6 +159,45 @@ export class SessionMessageBuilder {
         function: toolFunction ?? undefined,
         paramsMd,
         resultMd,
+      },
+    };
+  }
+
+  /**
+   * 构建待审批工具调用的提示消息。
+   * 此消息会展示在前端，供用户查看和审批。不存入会话消息历史。
+   */
+  buildToolApprovalMessage(sessionId: string, pendingApprovals: PendingApprovalItem[]): SessionMessage {
+    const now = new Date().toISOString();
+    const content = JSON.stringify(
+      {
+        ok: true,
+        name: pendingApprovals.length === 1 ? pendingApprovals[0].toolName : "multiple",
+        metadata: {
+          kind: "tool_approval",
+          pendingApprovals: pendingApprovals.map((p) => ({
+            toolCallId: p.toolCallId,
+            toolName: p.toolName,
+            params: p.params,
+            summary: p.summary,
+          })),
+        },
+      },
+      null,
+      2
+    );
+    return {
+      id: crypto.randomUUID(),
+      sessionId,
+      role: "tool",
+      content,
+      contentParams: null,
+      messageParams: null,
+      visible: true,
+      createTime: now,
+      updateTime: now,
+      meta: {
+        paramsMd: pendingApprovals.length === 1 ? pendingApprovals[0].summary : `${pendingApprovals.length} 个工具待审批`,
       },
     };
   }

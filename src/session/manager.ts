@@ -17,6 +17,7 @@ import * as crypto from "crypto";
 import { getExtensionRoot } from "../prompt";
 import type { ToolDefinition } from "../prompt";
 import { ToolExecutor } from "../tools/executor";
+import { registry } from "../tools/index";
 import type { CreateOpenAIClient } from "../tools/types";
 import { McpManager } from "../mcp/mcp-manager";
 import type { McpServerConfig } from "../settings";
@@ -40,6 +41,7 @@ import type {
   SessionManagerOptions,
   BashTimeoutAdjustment,
   UndoTarget,
+  PendingApprovalItem,
 } from "./types";
 
 // ─── 类型 re-export ──────────────────────────────────────
@@ -534,6 +536,41 @@ export class SessionManager {
   // ══════════════════════════════════════════════════════�?
 
   private async appendToolMessages(sessionId: string, toolCalls: unknown[]): Promise<{ waitingForUser: boolean }> {
+    // ── 审批检查：先看是否有工具需要审批 ──
+    const pendingApprovals: PendingApprovalItem[] = [];
+    for (const tc of toolCalls) {
+      const parsed = this.toolExecutor.parseToolCallForApproval(tc);
+      if (parsed) {
+        const check = registry.checkApproval(parsed.name, parsed.rawArguments);
+        if (check.requiresApproval) {
+          pendingApprovals.push({
+            toolCallId: parsed.id,
+            toolName: parsed.name,
+            params: check.parsedArgs,
+            summary: check.summary,
+          });
+        }
+      }
+    }
+
+    if (pendingApprovals.length > 0) {
+      // 存到会话索引中（不存消息），等待用户审批
+      this.storage.updateSessionEntry(sessionId, (entry) => ({
+        ...entry,
+        pendingApprovals,
+        status: "waiting_for_user",
+        updateTime: new Date().toISOString(),
+      }));
+      this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+
+      // 仅推送给前端展示，不落盘（避免恢复会话时出现过期审批卡片）
+      const approvalMessage = this.messageBuilder.buildToolApprovalMessage(sessionId, pendingApprovals);
+      this.onAssistantMessage(approvalMessage, true);
+
+      return { waitingForUser: true };
+    }
+
+    // ── 无需审批，直接执行 ──
     const toolExecutions = await this.toolExecutor.executeToolCalls(sessionId, toolCalls, {
       onProcessStart: (pid, command) => {
         const session = this.getSession(sessionId);
@@ -598,6 +635,83 @@ export class SessionManager {
     }
     for (const m of followUpMessages) this.storage.appendSessionMessage(sessionId, m);
     return { waitingForUser };
+  }
+
+  /**
+   * 处理用户对工具调用的审批决定。
+   * @param sessionId 会话 ID
+   * @param toolCallId 工具调用 ID
+   * @param action "approve" | "reject"
+   * @param modifiedArgs 用户修改后的参数（可选）
+   */
+  async handleToolApproval(
+    sessionId: string,
+    toolCallId: string,
+    action: "approve" | "reject",
+    modifiedArgs?: Record<string, unknown>
+  ): Promise<void> {
+    const session = this.getSession(sessionId);
+    if (!session?.pendingApprovals || session.pendingApprovals.length === 0) return;
+
+    // 查找对应的待审批项
+    const approvalItem = session.pendingApprovals.find((p) => p.toolCallId === toolCallId);
+    if (!approvalItem) return;
+
+    // 从会话中移除已处理的待审批项
+    const remaining = session.pendingApprovals.filter((p) => p.toolCallId !== toolCallId);
+    this.storage.updateSessionEntry(sessionId, (entry) => ({
+      ...entry,
+      pendingApprovals: remaining.length > 0 ? remaining : null,
+    }));
+
+    if (action === "reject") {
+      // 用户拒绝：注入一条 tool 结果消息，告诉 LLM 用户拒绝了此调用
+      const toolMessage = this.messageBuilder.buildToolMessage(
+        sessionId,
+        toolCallId,
+        JSON.stringify(
+          {
+            ok: false,
+            name: approvalItem.toolName,
+            error: "User rejected this tool call.",
+            metadata: { userRejected: true },
+          },
+          null,
+          2
+        ),
+        { name: approvalItem.toolName, arguments: JSON.stringify(approvalItem.params) }
+      );
+      this.storage.appendSessionMessage(sessionId, toolMessage);
+      this.onAssistantMessage(toolMessage, true);
+    } else {
+      // 用户批准：用原参数（或修改后的参数）构造 tool call 并执行
+      const rawArgs = modifiedArgs
+        ? JSON.stringify(modifiedArgs)
+        : JSON.stringify(approvalItem.params);
+      const toolCall = { id: toolCallId, type: "function" as const, function: { name: approvalItem.toolName, arguments: rawArgs } };
+      const result = await this.toolExecutor.executeToolCallRaw(sessionId, toolCall);
+      const toolMessage = this.messageBuilder.buildToolMessage(
+        sessionId,
+        toolCallId,
+        this.toolExecutor.formatToolResult(result),
+        { name: approvalItem.toolName, arguments: rawArgs }
+      );
+      this.storage.appendSessionMessage(sessionId, toolMessage);
+      this.onAssistantMessage(toolMessage, true);
+    }
+
+    // 如果所有待审批项都已处理，恢复 LLM 循环
+    if (remaining.length === 0) {
+      this.storage.updateSessionEntry(sessionId, (entry) => ({
+        ...entry,
+        status: "processing",
+        updateTime: new Date().toISOString(),
+      }));
+      this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+
+      // 继续 LLM 循环
+      await this.runActivate(sessionId);
+    }
   }
 
   // ══════════════════════════════════════════════════════�?

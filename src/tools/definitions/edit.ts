@@ -5,6 +5,7 @@
  */
 
 import { handleEditTool } from "../handler/edit-handler";
+import { editApprovalChecker } from "../approval-checkers";
 import type { ToolRegistration } from "../registry";
 
 export const editTool: ToolRegistration = {
@@ -50,6 +51,7 @@ export const editTool: ToolRegistration = {
     additionalProperties: false,
   },
   handler: handleEditTool,
+  approvalChecker: editApprovalChecker,
   doc: `## Edit
 
 Performs scoped string replacements in files.

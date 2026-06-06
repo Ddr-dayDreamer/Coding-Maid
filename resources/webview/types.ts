@@ -35,7 +35,9 @@ export type BackendMessage =
   | { type: "loading"; value: boolean }
   | { type: "llmStreamProgress"; progress: LlmStreamProgressData }
   | { type: "streamChunk"; sessionId?: string; content?: string; reasoningContent?: string }
-  | { type: "notify"; level: "success" | "error" | "warning" | "info"; text: string; duration?: number };
+  | { type: "notify"; level: "success" | "error" | "warning" | "info"; text: string; duration?: number }
+  // 审批消息
+  | { type: "approvalConfig"; config: Record<string, string> };
 
 // 前端 → 后端
 export type FrontendMessage =
@@ -47,7 +49,11 @@ export type FrontendMessage =
   | { type: "backToList" }
   | { type: "openFile"; filePath: string; line: number }
   | { type: "deleteSession"; sessionId: string }
-  | { type: "restoreSession"; sessionId: string; messageId: string };
+  | { type: "restoreSession"; sessionId: string; messageId: string }
+  // 审批消息
+  | { type: "approveTool"; toolCallId: string; action: "approve" | "reject"; modifiedArgs?: Record<string, unknown> }
+  | { type: "getApprovalConfig" }
+  | { type: "setApprovalConfig"; config: Record<string, string> };
 
 // ─── 数据类型 ────────────────────────────────────────────
 

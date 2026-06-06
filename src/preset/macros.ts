@@ -147,7 +147,12 @@ export class MacroEngine {
       return context.lastUserMessage ?? "";
     });
 
-    // 13. 简单替换
+    // 13. {{plan}} — 最近一次 UpdatePlan 提交的计划内容
+    result = result.replace(/\{\{plan\}\}/g, () => {
+      return context.plan ?? "";
+    });
+
+    // 14. 简单替换
     result = result.replace(/\{\{date\}\}/g, () => {
       return new Date().toLocaleDateString("zh-CN", {
         year: "numeric",

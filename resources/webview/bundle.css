@@ -429,6 +429,73 @@
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/PlanDisplay.esbuild-svelte-fake-css */
+.plan-display.svelte-uhf122 {
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--vscode-editor-background, rgba(128,128,128,0.04));
+  border: 1px solid var(--vscode-focusBorder);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.plan-header.svelte-uhf122 {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: var(--vscode-focusBorder);
+  color: var(--vscode-editor-background, #fff);
+  opacity: 0.85;
+}
+.plan-body.svelte-uhf122 {
+  padding: 6px 8px;
+}
+.task-item.svelte-uhf122 {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 1px 0;
+}
+.task-icon.svelte-uhf122 {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.task-text.svelte-uhf122 {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+.task-heading-1.svelte-uhf122 {
+  font-weight: 700;
+  font-size: 14px;
+  margin: 4px 0 2px;
+}
+.task-heading-2.svelte-uhf122 {
+  font-weight: 600;
+  font-size: 13px;
+  margin: 3px 0 1px;
+  color: var(--vscode-textLink-foreground);
+}
+.task-separator.svelte-uhf122 {
+  height: 4px;
+}
+.task-done.svelte-uhf122 .task-text:where(.svelte-uhf122) {
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+.task-progress.svelte-uhf122 .task-text:where(.svelte-uhf122) {
+  font-weight: 500;
+  color: var(--vscode-charts-orange, #d29922);
+}
+.task-blocked.svelte-uhf122 .task-text:where(.svelte-uhf122) {
+  color: var(--vscode-errorForeground, #f14c4c);
+}
+.task-pending.svelte-uhf122 .task-text:where(.svelte-uhf122) {
+  opacity: 0.85;
+}
+
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/ToolMessage.esbuild-svelte-fake-css */
 .bubble-tool.svelte-1gpypfo {
   display: flex;
@@ -477,6 +544,86 @@
   word-break: break-word;
   color: var(--vscode-foreground);
   border-bottom: 1px solid var(--vscode-focusBorder);
+}
+.approval-card.svelte-1gpypfo {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.plan-wrap.svelte-1gpypfo {
+  margin: 2px 0;
+}
+.approval-header.svelte-1gpypfo {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-charts-orange, #d29922);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+.approval-item.svelte-1gpypfo {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: var(--vscode-input-background, rgba(128,128,128,0.05));
+  border-radius: 4px;
+  border: 1px solid var(--vscode-focusBorder);
+}
+.approval-tool-name.svelte-1gpypfo {
+  font-weight: 600;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.approval-params.svelte-1gpypfo {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 4px 0;
+  padding: 4px 6px;
+  background: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.1));
+  border-radius: 3px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.approval-actions.svelte-1gpypfo {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+.btn-approve.svelte-1gpypfo,
+.btn-reject.svelte-1gpypfo {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-approve.svelte-1gpypfo {
+  background: var(--vscode-charts-green, #3fb950);
+  color: #fff;
+}
+.btn-reject.svelte-1gpypfo {
+  background: var(--vscode-charts-red, #f85149);
+  color: #fff;
+}
+.btn-approve.svelte-1gpypfo:hover,
+.btn-reject.svelte-1gpypfo:hover {
+  opacity: 0.85;
+}
+.btn-approve.svelte-1gpypfo:disabled,
+.btn-reject.svelte-1gpypfo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.approving-hint.svelte-1gpypfo {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
 }
 .tool-card.svelte-1gpypfo {
   font-size: 12px;
@@ -1980,6 +2127,163 @@ textarea.svelte-z2mbmf::placeholder {
 }
 .action-btn.primary.svelte-1no2ghb:hover {
   background: var(--vscode-button-hoverBackground);
+}
+
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/ApprovalPage.esbuild-svelte-fake-css */
+.approval-page.svelte-ccpdy5 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 8px 12px;
+  gap: 8px;
+}
+.page-header.svelte-ccpdy5 {
+  flex-shrink: 0;
+}
+.page-header.svelte-ccpdy5 h3:where(.svelte-ccpdy5) {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+.page-hint.svelte-ccpdy5 {
+  margin: 4px 0 0 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+.badge-require.svelte-ccpdy5 {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  background: var(--vscode-charts-orange, #d29922);
+  color: #fff;
+  font-weight: 600;
+}
+.loading-indicator.svelte-ccpdy5 {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 13px;
+}
+.spinner.svelte-ccpdy5 {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--vscode-focusBorder);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: svelte-ccpdy5-spin 0.6s linear infinite;
+}
+@keyframes svelte-ccpdy5-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.batch-actions.svelte-ccpdy5 {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn-batch.svelte-ccpdy5 {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--vscode-focusBorder);
+  background: var(--vscode-button-secondaryBackground, transparent);
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 3px;
+  text-align: center;
+}
+.btn-batch.svelte-ccpdy5:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+}
+.tool-list.svelte-ccpdy5 {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tool-row.svelte-ccpdy5 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+.tool-row.svelte-ccpdy5:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.tool-info.svelte-ccpdy5 {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.tool-name.svelte-ccpdy5 {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+.tool-label.svelte-ccpdy5 {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+.tool-control.svelte-ccpdy5 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.mode-indicator.svelte-ccpdy5 {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mode-select.svelte-ccpdy5 {
+  padding: 3px 6px;
+  border: 1px solid var(--vscode-dropdown-border, #444);
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  font-size: 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+.mode-select.svelte-ccpdy5:focus {
+  border-color: var(--vscode-focusBorder);
+}
+.save-bar.svelte-ccpdy5 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  flex-shrink: 0;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+.btn-save.svelte-ccpdy5 {
+  padding: 6px 16px;
+  border: none;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 3px;
+}
+.btn-save.svelte-ccpdy5:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+.save-hint.svelte-ccpdy5 {
+  font-size: 11px;
+  color: var(--vscode-charts-orange, #d29922);
 }
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/ToastNotification.esbuild-svelte-fake-css */

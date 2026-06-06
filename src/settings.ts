@@ -10,6 +10,8 @@ import {
 } from "./utils/connection-profiles";
 import {
   type CodingMaidSettings,
+  type ApprovalMode,
+  type ApprovalConfig,
   type McpServerConfig,
   loadGlobalSettings,
 } from "./utils/global-settings";
@@ -17,7 +19,7 @@ import {
 // ─── Re-export types for backward compatibility ─────────────────────────────
 
 export type { ReasoningEffort } from "./utils/connection-profiles";
-export type { McpServerConfig } from "./utils/global-settings";
+export type { ApprovalMode, ApprovalConfig, McpServerConfig } from "./utils/global-settings";
 
 /**
  * 解析后的运行时设置 — 由 resolveSettingsWithCryptoKey() 返回。
@@ -39,6 +41,8 @@ export type ResolvedSettings = {
   profileName: string;
   /** 当前激活的预设名称 */
   activePreset: string;
+  /** 工具审批配置 */
+  approvalConfig?: ApprovalConfig;
 };
 
 /**
@@ -67,6 +71,7 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSetting
     mcpServers: globalSettings.mcpServers,
     profileName: globalSettings.activeProfile || "default",
     activePreset: globalSettings.activePreset || "default",
+    approvalConfig: globalSettings.approvalConfig,
   };
 }
 

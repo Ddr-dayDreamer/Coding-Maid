@@ -10,6 +10,7 @@ import { registerSessionHandlers } from "./session";
 import { registerPresetHandlers } from "./preset";
 import { registerProfileHandlers } from "./profile";
 import { registerEditorHandlers } from "./editor";
+import { registerApprovalHandlers } from "./approval";
 
 export function registerAllHandlers(
   ctx: HandlerContext,
@@ -20,4 +21,5 @@ export function registerAllHandlers(
   registerSessionHandlers(ctx, registerHandler);
   registerPresetHandlers(ctx, registerHandler);
   registerProfileHandlers(ctx, registerHandler);
+  registerApprovalHandlers(ctx, registerHandler);
 }

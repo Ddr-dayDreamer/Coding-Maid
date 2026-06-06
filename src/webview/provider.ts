@@ -17,6 +17,7 @@ import * as os from "os";
 import OpenAI from "openai";
 import MarkdownIt from "markdown-it";
 import { SessionManager } from "../session/manager";
+import { registry } from "../tools/index";
 import { deriveKeyFromSeed } from "../utils/crypto-utils";
 import { setShellIfWindows } from "../utils/shell-utils";
 import {
@@ -88,6 +89,10 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     this.templatesDir = path.join(this.context.extensionUri.fsPath, "templates");
     this.initCryptoKey();
     ensureInitialConfig(this.templatesDir, this.getCryptoKey());
+
+    // 加载审批配置到 registry
+    const initialSettings = resolveSettingsWithCryptoKey(this.getCryptoKey());
+    registry.setApprovalConfig(initialSettings.approvalConfig);
 
     // 注册所有消息处理器
     const handlerCtx = this.buildHandlerContext();

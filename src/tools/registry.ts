@@ -12,7 +12,8 @@
  *   b. 在 src/tools/index.ts 加一行 register()
  */
 
-import type { ToolHandler, ToolExecutionContext, ToolExecutionResult } from "./types";
+import type { ToolHandler, ToolExecutionContext, ToolExecutionResult, ToolApprovalChecker } from "./types";
+import type { ApprovalMode, ApprovalConfig } from "../utils/global-settings";
 
 // ─── 类型定义 ───────────────────────────────────────────
 
@@ -44,6 +45,14 @@ export type ToolRegistration = {
   handler: ToolHandler;
   /** Markdown 文档 — 通过 {{tool.xxx}} 宏注入提示词 */
   doc: string;
+  /**
+   * 可选的工具级审批预检器。
+   * 在 checkApproval() 中被调用，可以返回：
+   * - allow:  直接放行（覆盖 settings 中的模式）
+   * - reject: 自动拦截，不执行，向 LLM 返回错误原因
+   * - require: 走正常审批流程（兜底）
+   */
+  approvalChecker?: ToolApprovalChecker;
 };
 
 // ─── ToolRegistry ────────────────────────────────────────
@@ -169,5 +178,127 @@ export class ToolRegistry {
   /** 获取所有注册的工具名 */
   getNames(): string[] {
     return [...this.tools.keys()];
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  审批配置
+  // ═══════════════════════════════════════════════════════
+
+  private approvalConfig: ApprovalConfig = {};
+
+  /** 设置审批配置（来自 settings.json） */
+  setApprovalConfig(config: ApprovalConfig | undefined): void {
+    this.approvalConfig = config ?? {};
+  }
+
+  /** 获取当前审批配置的快照 */
+  getApprovalConfig(): ApprovalConfig {
+    return { ...this.approvalConfig };
+  }
+
+  /**
+   * 获取某工具的审批模式。
+   * 未在 settings 中配置的工具 → 默认 "require"（安全优先）。
+   */
+  getApprovalMode(toolName: string): ApprovalMode {
+    const canonical = this.resolveName(toolName);
+    const configured = this.approvalConfig[canonical];
+    if (configured === "none" || configured === "require") {
+      return configured;
+    }
+    // 未配置 → 默认 require
+    return "require";
+  }
+
+  /**
+   * 检查工具调用是否需要审批。
+   * 返回是否需要审批 + 参数解析结果 + 人类可读摘要。
+   *
+   * 流程：
+   * 1. 先运行工具级 approvalChecker（如果有）→ 可能 allow / reject / require
+   * 2. 再查 settings 中的审批模式 → none / require
+   * 3. 综合决定是否拦截
+   */
+  checkApproval(
+    toolName: string,
+    rawArguments: string
+  ): {
+    requiresApproval: boolean;
+    autoReject: boolean;
+    rejectReason?: string;
+    parsedArgs: Record<string, unknown>;
+    summary: string;
+  } {
+    const canonical = this.resolveName(toolName);
+    const tool = this.tools.get(canonical);
+
+    // 解析参数（工具级检查器和展示都需要）
+    let parsedArgs: Record<string, unknown> = {};
+    try {
+      const parsed = JSON.parse(rawArguments);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        parsedArgs = parsed as Record<string, unknown>;
+      }
+    } catch {
+      // 参数解析失败，不阻断流程
+    }
+
+    // 1. 优先运行工具级审批预检器
+    if (tool?.approvalChecker) {
+      const checkResult = tool.approvalChecker(parsedArgs);
+      if (checkResult.action === "reject") {
+        return {
+          requiresApproval: false,
+          autoReject: true,
+          rejectReason: checkResult.reason,
+          parsedArgs,
+          summary: this.buildApprovalSummary(toolName, parsedArgs),
+        };
+      }
+      if (checkResult.action === "allow") {
+        return {
+          requiresApproval: false,
+          autoReject: false,
+          parsedArgs,
+          summary: this.buildApprovalSummary(toolName, parsedArgs),
+        };
+      }
+      // "require" → 继续走 settings 模式检查
+    }
+
+    // 2. 查 settings 中的审批模式
+    const mode = this.getApprovalMode(canonical);
+    if (mode === "none") {
+      return {
+        requiresApproval: false,
+        autoReject: false,
+        parsedArgs,
+        summary: this.buildApprovalSummary(toolName, parsedArgs),
+      };
+    }
+
+    return {
+      requiresApproval: true,
+      autoReject: false,
+      parsedArgs,
+      summary: this.buildApprovalSummary(toolName, parsedArgs),
+    };
+  }
+
+  private buildApprovalSummary(toolName: string, args: Record<string, unknown>): string {
+    switch (toolName) {
+      case "bash":
+        return String(args.command ?? "");
+      case "write":
+        return `写入 ${args.file_path ?? "?"}`;
+      case "edit":
+        return `编辑 ${args.file_path ?? "?"}`;
+      case "read":
+        return `读取 ${args.file_path ?? "?"}`;
+      case "search":
+        return `搜索: ${String(args.query ?? "").slice(0, 100)}`;
+      default:
+        return `${toolName}(${JSON.stringify(args).slice(0, 200)})`;
+    }
   }
 }

@@ -44,6 +44,20 @@ export type BashTimeoutAdjustment = {
   timedOut: boolean;
 };
 
+// ─── 待审批工具调用 ─────────────────────────────────────
+
+export type PendingApprovalItem = {
+  toolCallId: string;
+  toolName: string;
+  /** 解析后的参数 */
+  params: Record<string, unknown>;
+  /** 人类可读的摘要 */
+  summary: string;
+  /** 如果是预检器自动拒绝，记录原因 */
+  autoRejected?: boolean;
+  rejectReason?: string;
+};
+
 // ─── 会话索引条目 ────────────────────────────────────────
 
 export type SessionEntry = {
@@ -61,6 +75,8 @@ export type SessionEntry = {
   createTime: string;
   updateTime: string;
   processes: Map<string, SessionProcessEntry> | null;
+  /** 待审批的工具调用列表（用户审批后才执行） */
+  pendingApprovals?: PendingApprovalItem[] | null;
 };
 
 // ─── 会话索引 ────────────────────────────────────────────
@@ -209,4 +225,6 @@ export type MacroContext = {
   attachedSnippetContents?: Record<string, string>;
   /** {{lastUserMessage}} — 当前会话中最后一条用户消息原文 */
   lastUserMessage?: string;
+  /** {{plan}} — 最近一次 UpdatePlan 工具调用提交的计划内容（markdown） */
+  plan?: string;
 };

@@ -9,7 +9,7 @@ import type { SessionSummary, TokenTelemetry, LlmStreamProgressData, SessionMess
 
 // ─── Tab 页面 ────────────────────────────────────────────
 
-export type TabId = "chat" | "presets" | "profiles";
+export type TabId = "chat" | "presets" | "profiles" | "approvals";
 
 // ─── 全局状态 (class-based runes) ────────────────────────
 
@@ -58,6 +58,9 @@ class AppState {
 
   /** 当前使用的连接配置名称 */
   activeProfile = $state("default");
+
+  /** 审批配置（工具名 → 审批模式） */
+  approvalConfig = $state<Record<string, string>>({});
 
   /** 拖入的附加文件列表（前端展示用） */
   attachedFiles = $state<AttachedFile[]>([]);

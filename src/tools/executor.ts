@@ -101,9 +101,39 @@ export class ToolExecutor {
   private async executeToolCall(
     sessionId: string,
     toolCall: ToolCall,
-    hooks?: ToolExecutionHooks
+    hooks?: ToolExecutionHooks,
+    /** 跳过审批检查（审批通过后的执行路径） */
+    skipApprovalCheck?: boolean
   ): Promise<ToolExecutionResult> {
     const toolName = toolCall.function.name;
+
+    // ── 审批检查 ──
+    // 在执行前检查此工具是否需要用户审批，或是否被工具级预检器自动拒绝
+    if (!skipApprovalCheck) {
+      const approvalCheck = registry.checkApproval(toolName, toolCall.function.arguments);
+      if (approvalCheck.autoReject) {
+        return {
+          ok: false,
+          name: toolName,
+          error: approvalCheck.rejectReason ?? "Tool call was rejected by pre-check.",
+          autoReject: true,
+          autoRejectReason: approvalCheck.rejectReason,
+        };
+      }
+      if (approvalCheck.requiresApproval) {
+        return {
+          ok: true,
+          name: toolName,
+          pendingApproval: {
+            toolCallId: toolCall.id,
+            toolName,
+            params: approvalCheck.parsedArgs,
+            summary: approvalCheck.summary,
+          },
+          awaitUserResponse: true,
+        };
+      }
+    }
 
     // MCP 工具走独立路由
     if (this.mcpManager?.isMcpTool(toolName)) {
@@ -131,7 +161,33 @@ export class ToolExecutor {
     });
   }
 
-  private formatToolResult(result: ToolExecutionResult): string {
+  /**
+   * 解析 tool call 用于审批检查。
+   * 返回 { id, name, rawArguments } 或 null。
+   */
+  parseToolCallForApproval(toolCall: unknown): { id: string; name: string; rawArguments: string } | null {
+    if (!toolCall || typeof toolCall !== "object") return null;
+    const record = toolCall as { id?: unknown; function?: { name?: unknown; arguments?: unknown } };
+    if (typeof record.id !== "string") return null;
+    const fn = record.function;
+    if (!fn || typeof fn !== "object") return null;
+    if (typeof fn.name !== "string") return null;
+    return {
+      id: record.id,
+      name: fn.name,
+      rawArguments: typeof fn.arguments === "string" ? fn.arguments : "",
+    };
+  }
+
+  /**
+   * 公开版本：执行单个 tool call（用于审批后的执行）。
+   * 跳过审批检查，因为调用方已确保用户已批准。
+   */
+  async executeToolCallRaw(sessionId: string, toolCall: ToolCall): Promise<ToolExecutionResult> {
+    return this.executeToolCall(sessionId, toolCall, undefined, true);
+  }
+
+  formatToolResult(result: ToolExecutionResult): string {
     const payload: Record<string, unknown> = {
       ok: result.ok,
       name: result.name,
@@ -151,6 +207,11 @@ export class ToolExecutor {
 
     if (result.awaitUserResponse === true) {
       payload.awaitUserResponse = true;
+    }
+
+    if (result.autoReject === true) {
+      payload.autoReject = true;
+      payload.autoRejectReason = result.autoRejectReason;
     }
 
     return JSON.stringify(payload, null, 2);

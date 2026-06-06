@@ -226,6 +226,7 @@ export class SessionStorage {
       createTime: typeof value.createTime === "string" ? value.createTime : new Date().toISOString(),
       updateTime: typeof value.updateTime === "string" ? value.updateTime : new Date().toISOString(),
       processes: this.deserializeProcesses(value.processes),
+      pendingApprovals: Array.isArray(value.pendingApprovals) ? (value.pendingApprovals as import("./types").PendingApprovalItem[]) : null,
     };
   }
 

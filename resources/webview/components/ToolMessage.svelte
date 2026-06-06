@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SessionMessageData } from "../types";
   import { api } from "../lib/api";
+  import PlanDisplay from "./PlanDisplay.svelte";
 
   let {
     msg,
@@ -74,6 +75,40 @@
     api.send("userPrompt", { prompt: answers.join("\n") });
   }
 
+  // ─── 工具审批 ──────────────────────────────
+
+  let approving = $state<string | null>(null);
+
+  function isToolApproval(): boolean {
+    try {
+      const data = JSON.parse(msg.content ?? "{}") as Record<string, unknown>;
+      const meta = data.metadata as Record<string, unknown> | undefined;
+      return meta?.kind === "tool_approval";
+    } catch {
+      return false;
+    }
+  }
+
+  function getPendingApprovals(): { toolCallId: string; toolName: string; params: Record<string, unknown>; summary: string }[] {
+    try {
+      const data = JSON.parse(msg.content ?? "{}") as Record<string, unknown>;
+      const meta = data.metadata as Record<string, unknown> | undefined;
+      return (meta?.pendingApprovals as { toolCallId: string; toolName: string; params: Record<string, unknown>; summary: string }[]) ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  function approveTool(toolCallId: string) {
+    approving = toolCallId;
+    api.send("approveTool", { toolCallId, action: "approve" });
+  }
+
+  function rejectTool(toolCallId: string) {
+    approving = toolCallId;
+    api.send("approveTool", { toolCallId, action: "reject" });
+  }
+
   // ─── 工具名称 ──────────────────────────────
 
   function getToolName(): string {
@@ -82,6 +117,20 @@
       return String((fn as Record<string, unknown>).name ?? "tool");
     }
     return "tool";
+  }
+
+  function isUpdatePlan(): boolean {
+    return getToolName() === "UpdatePlan" && isSuccessfulUpdatePlan();
+  }
+
+  function isSuccessfulUpdatePlan(): boolean {
+    if (!msg.content) return false;
+    try {
+      const data = JSON.parse(msg.content) as { ok?: unknown; name?: unknown };
+      return data.name === "UpdatePlan" && data.ok === true;
+    } catch {
+      return false;
+    }
   }
 
   function toggle() {
@@ -128,6 +177,38 @@
           onclick={submitAnswer}
           disabled={!hasAnswer()}
         >发送回答</button>
+      </div>
+    {:else if isToolApproval()}
+      <div class="approval-card">
+        <div class="approval-header">🔐 工具调用待审批</div>
+        {#each getPendingApprovals() as item}
+          <div class="approval-item">
+            <div class="approval-tool-name">
+              <span class="tool-icon">⚙</span>
+              {item.toolName}
+            </div>
+            <pre class="approval-params">{item.summary}</pre>
+            <div class="approval-actions">
+              <button
+                class="btn-approve"
+                onclick={() => approveTool(item.toolCallId)}
+                disabled={approving === item.toolCallId}
+              >✅ 批准</button>
+              <button
+                class="btn-reject"
+                onclick={() => rejectTool(item.toolCallId)}
+                disabled={approving === item.toolCallId}
+              >❌ 拒绝</button>
+              {#if approving === item.toolCallId}
+                <span class="approving-hint">处理中…</span>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {:else if isUpdatePlan()}
+      <div class="plan-wrap">
+        <PlanDisplay content={msg.content ?? ""} />
       </div>
     {:else}
       <div class="tool-card">
@@ -199,6 +280,101 @@
     word-break: break-word;
     color: var(--vscode-foreground);
     border-bottom: 1px solid var(--vscode-focusBorder);
+  }
+
+  /* ─── 审批卡片 ──────────────────────────── */
+
+  .approval-card {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .plan-wrap {
+    margin: 2px 0;
+  }
+
+  .approval-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--vscode-charts-orange, #d29922);
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+  }
+
+  .approval-item {
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    background: var(--vscode-input-background, rgba(128,128,128,0.05));
+    border-radius: 4px;
+    border: 1px solid var(--vscode-focusBorder);
+  }
+
+  .approval-tool-name {
+    font-weight: 600;
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 12px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .approval-params {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 4px 0;
+    padding: 4px 6px;
+    background: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.1));
+    border-radius: 3px;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .approval-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 6px;
+  }
+
+  .btn-approve,
+  .btn-reject {
+    padding: 4px 12px;
+    border: none;
+    border-radius: 3px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-approve {
+    background: var(--vscode-charts-green, #3fb950);
+    color: #fff;
+  }
+
+  .btn-reject {
+    background: var(--vscode-charts-red, #f85149);
+    color: #fff;
+  }
+
+  .btn-approve:hover,
+  .btn-reject:hover {
+    opacity: 0.85;
+  }
+
+  .btn-approve:disabled,
+  .btn-reject:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .approving-hint {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
   }
 
   /* ─── 工具调用卡片 ──────────────────────── */

@@ -185,6 +185,8 @@ export class SessionActivator {
         }
         // 提取最后一条用户消息供 {{lastUserMessage}} 宏使用
         const lastUserMsg = [...conversationMessages].reverse().find((m) => m.role === "user");
+        // 提取最近的 UpdatePlan 计划内容供 {{plan}} 宏使用
+        const planStr = this.extractLatestPlan(conversationMessages);
 
         const macroContext = {
           projectRoot: this.projectRoot,
@@ -195,6 +197,7 @@ export class SessionActivator {
           attachedFiles: opts.attachedFiles,
           attachedSnippetContents: opts.attachedSnippetContents,
           lastUserMessage: lastUserMsg?.content ?? undefined,
+          plan: planStr,
         };
         let renderedEntries;
         try {
@@ -359,6 +362,35 @@ export class SessionActivator {
 
   private isInterruptedLocal(sessionId: string): boolean {
     return !this.sessionControllers.has(sessionId);
+  }
+
+  /**
+   * 从对话消息中提取最近一次 UpdatePlan 工具调用提交的计划内容。
+   * 倒序遍历 tool 消息，找到首个 UpdatePlan 成功结果，返回 metadata.plan。
+   */
+  private extractLatestPlan(messages: SessionMessage[]): string | undefined {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role !== "tool") continue;
+      const content = msg.content;
+      if (!content) continue;
+      try {
+        const parsed = JSON.parse(content) as {
+          ok?: unknown;
+          name?: unknown;
+          metadata?: { plan?: unknown };
+        };
+        if (parsed.name === "UpdatePlan" && parsed.ok === true) {
+          const plan = parsed.metadata?.plan;
+          if (typeof plan === "string" && plan.trim()) {
+            return plan;
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+    return undefined;
   }
 
   private isAbortLikeError(error: unknown): boolean {

@@ -5,6 +5,7 @@
  */
 
 import { handleWriteTool } from "../handler/write-handler";
+import { writeApprovalChecker } from "../approval-checkers";
 import type { ToolRegistration } from "../registry";
 
 export const writeTool: ToolRegistration = {
@@ -26,6 +27,7 @@ export const writeTool: ToolRegistration = {
     additionalProperties: false,
   },
   handler: handleWriteTool,
+  approvalChecker: writeApprovalChecker,
   doc: `## Write
 
 Writes a file to the local filesystem.

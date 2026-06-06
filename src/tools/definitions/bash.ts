@@ -5,6 +5,7 @@
  */
 
 import { handleBashTool } from "../handler/bash-handler";
+import { bashApprovalChecker } from "../approval-checkers";
 import type { ToolRegistration } from "../registry";
 
 export const bashTool: ToolRegistration = {
@@ -27,6 +28,7 @@ export const bashTool: ToolRegistration = {
     additionalProperties: false,
   },
   handler: handleBashTool,
+  approvalChecker: bashApprovalChecker,
   doc: `## Bash
 
 Executes a given bash command. Working directory persists between commands; shell state (everything else) does not. The shell environment is initialized from the user's profile (bash or zsh).

@@ -6,6 +6,7 @@
   import ChatPage from "./components/ChatPage.svelte";
   import PresetPage from "./components/PresetPage.svelte";
   import ProfilePage from "./components/ProfilePage.svelte";
+  import ApprovalPage from "./components/ApprovalPage.svelte";
   import ToastNotification from "./components/ToastNotification.svelte";
 
   // ─── 页面级拖放 ────────────────────────────────────
@@ -114,6 +115,8 @@
 
   {#if appState.currentTab === "chat"}
     <ChatPage />
+  {:else if appState.currentTab === "approvals"}
+    <ApprovalPage />
   {:else if appState.currentTab === "presets"}
     <PresetPage />
   {:else if appState.currentTab === "profiles"}

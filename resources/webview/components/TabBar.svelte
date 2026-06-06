@@ -6,6 +6,7 @@
     { id: "chat", label: "对话" },
     { id: "presets", label: "预设" },
     { id: "profiles", label: "连接" },
+    { id: "approvals", label: "审批" },
   ];
 
   function openSettings() {

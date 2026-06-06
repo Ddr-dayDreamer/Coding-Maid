@@ -1,6 +1,20 @@
 {
   "activeProfile": "default",
-  "debugEnabled": false ,
-  "activePreset": "default"
-
+  "debugEnabled": false,
+  "activePreset": "default",
+  "approvalConfig": {
+    "bash": "require",
+    "read": "none",
+    "write": "require",
+    "edit": "require",
+    "AskUserQuestion": "none",
+    "UpdatePlan": "none",
+    "search": "none",
+    "list_dir": "none",
+    "find_references": "none",
+    "rename_symbol": "require",
+    "get_errors": "none",
+    "fetch_webpage": "require",
+    "memory": "none"
+  }
 }

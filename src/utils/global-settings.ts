@@ -23,6 +23,22 @@ export type McpServerConfig = {
 };
 
 /**
+ * 审批模式枚举
+ * - "none": 无需审批，直接执行
+ * - "require": 需要用户审批后才执行
+ * 未来可扩展："ai_approval" 等
+ */
+export type ApprovalMode = "none" | "require";
+
+/**
+ * 工具审批配置
+ * key: 工具名（如 "bash"、"write"、"read"）
+ * value: 审批模式
+ * 未在此处列出的工具 → 默认 "require"（安全优先）
+ */
+export type ApprovalConfig = Record<string, ApprovalMode>;
+
+/**
  * 全局设置（存入 settings.json）
  *
  * 注意：连接预设相关的字段不在此处。
@@ -41,6 +57,8 @@ export type CodingMaidSettings = {
   debugEnabled?: boolean;
   /** MCP 服务器配置 */
   mcpServers?: Record<string, McpServerConfig>;
+  /** 工具审批配置 */
+  approvalConfig?: ApprovalConfig;
 };
 
 // ─── 内部工具 ────────────────────────────────────────────────────────────────

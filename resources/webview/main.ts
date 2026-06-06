@@ -133,6 +133,10 @@ window.addEventListener("message", (event: MessageEvent) => {
     case "notify":
       notify[msg.level](msg.text, msg.duration);
       break;
+
+    case "approvalConfig":
+      appState.approvalConfig = msg.config;
+      break;
   }
 });
 
