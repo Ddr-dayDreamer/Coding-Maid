@@ -18,15 +18,15 @@
       "enabled": true
     },
     {
-      "name": "plan/当前计划",
-      "role": "system",
-      "content": "# Current Plan\n\n{{plan}}",
-      "enabled": true
+      "name": "memory/记忆",
+      "role": "user",
+      "content": "{{global_memory}}\n{{repo_memory}}",
+      "enabled": false
     },
     {
       "name": "chat history/会话记录",
       "role": "chat_history",
-      "content": "this part will be replaced by chat history.",
+      "content": "look at role: chat_history\nno matter what you set here,this part will be replaced by chat history.",
       "enabled": true
     },
     {
@@ -42,22 +42,16 @@
       "enabled": true
     },
     {
-      "name": "your env/运行环境",
-      "role": "user",
-      "content": "<system>:current environment: \n{{runtime_context}}  {{date}}",
+      "name": "env/运行环境",
+      "role": "assistant",
+      "content": "<system>:current environment: \n{{runtime_context}}\n\ncurrent time: \n{{date}} {{time}}\n\ncurrent vsc selection:\n{{editor_selection}}\n\n{{user}} is looking at:\n{{active_file_path}}\n\nattached files:\n{{attached_files}}\n\nCurrent Plan:\n{{plan}}",
       "enabled": true
     },
     {
-      "name": "time/时间",
-      "role": "user",
-      "content": "<system>:current time: \n{{date}}",
+      "name": "lastusermessage/强调最后一条用户消息",
+      "role": "assistant",
+      "content": "# Double check {{user}}'s input:\n\n{{lastUserMessage}}",
       "enabled": true
-    },
-    {
-      "name": "memory/记忆",
-      "role": "user",
-      "content": "{{global_memory}}\n{{repo_memory}}",
-      "enabled": false
     }
   ]
 }

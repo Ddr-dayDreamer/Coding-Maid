@@ -2,7 +2,7 @@
 
 Coding Maid是开源项目[Deep Code](https://marketplace.visualstudio.com/items?itemName=vegamo.deepcode-vscode)
 (https://github.com/lessweb/deepcode)
-的魔改版。
+的重构魔改版。
 非常感谢原项目开发者的开发！
 
 此agent工具致力于解决一个需要：让用户可以控制“所有提示词”。
@@ -17,7 +17,7 @@ Coding Maid是开源项目[Deep Code](https://marketplace.visualstudio.com/items
 
 ~~有事鲸鱼干，没事干鲸鱼。~~
 
-~~为了让ai帮我开发airp游戏，我得让ai编程助手先帮我做一个可控的ai编程助手，这样我才能一边指挥ai干活一边逗ai玩~~
+~~为了让ai帮我开发airp游戏，我得让ai编程助手先帮我做一个更可控的ai编程助手，这样我才能一边指挥ai干活一边逗ai玩~~
 
 ## 为什么不用其他自定义agent的方案？
 
@@ -35,15 +35,25 @@ Coding Maid是开源项目[Deep Code](https://marketplace.visualstudio.com/items
 
 ~~但是出了bug不就可以好好调教了吗？~~
 
-## 配置
+如果你不要求什么角色扮演，只是追求完全的提示词控制，那输出质量就都是你的提示词决定了。
+
+# 初次使用
+- 设置api：在界面里打开配置界面，新建/修改现有配置，填写地址、模型等信息。你的api key会被加密保存在本地。需要更新apikey的时候只要替换  "apiKey": "place_your_api_key_here"就行
+- 设置/修改预设：默认会带有一个内置预设的，你也可以使用预设编辑器新建。
+- 检查审批模式：我已经把可能危险的写入操作、bash指令设置为需要审批了，不过你最好还是检查一下
+- 开始对话
+
+## 详细配置
 
 本插件由三种配置文件协同工作。分别是setting.json、profile.json、preset.json。
 
 所有配置文件都放在~/.codingmaid/下（如果你是windows那就是"C:\Users\xxx\.codingmaid\"其他系统我没有也不知道）
 
-### setting/插件设置
+### setting/插件全局设置
 
 setting.json储存的是插件的设置，想要debug可以在这里打开，一般不用动。
+
+审批模式也在这个文件里，不过前端界面就有交互了应该不用手动改吧。
 
 ### profile/api配置（插头）
 
@@ -101,29 +111,60 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 | `{{lastUserMessage}}`         | 当前会话中最后一条用户消息原文             |
 | `{{setvar::key::val}}`        | 设置会话级变量                             |
 | `{{getvar::key}}`             | 读取会话级变量                             |
+| `{{plan}}`                    | 模型使用updateplan更新的plan内容           |
 
 “对话历史记录”将会注入到身份为“chat_history”的条目位置。
 
-注意，想要确保缓存命中高，你需要将任何可能变化的提示词放到后面（“对话历史记录”后面）
+## 如何提高deepseek的缓存命中
 
-而且注意不要在“对话历史记录”后面使用系统身份(system)的提示词，经过测试，我的推测是：deepseek会把传入参数里的tools数组中的那些schema格式注入到最后一个系统身份的提示词的位置。使用了系统身份的话这些东西可能不会命中的。
+注意，想要确保缓存命中高，你需要将任何可能变化的提示词放到后面（“对话历史记录”后面），包括但不限于：{{time}}、{{plan}}、{{attached_files}}这样的随时可能变化的宏。
 
+- 注意不要在“对话历史记录”后面使用系统身份(system)的提示词，经过测试，我的推测是：deepseek会把传入参数里的tools数组中的那些schema格式注入到最后一个系统身份的提示词的位置。在变化内容后使用了系统身份的话这些东西可能不会命中的。
 
+## 关于连续工具调用的提示词
+工具调用不会重新应用预设提示词而是在用户发送消息的提示词后追加工具消息
 
-~~**Skills**~~
+说白了就是会缓存命中的
+
+## ~~**自定义Skills**~~
 
 啊，暂时禁用了，反正默认只带了两个skill，自己开关条目一下得了
 
 有空了在做复杂一点的skill系统吧。
 
-### **为 DeepSeek 优化**
-
-- 专门为 DeepSeek 模型性能调优。
-- 通过使用[上下文缓存](https://api-docs.deepseek.com/guides/kv_cache)来降低成本。
-- 原生支持[思考模式](https://api-docs.deepseek.com/guides/thinking_mode)和思考强度控制。
-
 ## 支持的模型
 
 - `deepseek-v4-pro`（推荐使用）
-- `deepseek-v4-flash`（虽然推荐pro但是我穷的一，平时只能用flash，也就是说这个插件也是...）
-- 任何其他 OpenAI 兼容模型（不知道，没测试）
+- `deepseek-v4-flash`（虽然推荐pro但是我穷的平时只用flash，也就是说这个插件也是...）
+- 任何其他 OpenAI 兼容模型（不知道，用不起，没测试）
+
+
+## 审批系统
+每个工具都可以自己设置审批模式：自动执行/需要手动确定
+
+bash、edit、write工具有一些内置的检查，应该会自动拒绝非常危险的操作。但是都是ai写的我也不知道是不是全面、好用、安全的。
+
+至于为什么不测试...要是测试结果把我的根目录文件全删了那不是炸了吗~
+
+## debug
+设置文件里吧debug打开后，所有的信息都会存放在~/.codingmaid/logs里面
+
+这里有整个发送请求，想要查看宏是否展开/提示词是否起效，都可以自己检查。
+
+## 记忆/指引
+全局记忆文件在~/.codingmaid/memory/下
+仓库记忆文件在/.codingmaid/memory/下
+使用记忆宏自己注入提示词。
+
+## 总结
+理论上，你发给ai的所有信息都会经过预设preset、配置profile控制。
+
+所以，尽情的调教ai吧。
+
+
+### 还需要完成的地方
+- 接入mcp还没实现
+- 聊天记录过滤也许也要做
+- 多语言化
+
+不过基本够我用了，随缘吧。
