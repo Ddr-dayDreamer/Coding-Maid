@@ -302,6 +302,14 @@ export class SessionMessageBuilder {
     return base;
   }
 
+  /**
+   * 公开版 — 将单条 SessionMessage 转为 OpenAI ChatCompletionMessageParam。
+   * 供 SessionActivator 快速路径使用，避免走完整配对逻辑。
+   */
+  toOpenAIMessage(message: SessionMessage, thinkingEnabled: boolean, model: string): ChatCompletionMessageParam {
+    return this.sessionMessageToOpenAIMessage(message, thinkingEnabled, model);
+  }
+
   private renderOpenAIMessageContent(message: SessionMessage): string {
     return message.content ?? "";
   }

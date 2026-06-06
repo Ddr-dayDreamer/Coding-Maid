@@ -8787,7 +8787,10 @@ ${component_stack}
           "{{active_file}}",
           "{{active_file_path}}",
           "{{attached_files}}",
-          "{{attached_files_path}}"
+          "{{attached_files_path}}",
+          "{{date}}",
+          "{{time}}",
+          "{{plan}}"
         ]
       },
       {
@@ -8796,8 +8799,6 @@ ${component_stack}
           "{{char}}",
           "{{user}}",
           "{{model}}",
-          "{{date}}",
-          "{{time}}",
           "{{lastUserMessage}}",
           "{{global_memory}}",
           "{{repo_memory}}"

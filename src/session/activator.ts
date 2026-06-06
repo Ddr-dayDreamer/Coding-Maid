@@ -50,6 +50,11 @@ export type ActivateOptions = {
 export class SessionActivator {
   private readonly sessionControllers: Map<string, AbortController>;
 
+  /** 缓存上一轮发送给 LLM 的 OpenAI 格式消息数组（快速路径用） */
+  private cachedOpenAIMessages: ChatCompletionMessageParam[] | null = null;
+  /** 缓存时的对话消息数量，用于检测增量 */
+  private cachedMessageCount = 0;
+
   constructor(
     private readonly storage: SessionStorage,
     private readonly messageBuilder: SessionMessageBuilder,
@@ -132,6 +137,10 @@ export class SessionActivator {
 
     this.sessionControllers.set(sessionId, sessionController);
 
+    // 每次 activate 开始时清理快速路径缓存
+    this.cachedOpenAIMessages = null;
+    this.cachedMessageCount = 0;
+
     try {
       const maxIterations = 80000;
       let toolCalls: unknown[] | null = null;
@@ -169,61 +178,74 @@ export class SessionActivator {
         // 运行时注入预设（预设不落盘，仅运行时注入）
         const conversationMessages = this.storage.listSessionMessages(sessionId);
         console.log("[DEBUG] activate iter", iteration, ": conversationMessages count =", conversationMessages.length);
-        const promptToolOptions = opts.getPromptToolOptions();
-        console.log("[DEBUG] activate: promptToolOptions =", JSON.stringify(promptToolOptions));
-        let preset;
-        try {
-          if (opts.activePreset && opts.activePreset !== "default") {
-            preset = opts.presetMgr.loadPreset(opts.activePreset);
-          } else {
+
+        // ── 快速路径：tool 回调轮次，复用缓存 ──
+        let messages: ChatCompletionMessageParam[];
+        if (this.canUseFastPath(conversationMessages)) {
+          messages = this.buildFastPathMessages(conversationMessages, thinkingEnabled ?? false, model);
+          console.log("[DEBUG] activate: using fast path, messages count =", messages.length);
+        } else {
+          // ── 完整渲染 ──
+          const promptToolOptions = opts.getPromptToolOptions();
+          console.log("[DEBUG] activate: promptToolOptions =", JSON.stringify(promptToolOptions));
+          let preset;
+          try {
+            if (opts.activePreset && opts.activePreset !== "default") {
+              preset = opts.presetMgr.loadPreset(opts.activePreset);
+            } else {
+              preset = opts.presetMgr.ensureDefaultPreset();
+            }
+            console.log("[DEBUG] activate: preset loaded, name =", preset.name);
+          } catch (e) {
+            console.log("[DEBUG] activate: preset load FAILED, fallback to default:", e);
             preset = opts.presetMgr.ensureDefaultPreset();
           }
-          console.log("[DEBUG] activate: preset loaded, name =", preset.name);
-        } catch (e) {
-          console.log("[DEBUG] activate: preset load FAILED, fallback to default:", e);
-          preset = opts.presetMgr.ensureDefaultPreset();
-        }
-        // 提取最后一条用户消息供 {{lastUserMessage}} 宏使用
-        const lastUserMsg = [...conversationMessages].reverse().find((m) => m.role === "user");
-        // 提取最近的 UpdatePlan 计划内容供 {{plan}} 宏使用
-        const planStr = this.extractLatestPlan(conversationMessages);
+          // 提取最后一条用户消息供 {{lastUserMessage}} 宏使用
+          const lastUserMsg = [...conversationMessages].reverse().find((m) => m.role === "user");
+          // 提取最近的 UpdatePlan 计划内容供 {{plan}} 宏使用
+          const planStr = this.extractLatestPlan(conversationMessages);
 
-        const macroContext = {
-          projectRoot: this.projectRoot,
-          model: promptToolOptions.model,
-          extensionRoot: getExtensionRoot(),
-          editorSelection: opts.editorSelection,
-          activeFile: opts.activeFile,
-          attachedFiles: opts.attachedFiles,
-          attachedSnippetContents: opts.attachedSnippetContents,
-          lastUserMessage: lastUserMsg?.content ?? undefined,
-          plan: planStr,
-        };
-        let renderedEntries;
-        try {
-          renderedEntries = opts.presetMgr.renderPreset(preset, macroContext);
-          console.log("[DEBUG] activate: renderedEntries count =", renderedEntries.length);
-        } catch (e) {
-          console.log("[DEBUG] activate: renderPreset FAILED:", e);
-          throw e;
-        }
-        let fullMessages;
-        try {
-          fullMessages = opts.presetMgr.buildMessages(
-            sessionId,
-            renderedEntries,
-            conversationMessages,
-            this.messageBuilder
-          );
-          console.log("[DEBUG] activate: fullMessages count =", fullMessages.length);
-        } catch (e) {
-          console.log("[DEBUG] activate: buildMessages FAILED:", e);
-          throw e;
+          const macroContext = {
+            projectRoot: this.projectRoot,
+            model: promptToolOptions.model,
+            extensionRoot: getExtensionRoot(),
+            editorSelection: opts.editorSelection,
+            activeFile: opts.activeFile,
+            attachedFiles: opts.attachedFiles,
+            attachedSnippetContents: opts.attachedSnippetContents,
+            lastUserMessage: lastUserMsg?.content ?? undefined,
+            plan: planStr,
+          };
+          let renderedEntries;
+          try {
+            renderedEntries = opts.presetMgr.renderPreset(preset, macroContext);
+            console.log("[DEBUG] activate: renderedEntries count =", renderedEntries.length);
+          } catch (e) {
+            console.log("[DEBUG] activate: renderPreset FAILED:", e);
+            throw e;
+          }
+          let fullMessages;
+          try {
+            fullMessages = opts.presetMgr.buildMessages(
+              sessionId,
+              renderedEntries,
+              conversationMessages,
+              this.messageBuilder
+            );
+            console.log("[DEBUG] activate: fullMessages count =", fullMessages.length);
+          } catch (e) {
+            console.log("[DEBUG] activate: buildMessages FAILED:", e);
+            throw e;
+          }
+
+          // 构建消息 → 调用 LLM
+          messages = this.messageBuilder.buildOpenAIMessages(fullMessages, thinkingEnabled ?? false, model);
+          console.log("[DEBUG] activate: openai messages count =", messages.length);
         }
 
-        // 构建消息 → 调用 LLM
-        const messages = this.messageBuilder.buildOpenAIMessages(fullMessages, thinkingEnabled ?? false, model);
-        console.log("[DEBUG] activate: openai messages count =", messages.length);
+        // 更新缓存供下一轮快速路径使用
+        this.cachedOpenAIMessages = messages;
+        this.cachedMessageCount = conversationMessages.length;
 
         const thinkingOptions = thinkingEnabled
           ? buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort)
@@ -359,6 +381,52 @@ export class SessionActivator {
   // ═══════════════════════════════════════════════════════
   //  内部工具
   // ═══════════════════════════════════════════════════════
+
+  /**
+   * 判断是否可以使用快速路径。
+   * 条件：有缓存，且新增消息符合 [assistant(tool_calls), tool, tool, ...] 模式。
+   */
+  private canUseFastPath(conversationMessages: SessionMessage[]): boolean {
+    if (!this.cachedOpenAIMessages) return false;
+
+    const newCount = conversationMessages.length - this.cachedMessageCount;
+    if (newCount < 2) return false;
+
+    const newMessages = conversationMessages.slice(this.cachedMessageCount);
+
+    if (newMessages[0].role !== "assistant") return false;
+    if (!this.hasToolCalls(newMessages[0])) return false;
+
+    const toolResults = newMessages.slice(1);
+    if (!toolResults.every((m) => m.role === "tool")) return false;
+
+    return true;
+  }
+
+  private hasToolCalls(msg: SessionMessage): boolean {
+    if (msg.role !== "assistant") return false;
+    const params = msg.messageParams as { tool_calls?: unknown[] } | null | undefined;
+    return Array.isArray(params?.tool_calls) && params.tool_calls.length > 0;
+  }
+
+  /**
+   * 构建快速路径消息数组：
+   * 复用缓存前缀，追加新增的 assistant(tool_calls) + tool 结果。
+   */
+  private buildFastPathMessages(
+    conversationMessages: SessionMessage[],
+    thinkingEnabled: boolean,
+    model: string
+  ): ChatCompletionMessageParam[] {
+    const result: ChatCompletionMessageParam[] = [...this.cachedOpenAIMessages!];
+    const newMessages = conversationMessages.slice(this.cachedMessageCount);
+
+    for (const msg of newMessages) {
+      result.push(this.messageBuilder.toOpenAIMessage(msg, thinkingEnabled, model));
+    }
+
+    return result;
+  }
 
   private isInterruptedLocal(sessionId: string): boolean {
     return !this.sessionControllers.has(sessionId);
