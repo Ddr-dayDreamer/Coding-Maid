@@ -79,12 +79,24 @@ export function registerSessionHandlers(
   registerHandler("restoreSession", async (message) => {
     const sessionId = String(message.sessionId || "").trim();
     const messageId = String(message.messageId || "").trim();
-    if (!sessionId || !messageId) return;
+    if (!sessionId || !messageId) {
+      ctx.sendMessage({
+        type: "notify",
+        level: "error",
+        text: "回退失败：会话或消息 ID 为空",
+      });
+      return;
+    }
 
     ctx.sessionManager.interruptSession(sessionId);
     try {
       ctx.sessionManager.rollbackToMessage(sessionId, messageId);
-    } catch {
+    } catch (err) {
+      ctx.sendMessage({
+        type: "notify",
+        level: "error",
+        text: `回退失败：${err instanceof Error ? err.message : String(err)}`,
+      });
       return;
     }
     loadSession(ctx, sessionId);

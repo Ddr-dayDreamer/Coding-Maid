@@ -65,6 +65,14 @@ window.addEventListener("message", (event: MessageEvent) => {
       }
       break;
 
+    case "notify":
+      // 如果是回退失败通知，清除 pendingRollback 防止状态泄漏
+      if (msg.level === "error" && String(msg.text).includes("回退失败")) {
+        appState.pendingRollback = false;
+      }
+      notify[msg.level](msg.text, msg.duration);
+      break;
+
     case "showSessionsList":
       appState.sessions = msg.sessions;
       break;
@@ -74,6 +82,9 @@ window.addEventListener("message", (event: MessageEvent) => {
       break;
 
     case "sessionStatus":
+      if (msg.sessionId) {
+        appState.currentSessionId = msg.sessionId;
+      }
       appState.currentSessionStatus = msg.status;
       appState.runningProcesses = normalizeProcesses(msg.processes);
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
@@ -128,10 +139,6 @@ window.addEventListener("message", (event: MessageEvent) => {
 
     case "streamChunk":
       handleStreamChunk(msg.content ?? "", msg.reasoningContent ?? "");
-      break;
-
-    case "notify":
-      notify[msg.level](msg.text, msg.duration);
       break;
 
     case "approvalConfig":
