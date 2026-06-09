@@ -8450,6 +8450,7 @@ ${component_stack}
       if (!text2) return;
       set(promptText, "");
       api.send("userPrompt", { prompt: text2 });
+      appState.currentSessionStatus = "pending";
       if (get2(textareaEl)) {
         get2(textareaEl).style.height = "auto";
       }
@@ -9972,6 +9973,12 @@ ${component_stack}
           notify.success("\u5DF2\u56DE\u9000\u5230\u6B64");
         }
         break;
+      case "notify":
+        if (String(msg.text).includes("\u56DE\u9000")) {
+          appState.pendingRollback = false;
+        }
+        notify[msg.level](msg.text, msg.duration);
+        break;
       case "showSessionsList":
         appState.sessions = msg.sessions;
         break;
@@ -9979,6 +9986,9 @@ ${component_stack}
         appState.attachedFiles = [];
         break;
       case "sessionStatus":
+        if (msg.sessionId) {
+          appState.currentSessionId = msg.sessionId;
+        }
         appState.currentSessionStatus = msg.status;
         appState.runningProcesses = normalizeProcesses(msg.processes);
         appState.tokenTelemetry = msg.tokenTelemetry ?? null;
@@ -10027,9 +10037,6 @@ ${component_stack}
         break;
       case "streamChunk":
         handleStreamChunk(msg.content ?? "", msg.reasoningContent ?? "");
-        break;
-      case "notify":
-        notify[msg.level](msg.text, msg.duration);
         break;
       case "approvalConfig":
         appState.approvalConfig = msg.config;

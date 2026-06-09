@@ -1,16 +1,16 @@
 /**
- * 会话管理�?�?编排�?
+ * 会话管理
  *
- * 负责会话生命周期的协调，将具体操作委托给子模块�?
+ * 负责会话生命周期的协调，将具体操作委托给子模块处理。
  *
  * 子模块：
- * - SessionStorage          �?持久�?
- * - SessionFileHistory      �?文件变更可撤�?
- * - SessionProcessManager   �?进程追踪
- * - SessionMessageBuilder   �?消息构建 + OpenAI 装配
- * - LlmStreamManager        �?LLM 流式调用
- * - SessionActivator        �?LLM 主循�?+ 上下文压�?
- * - SessionNotifier         �?提示上报 + 任务完成通知
+ * - SessionStorage          负责持久化
+ * - SessionFileHistory      负责文件变更可撤销
+ * - SessionProcessManager   负责进程追踪
+ * - SessionMessageBuilder   负责消息构建 + OpenAI 装配
+ * - LlmStreamManager        负责LLM 流式调用
+ * - SessionActivator        负责LLM 主循环 + 上下文压缩
+ * - SessionNotifier         负责提示上报 + 任务完成通知
  */
 
 import * as crypto from "crypto";
@@ -85,7 +85,7 @@ export class SessionManager {
   private readonly onMcpStatusChanged?: () => void;
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
 
-  /* 子模�?*/
+  /* 子模块 */
   private readonly storage: SessionStorage;
   private readonly fileHistory: SessionFileHistory;
   private readonly processMgr: SessionProcessManager;
@@ -109,10 +109,10 @@ export class SessionManager {
   /** 代码段虚拟路径→内容映射（不写磁盘） */
   private attachedSnippetContents: Record<string, string> = {};
 
-  /* 运行时状�?*/
+  /* 运行时状态 */
   private activeSessionId: string | null = null;
   private activePromptController: AbortController | null = null;
-  /** �?runActivate 创建，供 interruptSession 中止 LLM 请求 */
+  /** 由 runActivate 创建，供 interruptSession 中止 LLM 请求 */
   private readonly activationControllers = new Map<string, AbortController>();
 
   constructor(options: SessionManagerOptions) {
@@ -150,9 +150,9 @@ export class SessionManager {
     this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  MCP
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   async initMcpServers(servers?: Record<string, McpServerConfig>): Promise<void> {
     this.mcpManager.setOnToolsListChanged(() => {
@@ -176,9 +176,9 @@ export class SessionManager {
     this.mcpManager.disconnect();
   }
 
-  // ══════════════════════════════════════════════════════�?
-  //  会话状�?
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
+  //  会话状态
+  // ═══════════════════════════════════════════════════════
 
   getActiveSessionId(): string | null {
     return this.activeSessionId;
@@ -243,9 +243,9 @@ export class SessionManager {
     this.onAssistantMessage(message, false);
   }
 
-  // ══════════════════════════════════════════════════════�?
-  //  用户提示词处�?
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
+  //  用户提示词处理
+  // ═══════════════════════════════════════════════════════
 
   async handleUserPrompt(userPrompt: UserPromptContent): Promise<void> {
     console.log("[DEBUG] handleUserPrompt enter", JSON.stringify({ text: userPrompt.text?.slice(0, 50) }));
@@ -270,13 +270,13 @@ export class SessionManager {
     }
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  创建会话
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   /**
-   * 创建会话索引（同步，不触�?LLM）�?
-   * 消息发送统一�?sendMessage 处理�?
+   * 创建会话索引（同步，不触发LLM）。
+   * 消息发送统一由 sendMessage 处理。
    */
   createSession(userPrompt: UserPromptContent): string {
     this.notifier.reportNewPrompt();
@@ -315,13 +315,13 @@ export class SessionManager {
     return sessionId;
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  回复会话
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   /**
-   * 统一发送消息（首次和后续对话共用）�?
-   * 不负责创建会话索引，由调用方保证 session 已存在�?
+   * 统一发送消息（首次和后续对话共用）。
+   * 不负责创建会话索引，由调用方保证 session 已存在。
    */
   async sendMessage(
     sessionId: string,
@@ -332,7 +332,7 @@ export class SessionManager {
     this.throwIfAborted(signal);
     const now = new Date().toISOString();
 
-    // 更新会话状�?
+    // 更新会话状态
     this.storage.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
       status: "pending",
@@ -340,7 +340,7 @@ export class SessionManager {
       updateTime: now,
     }));
 
-    // /continue �?直接继续 LLM 主循环，不加新消�?
+    // /continue 直接继续 LLM 主循环，不加新消息
     if (this.isContinuePrompt(userPrompt)) {
       await this.runActivate(sessionId, controller);
       return;
@@ -350,21 +350,23 @@ export class SessionManager {
     this.fileHistory.ensureSession(sessionId);
 
     console.log("[DEBUG] sendMessage: appending user msg, sessionId =", sessionId);
-    // 增量保存：只追加用户消息，预设由 SessionActivator 运行时注�?
+    // 增量保存：只追加用户消息，预设由 SessionActivator 运行时注入
     const newUserMsg = this.messageBuilder.buildUserMessage(sessionId, userPrompt);
     this.storage.appendSessionMessage(sessionId, newUserMsg);
-    // 将真实消息（�?checkpointHash）发回前端，替换本地创建的假气泡
+    // 将真实消息（带 checkpointHash）发回前端，替换本地创建的假气泡
     this.onAssistantMessage(newUserMsg, false);
     console.log("[DEBUG] sendMessage: user msg appended, calling runActivate");
 
     this.activeSessionId = sessionId;
+    // 新用户消息 → 清空快速路径缓存，下次 activate 将重新组装完整提示词
+    this.activator.clearFastPathCache();
     await this.runActivate(sessionId, controller);
     console.log("[DEBUG] sendMessage: runActivate returned");
   }
 
   /**
-   * 回复会话（公开接口，委托给 sendMessage）�?
-   * �?session 不存在则自动创建�?
+   * 回复会话（公开接口，委托给 sendMessage）。
+   * 若 session 不存在则自动创建。
    */
   async replySession(
     sessionId: string,
@@ -380,14 +382,14 @@ export class SessionManager {
   }
 
   /**
-   * 激活会话主循环（公开供测�?mock�?
-   * 委托�?SessionActivator.activate()
+   * 激活会话主循环（公开供测试/mock用）
+   * 委托给 SessionActivator.activate()
    */
   async activateSession(sessionId: string, controller?: AbortController): Promise<void> {
     await this.runActivate(sessionId, controller);
   }
 
-  /** 委托�?SessionActivator 执行主循�?*/
+  /** 委托给 SessionActivator 执行主循环 */
   private async runActivate(sessionId: string, controller?: AbortController): Promise<void> {
     const ctrl = controller ?? new AbortController();
     this.activationControllers.set(sessionId, ctrl);
@@ -413,9 +415,9 @@ export class SessionManager {
     }
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  中断
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   interruptActiveSession(): void {
     this.activePromptController?.abort();
@@ -456,9 +458,9 @@ export class SessionManager {
     this.onAssistantMessage(this.messageBuilder.buildUserMessage(sessionId, { text: contentParts.join(" ") }), false);
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  Bash 超时调整
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   adjustActiveBashTimeout(deltaMs: number): BashTimeoutAdjustment | null {
     const sessionId = this.activeSessionId;
@@ -488,9 +490,9 @@ export class SessionManager {
     return this.processMgr.buildAdjustment(selectedPid, adjustment.info);
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  查询
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   listSessions(): SessionEntry[] {
     return this.storage.loadSessionsIndex().entries;
@@ -508,8 +510,11 @@ export class SessionManager {
     return this.fileHistory.listUndoTargets(sessionId);
   }
 
-  rollbackToMessage(sessionId: string, messageId: string): SessionMessage[] {
-    const { keptMessages, checkpointHash } = this.fileHistory.rollbackToMessage(sessionId, messageId);
+  rollbackToMessage(
+    sessionId: string,
+    messageId: string
+  ): { messages: SessionMessage[]; restoreError?: string } {
+    const { keptMessages, checkpointHash, restoreError } = this.fileHistory.rollbackToMessage(sessionId, messageId);
     const now = new Date().toISOString();
     const latestAssistant = [...keptMessages].reverse().find((m) => m.role === "assistant");
     const latestParams = latestAssistant?.messageParams as
@@ -528,12 +533,12 @@ export class SessionManager {
       processes: null,
       updateTime: now,
     }));
-    return keptMessages;
+    return { messages: keptMessages, restoreError };
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  工具消息追加
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   private async appendToolMessages(sessionId: string, toolCalls: unknown[]): Promise<{ waitingForUser: boolean }> {
     // ── 审批检查：先看是否有工具需要审批 ──
@@ -689,7 +694,10 @@ export class SessionManager {
         ? JSON.stringify(modifiedArgs)
         : JSON.stringify(approvalItem.params);
       const toolCall = { id: toolCallId, type: "function" as const, function: { name: approvalItem.toolName, arguments: rawArgs } };
-      const result = await this.toolExecutor.executeToolCallRaw(sessionId, toolCall);
+      const result = await this.toolExecutor.executeToolCallRaw(sessionId, toolCall, {
+        onBeforeFileMutation: (filePath) => this.fileHistory.prepareMutation(sessionId, filePath),
+        onAfterFileMutation: (filePath) => this.fileHistory.recordMutation(sessionId, filePath),
+      });
       const toolMessage = this.messageBuilder.buildToolMessage(
         sessionId,
         toolCallId,
@@ -714,9 +722,9 @@ export class SessionManager {
     }
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  删除会话
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   /**
    * 删除指定会话：从索引移除 + 删除消息文件
@@ -725,16 +733,16 @@ export class SessionManager {
   deleteSession(sessionId: string): SessionEntry[] {
     this.storage.deleteSession(sessionId);
     this.fileHistory.deleteSession(sessionId);
-    // 如果删除的是当前活跃会话，清�?
+    // 如果删除的是当前活跃会话，清空
     if (this.activeSessionId === sessionId) {
       this.activeSessionId = null;
     }
     return this.listSessions();
   }
 
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
   //  内部工具
-  // ══════════════════════════════════════════════════════�?
+  // ═══════════════════════════════════════════════════════
 
   private getPromptToolOptions(): { model: string; availableTools?: string[] } {
     const base = { model: this.getResolvedSettings().model };

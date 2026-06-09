@@ -58,6 +58,7 @@
 
     promptText = "";
     api.send("userPrompt", { prompt: text });
+    appState.currentSessionStatus = "pending"; // 立即切换为停止按钮，不等后端响应
 
     // 重置 textarea 高度
     if (textareaEl) {

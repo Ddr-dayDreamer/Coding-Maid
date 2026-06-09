@@ -89,8 +89,10 @@ export function registerSessionHandlers(
     }
 
     ctx.sessionManager.interruptSession(sessionId);
+    let restoreError: string | undefined;
     try {
-      ctx.sessionManager.rollbackToMessage(sessionId, messageId);
+      const result = ctx.sessionManager.rollbackToMessage(sessionId, messageId);
+      restoreError = result.restoreError;
     } catch (err) {
       ctx.sendMessage({
         type: "notify",
@@ -100,6 +102,16 @@ export function registerSessionHandlers(
       return;
     }
     loadSession(ctx, sessionId);
+
+    // 文件恢复失败时给出警告（不阻塞对话回退）
+    if (restoreError) {
+      ctx.sendMessage({
+        type: "notify",
+        level: "warning",
+        text: `文件恢复失败：${restoreError}。对话已回退，但文件内容未还原。`,
+        duration: 8000,
+      });
+    }
   });
 
   registerHandler("openFile", async (message) => {

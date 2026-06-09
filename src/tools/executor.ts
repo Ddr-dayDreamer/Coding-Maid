@@ -183,8 +183,12 @@ export class ToolExecutor {
    * 公开版本：执行单个 tool call（用于审批后的执行）。
    * 跳过审批检查，因为调用方已确保用户已批准。
    */
-  async executeToolCallRaw(sessionId: string, toolCall: ToolCall): Promise<ToolExecutionResult> {
-    return this.executeToolCall(sessionId, toolCall, undefined, true);
+  async executeToolCallRaw(
+    sessionId: string,
+    toolCall: ToolCall,
+    hooks?: ToolExecutionHooks
+  ): Promise<ToolExecutionResult> {
+    return this.executeToolCall(sessionId, toolCall, hooks, true);
   }
 
   formatToolResult(result: ToolExecutionResult): string {

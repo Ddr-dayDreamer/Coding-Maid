@@ -79,7 +79,7 @@ export class SessionMessageBuilder {
       visible: true,
       createTime: now,
       updateTime: now,
-      checkpointHash: this.fileHistory?.getCurrentCheckpointHash(sessionId),
+      // checkpointHash 不在此处设置，由 prepareMutation 在文件变更前统一关联
     };
   }
 

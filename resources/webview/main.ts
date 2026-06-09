@@ -66,8 +66,8 @@ window.addEventListener("message", (event: MessageEvent) => {
       break;
 
     case "notify":
-      // 如果是回退失败通知，清除 pendingRollback 防止状态泄漏
-      if (msg.level === "error" && String(msg.text).includes("回退失败")) {
+      // 回退相关通知（成功/失败/警告）都清除 pendingRollback 防止状态泄漏
+      if (String(msg.text).includes("回退")) {
         appState.pendingRollback = false;
       }
       notify[msg.level](msg.text, msg.duration);

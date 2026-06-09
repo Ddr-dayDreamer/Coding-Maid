@@ -80,6 +80,12 @@ export class SessionActivator {
     return this.sessionControllers.has(sessionId);
   }
 
+  /** 清空快速路径缓存（用户发送新消息时由 SessionManager 调用） */
+  clearFastPathCache(): void {
+    this.cachedOpenAIMessages = null;
+    this.cachedMessageCount = 0;
+  }
+
   // ═══════════════════════════════════════════════════════
   //  主循环
   // ═══════════════════════════════════════════════════════
@@ -136,10 +142,6 @@ export class SessionActivator {
     }));
 
     this.sessionControllers.set(sessionId, sessionController);
-
-    // 每次 activate 开始时清理快速路径缓存
-    this.cachedOpenAIMessages = null;
-    this.cachedMessageCount = 0;
 
     try {
       const maxIterations = 80000;
@@ -384,23 +386,29 @@ export class SessionActivator {
 
   /**
    * 判断是否可以使用快速路径。
-   * 条件：有缓存，且新增消息符合 [assistant(tool_calls), tool, tool, ...] 模式。
+   * 条件：有缓存，且新增消息符合以下任一模式：
+   *   A) [assistant(tool_calls), tool, tool, ...]  — 标准工具回调轮次
+   *   B) [tool, tool, ...]                          — 审批完成后继续（tool 结果已落盘）
    */
   private canUseFastPath(conversationMessages: SessionMessage[]): boolean {
     if (!this.cachedOpenAIMessages) return false;
 
     const newCount = conversationMessages.length - this.cachedMessageCount;
-    if (newCount < 2) return false;
+    if (newCount < 1) return false;
 
     const newMessages = conversationMessages.slice(this.cachedMessageCount);
 
-    if (newMessages[0].role !== "assistant") return false;
-    if (!this.hasToolCalls(newMessages[0])) return false;
+    // 模式 A：新来了 assistant(tool_calls) + tool 结果
+    if (newCount >= 2 && newMessages[0].role === "assistant" && this.hasToolCalls(newMessages[0])) {
+      return newMessages.slice(1).every((m) => m.role === "tool");
+    }
 
-    const toolResults = newMessages.slice(1);
-    if (!toolResults.every((m) => m.role === "tool")) return false;
+    // 模式 B：审批完成后恢复 — 只有 tool 结果新增（assistant 已在缓存中）
+    if (newMessages.every((m) => m.role === "tool")) {
+      return true;
+    }
 
-    return true;
+    return false;
   }
 
   private hasToolCalls(msg: SessionMessage): boolean {
