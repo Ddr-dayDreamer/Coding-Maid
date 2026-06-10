@@ -2,7 +2,7 @@
   "name": "codingmaid",
   "displayName": "Coding Maid",
   "description": "你专属的编程女仆，提供**完全提示词控制**的agent工具",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/Ddr-dayDreamer/Coding-Maid.git"
