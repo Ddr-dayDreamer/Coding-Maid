@@ -277,9 +277,7 @@ export class SessionMessageBuilder {
     if (messageParams?.tool_call_id) {
       (base as { tool_call_id?: string }).tool_call_id = messageParams.tool_call_id;
     }
-    if (typeof messageParams?.reasoning_content === "string") {
-      (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
-    } else if (thinkingEnabled && message.role === "assistant") {
+    if (thinkingEnabled && message.role === "assistant") {
       (base as { reasoning_content?: string }).reasoning_content = "";
     }
 
