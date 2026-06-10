@@ -7,7 +7,6 @@ export type FileState = {
   filePath: string;
   content: string;
   timestamp: number;
-  version?: number;
   offset?: number;
   limit?: number;
   isPartialView?: boolean;
@@ -15,19 +14,7 @@ export type FileState = {
   lineEndings?: FileLineEnding;
 };
 
-export type FileSnippet = {
-  id: string;
-  filePath: string;
-  startLine: number;
-  endLine: number;
-  preview: string;
-  fileVersion: number;
-};
-
 const fileStatesBySession = new Map<string, Map<string, FileState>>();
-const snippetsBySession = new Map<string, Map<string, FileSnippet>>();
-const snippetCountersBySession = new Map<string, number>();
-const fileVersionsBySession = new Map<string, Map<string, number>>();
 
 export function normalizeFilePath(filePath: string, platform: NodeJS.Platform = process.platform): string {
   const nativePath = normalizeNativeFilePath(filePath, platform);
@@ -63,7 +50,6 @@ function isGitBashAbsolutePath(filePath: string): boolean {
 export function recordFileState(
   sessionId: string,
   state: FileState,
-  options: { incrementVersion?: boolean } = {}
 ): void {
   if (!sessionId || !state.filePath) {
     return;
@@ -76,13 +62,9 @@ export function recordFileState(
   }
 
   const normalizedPath = normalizeFilePath(state.filePath);
-  const currentVersion = getFileVersion(sessionId, normalizedPath);
-  const nextVersion = options.incrementVersion ? currentVersion + 1 : currentVersion;
-  setFileVersion(sessionId, normalizedPath, nextVersion);
   sessionState.set(normalizedPath, {
     ...state,
     filePath: normalizedPath,
-    version: nextVersion,
   });
 }
 
@@ -119,67 +101,8 @@ export function wasFileRead(sessionId: string, filePath: string): boolean {
   return getFileState(sessionId, filePath) !== null;
 }
 
-export function getFileVersion(sessionId: string, filePath: string): number {
-  if (!sessionId || !filePath) {
-    return 0;
-  }
-  return fileVersionsBySession.get(sessionId)?.get(normalizeFilePath(filePath)) ?? 0;
-}
-
-function setFileVersion(sessionId: string, filePath: string, version: number): void {
-  let sessionVersions = fileVersionsBySession.get(sessionId);
-  if (!sessionVersions) {
-    sessionVersions = new Map<string, number>();
-    fileVersionsBySession.set(sessionId, sessionVersions);
-  }
-  sessionVersions.set(normalizeFilePath(filePath), version);
-}
-
 export function isFullFileView(state: FileState | null): boolean {
   return Boolean(
     state && !state.isPartialView && typeof state.offset === "undefined" && typeof state.limit === "undefined"
   );
-}
-
-export function createSnippet(
-  sessionId: string,
-  filePath: string,
-  startLine: number,
-  endLine: number,
-  preview: string
-): FileSnippet | null {
-  if (!sessionId || !filePath || startLine < 1 || endLine < startLine) {
-    return null;
-  }
-
-  const nextCounter = (snippetCountersBySession.get(sessionId) ?? 0) + 1;
-  snippetCountersBySession.set(sessionId, nextCounter);
-
-  const snippet: FileSnippet = {
-    id: `snippet_${nextCounter}`,
-    filePath: normalizeFilePath(filePath),
-    startLine,
-    endLine,
-    preview,
-    fileVersion: getFileVersion(sessionId, filePath),
-  };
-
-  let snippets = snippetsBySession.get(sessionId);
-  if (!snippets) {
-    snippets = new Map<string, FileSnippet>();
-    snippetsBySession.set(sessionId, snippets);
-  }
-  snippets.set(snippet.id, snippet);
-  return snippet;
-}
-
-export function getSnippet(sessionId: string, snippetId: string): FileSnippet | null {
-  if (!sessionId || !snippetId) {
-    return null;
-  }
-  return snippetsBySession.get(sessionId)?.get(snippetId) ?? null;
-}
-
-export function hasSnippetOutdatedFileVersion(sessionId: string, snippet: FileSnippet): boolean {
-  return getFileVersion(sessionId, snippet.filePath) > snippet.fileVersion;
 }

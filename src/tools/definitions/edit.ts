@@ -1,7 +1,8 @@
 /**
  * edit — 工具定义
  *
- * 在文件中执行范围限定的字符串替换。
+ * 在文件中执行精确的字符串替换（单次匹配）。
+ * 批量替换请使用 find_and_replace 工具。
  */
 
 import { handleEditTool } from "../handler/edit-handler";
@@ -10,35 +11,31 @@ import type { ToolRegistration } from "../registry";
 
 export const editTool: ToolRegistration = {
   name: "edit",
-  description: "Perform scoped string replacements in files.",
+  description: "Perform precise single-occurrence string replacements in files.",
   parameters: {
     type: "object",
     properties: {
       file_path: {
         type: "string",
-        description: "Absolute path to file. Optional when snippet_id is provided.",
-      },
-      snippet_id: {
-        type: "string",
-        description:
-          "Snippet id returned by the Read or Edit tool to scope the search range after a partial read.",
+        description: "Absolute path to the file to modify.",
       },
       old_string: {
         type: "string",
-        description: "Exact text to replace inside the file or snippet scope",
+        description: "Exact text to replace.",
       },
       new_string: {
         type: "string",
-        description: "Replacement text (must differ from old_string)",
+        description: "Replacement text (must differ from old_string).",
       },
-      replace_all: {
-        type: "boolean",
-        description: "Replace all occurences of old_string (default false)",
-        default: false,
-      },
-      expected_occurrences: {
+      start_line: {
         type: "number",
-        description: "Expected number of matches, especially useful as a safety check with replace_all",
+        description:
+          "Optional 1-based start line to scope the search. Use with end_line when you know the target range from a prior Read.",
+      },
+      end_line: {
+        type: "number",
+        description:
+          "Optional 1-based end line (inclusive) to scope the search. Use with start_line.",
       },
       expected_start_line: {
         type: "number",
@@ -47,25 +44,31 @@ export const editTool: ToolRegistration = {
           "If provided, the tool verifies the match is at this line before editing.",
       },
     },
-    required: ["old_string", "new_string"],
+    required: ["file_path", "old_string", "new_string"],
     additionalProperties: false,
   },
   handler: handleEditTool,
   approvalChecker: editApprovalChecker,
   doc: `## Edit
 
-Performs scoped string replacements in files.
+Performs precise single-occurrence string replacements in files.
 
 Usage:
-- You must use your \`Read\` tool at least once in the conversation before editing. This tool will error if you attempt an edit without reading the file.
-- If your prior Read only covered part of the file, use the returned \`snippet_id\` to scope the edit, or read the full file before editing without a snippet.
-- When editing text from Read tool output, ensure you preserve the exact indentation (tabs/spaces) as it appears AFTER the line number prefix. The line number prefix format is: spaces + line number + tab. Everything after that tab is the actual file content to match. Never include any part of the line number prefix in the old_string or new_string.
-- Prefer passing \`snippet_id\` from a prior Read response when you want to limit the replacement to a known range.
-- ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.
-- Only use emojis if the user explicitly requests it. Avoid adding emojis to files unless asked.
-- If \`old_string\` is not unique, the tool returns candidate matches with line ranges, previews, and snippet ids that you can reuse in a follow-up edit.
-- If \`old_string\` is not found, the tool returns the closest likely match in metadata, including a preview. If the only difference is escaping and there is a unique loose-escape match, the tool may use the configured model to correct \`old_string\` and \`new_string\` before retrying.
-- \`replace_all\` has safety checks. For broad or short-fragment replacements, provide \`expected_occurrences\` so the tool can verify the exact number of matches before editing.
+- You must use your \`Read\` tool at least once in the conversation before editing.
+- When editing text from Read tool output, ensure you preserve the exact indentation (tabs/spaces) as it appears AFTER the line number prefix. The line number prefix format is: spaces + line number + tab. Everything after that tab is the actual file content to match.
+- Use \`start_line\` / \`end_line\` from a prior Read response to scope the edit to a known range.
+- ALWAYS prefer editing existing files. NEVER write new files unless explicitly required.
+
+If \`old_string\` is not unique, the tool returns candidate matches with line ranges and previews. Pass \`start_line\` / \`end_line\` in a follow-up call to scope the replacement.
+
+If \`old_string\` is not found, the tool returns the closest likely match in metadata.
+
+The tool automatically applies a multi-phase matching strategy when exact match fails:
+1. **Line number prefix correction** — Strips Read output line numbers (\`     6\\tcontent\`) if accidentally included.
+2. **Loose escape correction** — Corrects JSON/escape character differences (score >= 0.85).
+3. **Whitespace normalization** — Normalizes all consecutive whitespace to handle indent/space/tab mismatches.
+
+When auto-correction succeeds, the \`matched_via\` metadata field indicates which strategy was used.
 
 \`\`\`json
 {
@@ -73,32 +76,32 @@ Usage:
   "type": "object",
   "properties": {
     "file_path": {
-      "description": "The absolute path to the file to modify (must be absolute, not relative). Optional when snippet_id is provided.",
-      "type": "string"
-    },
-    "snippet_id": {
-      "description": "Snippet id returned by Read or a prior Edit error response. Limits the search range to that snippet.",
+      "description": "The absolute path to the file to modify.",
       "type": "string"
     },
     "old_string": {
-      "description": "The text to replace within the file or snippet scope",
+      "description": "The exact text to replace within the file.",
       "type": "string"
     },
     "new_string": {
-      "description": "The text to replace it with (must be different from old_string)",
+      "description": "The replacement text (must differ from old_string).",
       "type": "string"
     },
-    "replace_all": {
-      "description": "Replace all occurences of old_string (default false)",
-      "default": false,
-      "type": "boolean"
+    "start_line": {
+      "description": "1-based start line to scope the search range.",
+      "type": "number"
     },
-    "expected_occurrences": {
-      "description": "Expected number of matches. Useful as a guardrail for replace_all.",
+    "end_line": {
+      "description": "1-based end line (inclusive) to scope the search range.",
+      "type": "number"
+    },
+    "expected_start_line": {
+      "description": "Expected 1-based start line for the match. Acts as a safety check.",
       "type": "number"
     }
   },
   "required": [
+    "file_path",
     "old_string",
     "new_string"
   ],

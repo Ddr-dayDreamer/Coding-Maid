@@ -111,7 +111,6 @@ export async function handleWriteTool(
             encoding: freshMetadata.encoding,
             lineEndings: freshMetadata.lineEndings,
           },
-          { incrementVersion: true }
         );
 
         const lineCount = normalizedContent.split(/\r\n|\r|\n/).length;

@@ -7,21 +7,14 @@ import {
   writeTextFile,
 } from "../../utils/file-utils";
 import type { FileReadMetadata } from "../../utils/file-utils";
-import { executeValidatedTool, semanticBoolean } from "../../utils/runtime";
+import { executeValidatedTool } from "../../utils/runtime";
 import {
-  createSnippet,
   getFileState,
-  getSnippet,
-  hasSnippetOutdatedFileVersion,
   isAbsoluteFilePath,
-  isFullFileView,
+  markFileRead,
   normalizeFilePath,
-  recordFileState,
 } from "../../utils/state";
 
-const MAX_CANDIDATE_COUNT = 5;
-const REPLACE_ALL_MATCH_THRESHOLD = 5;
-const SHORT_REPLACE_ALL_LENGTH = 40;
 const MIN_FUZZY_SCORE = 0.8;
 const CLOSEST_MATCH_CONTEXT_LINES = 2;
 
@@ -37,7 +30,6 @@ type SearchScope = {
   endOffset: number;
   startLine: number;
   endLine: number;
-  snippetId: string | null;
 };
 
 type MatchOccurrence = {
@@ -76,12 +68,11 @@ function optionalInt(min: number) {
 }
 
 const editSchema = z.strictObject({
-  file_path: z.string().optional(),
-  snippet_id: z.string().optional(),
+  file_path: z.string(),
   old_string: z.string(),
   new_string: z.string(),
-  replace_all: semanticBoolean(false).optional(),
-  expected_occurrences: optionalInt(1),
+  start_line: optionalInt(1),
+  end_line: optionalInt(1),
   expected_start_line: optionalInt(1),
 });
 
@@ -95,44 +86,12 @@ export async function handleEditTool(
     args,
     context,
     async (input) => {
-      const snippetId = input.snippet_id?.trim() ?? "";
-      const snippet = snippetId ? getSnippet(context.sessionId, snippetId) : null;
-
-      let filePath = input.file_path?.trim() ?? "";
-      if (!filePath && !snippet) {
-        return {
-          ok: false,
-          name: "edit",
-          error: "file_path or snippet_id required.",
-        };
-      }
-
-      if (!filePath && snippet) {
-        filePath = snippet.filePath;
-      }
-
-      filePath = normalizeFilePath(filePath);
+      const filePath = normalizeFilePath(input.file_path);
       if (!isAbsoluteFilePath(filePath)) {
         return {
           ok: false,
           name: "edit",
           error: "file_path must be an absolute path.",
-        };
-      }
-
-      if (snippetId && !snippet) {
-        return {
-          ok: false,
-          name: "edit",
-          error: `snippet_id not found: ${snippetId}`,
-        };
-      }
-
-      if (snippet && snippet.filePath !== filePath) {
-        return {
-          ok: false,
-          name: "edit",
-          error: "snippet_id belongs to a different file.",
         };
       }
 
@@ -189,15 +148,6 @@ export async function handleEditTool(
         };
       }
 
-      if (!snippet && !isFullFileView(fileState)) {
-        return {
-          ok: false,
-          name: "edit",
-          error: "File partially read; use snippet_id or read the full file.",
-        };
-      }
-
-      // Read once and reuse for staleness check, avoiding redundant I/O
       let metadata: FileReadMetadata;
       try {
         metadata = readTextFileWithMetadata(filePath);
@@ -210,64 +160,74 @@ export async function handleEditTool(
         };
       }
 
-      // Inline staleness check (hasFileChangedSinceState would re-read the file)
-      if (metadata.timestamp > fileState.timestamp) {
-        const isFullRead =
-          !fileState.isPartialView && typeof fileState.offset === "undefined" && typeof fileState.limit === "undefined";
-        if (!(isFullRead && metadata.content === fileState.content)) {
-          return {
-            ok: false,
-            name: "edit",
-            error: "File modified since read. Re-read it first.",
-          };
-        }
+      // Simple staleness check
+      if (metadata.timestamp > fileState.timestamp && metadata.content !== fileState.content) {
+        return {
+          ok: false,
+          name: "edit",
+          error: "File modified since read. Re-read it first.",
+        };
       }
 
       try {
         const raw = metadata.content;
         const oldString = input.old_string;
         const newString = input.new_string;
-        const replaceAll = input.replace_all ?? false;
         const lineIndex = buildLineIndex(raw);
-        const scope = buildSearchScope(filePath, raw, lineIndex, snippet ?? null);
+        const scope = buildSearchScope(filePath, raw, lineIndex, input.start_line ?? null, input.end_line ?? null);
         let matches = findOccurrences(raw, oldString, scope, lineIndex.lineStarts);
-        let matchedVia: "exact" | "line_leading_whitespace_correction" | "loose_escape" = "exact";
+        let matchedVia:
+          | "exact"
+          | "line_number_prefix_correction"
+          | "loose_escape"
+          | "whitespace_normalized" = "exact";
         let replacementOldString = oldString;
         let replacementNewString = newString;
 
+        // ── Phase 2: Line number prefix stripping ──────────────
+        // AI may copy Read tool output which includes line numbers.
         if (matches.length === 0) {
-          const tabStrippedOldString = stripReadResultLineTabs(oldString);
-          if (tabStrippedOldString !== oldString) {
-            const tabStrippedMatches = findOccurrences(raw, tabStrippedOldString, scope, lineIndex.lineStarts);
-            if (tabStrippedMatches.length === 1) {
-              matches = tabStrippedMatches;
-              matchedVia = "line_leading_whitespace_correction";
-              replacementOldString = tabStrippedOldString;
-              replacementNewString = stripReadResultLineTabs(newString);
+          const strippedOld = stripReadLineNumberPrefixes(oldString);
+          if (strippedOld !== oldString) {
+            const strippedMatches = findOccurrences(raw, strippedOld, scope, lineIndex.lineStarts);
+            if (strippedMatches.length >= 1) {
+              matches = strippedMatches;
+              matchedVia = "line_number_prefix_correction";
+              replacementOldString = strippedOld;
+              replacementNewString = stripReadLineNumberPrefixes(newString);
             }
           }
         }
 
+        // ── Phase 3: Loose escape matching (improved threshold) ─
+        // Handles JSON escape differences (e.g., double-escaped quotes).
         if (matches.length === 0) {
           const looseEscapeMatches = findLooseEscapeMatches(raw, oldString, scope, lineIndex.lineStarts);
-          if (looseEscapeMatches.length === 1 && looseEscapeMatches[0]?.score === 1) {
-            matches = [looseEscapeMatches[0]];
+          const bestLoose =
+            looseEscapeMatches.length === 1
+              ? looseEscapeMatches[0]
+              : looseEscapeMatches.length > 1
+                ? looseEscapeMatches.reduce((a, b) => (a.score > b.score ? a : b))
+                : null;
+          if (bestLoose && bestLoose.score >= 0.85) {
+            matches = [bestLoose];
             matchedVia = "loose_escape";
+            replacementOldString = bestLoose.text;
           }
         }
 
+        // ── Phase 4: Whitespace-normalized matching ─────────────
+        // Handles indent differences (tab/space, extra spaces, etc.)
         if (matches.length === 0) {
-          if (snippet && hasSnippetOutdatedFileVersion(context.sessionId, snippet)) {
-            return {
-              ok: false,
-              name: "edit",
-              error: "old_string not found; snippet scope outdated. Re-read file before editing.",
-              metadata: {
-                scope: formatScopeMetadata(scope),
-              },
-            };
+          const wsMatches = findWhitespaceNormalizedMatches(raw, oldString, scope, lineIndex.lineStarts, lineIndex);
+          if (wsMatches.length === 1) {
+            matches = wsMatches;
+            matchedVia = "whitespace_normalized";
           }
+        }
 
+        // ── All matching failed ─────────────────────────────────
+        if (matches.length === 0) {
           const closestMatch = findClosestMatch(raw, oldString, scope, lineIndex);
           return {
             ok: false,
@@ -276,7 +236,7 @@ export async function handleEditTool(
             metadata: closestMatch
               ? {
                   scope: formatScopeMetadata(scope),
-                  closest_match: buildClosestMatchMetadata(context.sessionId, filePath, closestMatch),
+                  closest_match: buildClosestMatchMetadata(filePath, closestMatch),
                 }
               : {
                   scope: formatScopeMetadata(scope),
@@ -284,15 +244,20 @@ export async function handleEditTool(
           };
         }
 
-        if (!replaceAll && matches.length > 1) {
+        if (matches.length > 1) {
           return {
             ok: false,
             name: "edit",
-            error: "old_string is not unique; use snippet_id, replace_all, or provide more context.",
+            error:
+              "old_string is not unique. Use start_line/end_line to scope, or expected_start_line as a safety check.",
             metadata: {
               match_count: matches.length,
               scope: formatScopeMetadata(scope),
-              candidates: buildCandidateMetadata(context.sessionId, filePath, lineIndex.lines, matches),
+              candidates: matches.slice(0, 5).map((m) => ({
+                start_line: m.startLine,
+                end_line: m.endLine,
+                preview: buildPreview(lineIndex.lines, m.startLine, m.endLine),
+              })),
             },
           };
         }
@@ -306,34 +271,13 @@ export async function handleEditTool(
             metadata: {
               match_count: matches.length,
               scope: formatScopeMetadata(scope),
-              candidates: buildCandidateMetadata(context.sessionId, filePath, lineIndex.lines, matches),
               actual_start_line: matches[0].startLine,
               expected_start_line: expectedStartLine,
             },
           };
         }
 
-        const expectedOccurrences = input.expected_occurrences ?? null;
-        const replaceAllGuardError = validateReplaceAllGuard({
-          replaceAll,
-          matchCount: matches.length,
-          oldString: replacementOldString,
-          expectedOccurrences,
-        });
-        if (replaceAllGuardError) {
-          return {
-            ok: false,
-            name: "edit",
-            error: replaceAllGuardError,
-            metadata: {
-              match_count: matches.length,
-              scope: formatScopeMetadata(scope),
-              candidates: buildCandidateMetadata(context.sessionId, filePath, lineIndex.lines, matches),
-            },
-          };
-        }
-
-        const updated = applyReplacement(raw, replacementOldString, replacementNewString, matches, replaceAll);
+        const updated = applyReplacement(raw, replacementOldString, replacementNewString, matches);
         const diffPreview = buildDiffPreview(filePath, raw, updated);
         context.onBeforeFileMutation?.(filePath);
 
@@ -362,28 +306,20 @@ export async function handleEditTool(
           };
         }
 
-        recordFileState(
-          context.sessionId,
-          {
-            filePath,
-            content: freshMetadata.content,
-            timestamp: freshMetadata.timestamp,
-            encoding: freshMetadata.encoding,
-            lineEndings: freshMetadata.lineEndings,
-          },
-          { incrementVersion: true }
-        );
-        const replacedCount = replaceAll ? matches.length : 1;
+        markFileRead(context.sessionId, filePath, {
+          content: freshMetadata.content,
+          timestamp: freshMetadata.timestamp,
+          encoding: freshMetadata.encoding,
+          lineEndings: freshMetadata.lineEndings,
+        });
         return {
           ok: true,
           name: "edit",
-          output: `Replaced ${replacedCount} occurrence(s) in ${filePath}.`,
+          output: `Replaced 1 occurrence(s) in ${filePath}.`,
           metadata: {
             file_path: filePath,
-            replaced_count: replacedCount,
+            replaced_count: 1,
             matched_via: matchedVia,
-            cache_refreshed: true,
-            read_scope_type: snippet ? "snippet" : "full",
             encoding: freshMetadata.encoding,
             line_endings: freshMetadata.lineEndings,
             diff_preview: diffPreview,
@@ -404,9 +340,6 @@ export async function handleEditTool(
         const nextInput = { ...rawInput };
         if (typeof nextInput.file_path === "string") {
           nextInput.file_path = normalizeFilePath(nextInput.file_path);
-        }
-        if (typeof nextInput.snippet_id === "string") {
-          nextInput.snippet_id = nextInput.snippet_id.trim();
         }
         return { ok: true, input: nextInput };
       },
@@ -439,28 +372,27 @@ function buildSearchScope(
   filePath: string,
   raw: string,
   lineIndex: LineIndex,
-  snippet: { startLine: number; endLine: number; id: string } | null
+  startLine: number | null,
+  endLine: number | null,
 ): SearchScope {
-  if (!snippet) {
+  if (startLine !== null && endLine !== null) {
+    const safeStart = clamp(startLine, 1, lineIndex.lines.length);
+    const safeEnd = clamp(endLine, safeStart, lineIndex.lines.length);
     return {
       filePath,
-      startOffset: 0,
-      endOffset: raw.length,
-      startLine: 1,
-      endLine: lineIndex.lines.length,
-      snippetId: null,
+      startOffset: lineIndex.lineStarts[safeStart],
+      endOffset: lineIndex.lineStarts[safeEnd + 1],
+      startLine: safeStart,
+      endLine: safeEnd,
     };
   }
 
-  const safeStartLine = clamp(snippet.startLine, 1, lineIndex.lines.length);
-  const safeEndLine = clamp(snippet.endLine, safeStartLine, lineIndex.lines.length);
   return {
     filePath,
-    startOffset: lineIndex.lineStarts[safeStartLine],
-    endOffset: lineIndex.lineStarts[safeEndLine + 1],
-    startLine: safeStartLine,
-    endLine: safeEndLine,
-    snippetId: snippet.id,
+    startOffset: 0,
+    endOffset: raw.length,
+    startLine: 1,
+    endLine: lineIndex.lines.length,
   };
 }
 
@@ -540,6 +472,43 @@ function findLooseEscapeMatches(
   return matches;
 }
 
+/**
+ * Try to match old_string against file content after normalizing all
+ * consecutive whitespace to a single space. This handles common AI mistakes:
+ * - Tab vs space indentation differences
+ * - Extra/missing spaces
+ * - Trailing whitespace differences
+ *
+ * Only returns matches when EXACTLY ONE unique range matches.
+ */
+function findWhitespaceNormalizedMatches(
+  raw: string,
+  needle: string,
+  scope: SearchScope,
+  lineStarts: number[],
+  lineIndex: LineIndex,
+): MatchOccurrence[] {
+  const normalizeWs = (s: string) => s.replace(/[ \t]+/g, " ").replace(/^ | $/gm, "").trim();
+  const normalizedNeedle = normalizeWs(needle);
+  if (!normalizedNeedle) return [];
+
+  const needleLineCount = needle.split(/\r?\n/).length;
+  const maxStartLine = scope.endLine - needleLineCount + 1;
+  const matches: MatchOccurrence[] = [];
+
+  for (let startLine = scope.startLine; startLine <= maxStartLine; startLine++) {
+    const endLine = startLine + needleLineCount - 1;
+    const candidateText = sliceLines(raw, lineIndex, startLine, endLine);
+    if (normalizeWs(candidateText) === normalizedNeedle) {
+      const startOffset = lineStarts[startLine];
+      const endOffset = lineStarts[endLine + 1];
+      matches.push({ startOffset, endOffset, startLine, endLine });
+    }
+  }
+
+  return matches;
+}
+
 function offsetToLine(lineStarts: number[], offset: number): number {
   if (offset <= 0) {
     return 1;
@@ -558,92 +527,34 @@ function offsetToLine(lineStarts: number[], offset: number): number {
   return lo;
 }
 
-function validateReplaceAllGuard(input: {
-  replaceAll: boolean;
-  matchCount: number;
-  oldString: string;
-  expectedOccurrences: number | null;
-}): string | null {
-  if (!input.replaceAll) {
-    if (input.expectedOccurrences !== null && input.expectedOccurrences !== 1) {
-      return "expected_occurrences can only be greater than 1 when replace_all is true.";
-    }
-    return null;
-  }
-
-  if (input.expectedOccurrences !== null && input.expectedOccurrences !== input.matchCount) {
-    return `replace_all expected ${input.expectedOccurrences} occurrence(s), ` + `but found ${input.matchCount}.`;
-  }
-
-  const isShortFragment = input.oldString.trim().length < SHORT_REPLACE_ALL_LENGTH;
-  const needsExplicitCount =
-    input.expectedOccurrences === null &&
-    (input.matchCount > REPLACE_ALL_MATCH_THRESHOLD || (isShortFragment && input.matchCount > 1));
-
-  if (needsExplicitCount) {
-    return (
-      `replace_all would affect ${input.matchCount} occurrence(s); ` +
-      "provide expected_occurrences to confirm this broader replacement."
-    );
-  }
-
-  return null;
-}
-
 function applyReplacement(
   raw: string,
   oldString: string,
   newString: string,
   matches: MatchOccurrence[],
-  replaceAll: boolean
 ): string {
-  if (!replaceAll) {
-    return raw.slice(0, matches[0].startOffset) + newString + raw.slice(matches[0].endOffset);
-  }
-
-  let result = "";
-  let cursor = 0;
-  for (const match of matches) {
-    result += raw.slice(cursor, match.startOffset);
-    result += newString;
-    cursor = match.endOffset;
-  }
-  result += raw.slice(cursor);
-  return result;
+  return raw.slice(0, matches[0].startOffset) + newString + raw.slice(matches[0].endOffset);
 }
 
-function stripReadResultLineTabs(value: string): string {
-  return value.replaceAll(/\n[ \t]/g, "\n");
-}
-
-function buildCandidateMetadata(
-  sessionId: string,
-  filePath: string,
-  lines: string[],
-  matches: MatchOccurrence[]
-): Array<Record<string, unknown>> {
-  return matches.slice(0, MAX_CANDIDATE_COUNT).map((match) => {
-    const preview = buildPreview(lines, match.startLine, match.endLine);
-    const snippet = createSnippet(sessionId, filePath, match.startLine, match.endLine, preview);
-    return {
-      snippet_id: snippet?.id ?? null,
-      start_line: match.startLine,
-      end_line: match.endLine,
-      preview,
-    };
-  });
+/**
+ * Strip Read tool-style line number prefixes from each line.
+ *
+ * Read output format: "     6\tcontent"  (6-wide line number + tab + content)
+ * If the AI accidentally included the line number prefix in old_string,
+ * this will remove it and allow matching against the raw file content.
+ */
+function stripReadLineNumberPrefixes(value: string): string {
+  // Pattern: optional leading whitespace + digits + tab, at line start
+  return value.replace(/^[ \t]*\d+\t/gm, "");
 }
 
 function buildClosestMatchMetadata(
-  sessionId: string,
   filePath: string,
   closestMatch: ClosestMatch
 ): Record<string, unknown> {
   const preview = formatWithLineNumbers(closestMatch.text.split(/\r?\n/), closestMatch.startLine);
-  const snippet = createSnippet(sessionId, filePath, closestMatch.startLine, closestMatch.endLine, preview);
 
   return {
-    snippet_id: snippet?.id ?? null,
     start_line: closestMatch.startLine,
     end_line: closestMatch.endLine,
     similarity: Number(closestMatch.score.toFixed(3)),
@@ -657,7 +568,6 @@ function formatScopeMetadata(scope: SearchScope): Record<string, unknown> {
     file_path: scope.filePath,
     start_line: scope.startLine,
     end_line: scope.endLine,
-    snippet_id: scope.snippetId,
   };
 }
 

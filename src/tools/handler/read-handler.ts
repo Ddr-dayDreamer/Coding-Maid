@@ -3,7 +3,7 @@ import * as path from "path";
 import ignore from "ignore";
 import type { ToolExecutionContext, ToolExecutionFollowUpMessage, ToolExecutionResult } from "../types";
 import { readTextFileWithMetadata } from "../../utils/file-utils";
-import { createSnippet, isAbsoluteFilePath, markFileRead, normalizeFilePath } from "../../utils/state";
+import { isAbsoluteFilePath, markFileRead, normalizeFilePath } from "../../utils/state";
 
 const DEFAULT_LINE_LIMIT = 2000;
 const MAX_LINE_LENGTH = 2000;
@@ -249,27 +249,16 @@ export async function handleReadTool(
       encoding: textResult.encoding,
       lineEndings: textResult.lineEndings,
     });
-    const snippet = createSnippet(
-      context.sessionId,
-      filePath,
-      textResult.startLine,
-      textResult.endLine,
-      textResult.output
-    );
     return {
       ok: true,
       name: "read",
       output: textResult.output,
-      metadata: snippet
-        ? {
-            snippet: {
-              id: snippet.id,
-              filePath: snippet.filePath,
-              startLine: snippet.startLine,
-              endLine: snippet.endLine,
-            },
-          }
-        : undefined,
+      metadata: {
+        start_line: textResult.startLine,
+        end_line: textResult.endLine,
+        total_lines: textResult.totalLines,
+        is_partial: textResult.isPartialView,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
