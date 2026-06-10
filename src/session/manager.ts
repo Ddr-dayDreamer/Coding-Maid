@@ -32,6 +32,7 @@ import { LlmStreamManager } from "../llm/stream";
 import { SessionActivator } from "./activator";
 import { SessionNotifier } from "./notifier";
 import { PresetManager } from "../preset/manager";
+import { EditorDecorationManager } from "./editor-decorations";
 import type {
   SessionMessage,
   SessionEntry,
@@ -94,6 +95,7 @@ export class SessionManager {
   private readonly activator: SessionActivator;
   private readonly notifier: SessionNotifier;
   private readonly toolExecutor: ToolExecutor;
+  private readonly editorDecorations: EditorDecorationManager;
   readonly presetMgr: PresetManager;
 
   /* MCP */
@@ -135,6 +137,7 @@ export class SessionManager {
     this.toolExecutor = new ToolExecutor(this.projectRoot, this.createOpenAIClient, this.mcpManager);
     this.presetMgr = new PresetManager(getExtensionRoot());
     this.notifier = new SessionNotifier(this.storage, this.createOpenAIClient, (sid) => this.getSession(sid));
+    this.editorDecorations = new EditorDecorationManager();
     this.activator = new SessionActivator(
       this.storage,
       this.messageBuilder,
@@ -358,8 +361,9 @@ export class SessionManager {
     console.log("[DEBUG] sendMessage: user msg appended, calling runActivate");
 
     this.activeSessionId = sessionId;
-    // 新用户消息 → 清空快速路径缓存，下次 activate 将重新组装完整提示词
+    // 新用户消息 → 清空快速路径缓存 + 清除编辑器高亮装饰
     this.activator.clearFastPathCache();
+    this.editorDecorations.clearAll();
     await this.runActivate(sessionId, controller);
     console.log("[DEBUG] sendMessage: runActivate returned");
   }
@@ -546,7 +550,7 @@ export class SessionManager {
     for (const tc of toolCalls) {
       const parsed = this.toolExecutor.parseToolCallForApproval(tc);
       if (parsed) {
-        const check = registry.checkApproval(parsed.name, parsed.rawArguments);
+        const check = registry.checkApproval(parsed.name, parsed.rawArguments, this.projectRoot);
         if (check.requiresApproval) {
           pendingApprovals.push({
             toolCallId: parsed.id,
@@ -596,6 +600,10 @@ export class SessionManager {
         }));
       },
       onProcessStdout: (pid, chunk) => this.onProcessStdout?.(Number(pid), chunk),
+      onEditApplied: (filePath, diffPreview) => {
+        console.log("[DEBUG] manager: onEditApplied received", filePath);
+        this.editorDecorations.applyEditDecoration(filePath, diffPreview);
+      },
       onProcessTimeoutControl: (pid, control) => {
         this.processMgr.setControl(sessionId, pid, control);
         if (control) {

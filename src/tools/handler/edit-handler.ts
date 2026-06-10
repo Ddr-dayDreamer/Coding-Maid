@@ -306,6 +306,9 @@ export async function handleEditTool(
           };
         }
 
+        console.log("[DEBUG] edit-handler: calling onEditApplied", filePath);
+        context.onEditApplied?.(filePath, diffPreview ?? "");
+
         markFileRead(context.sessionId, filePath, {
           content: freshMetadata.content,
           timestamp: freshMetadata.timestamp,

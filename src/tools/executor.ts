@@ -15,6 +15,8 @@ export type ToolExecutionHooks = {
   onProcessTimeoutControl?: (processId: string | number, control: ProcessTimeoutControl | null) => void;
   onBeforeFileMutation?: (filePath: string) => void;
   onAfterFileMutation?: (filePath: string) => void;
+  /** 编辑工具成功替换后回调 */
+  onEditApplied?: (filePath: string, diffPreview: string) => void;
   shouldStop?: () => boolean;
 };
 
@@ -110,7 +112,7 @@ export class ToolExecutor {
     // ── 审批检查 ──
     // 在执行前检查此工具是否需要用户审批，或是否被工具级预检器自动拒绝
     if (!skipApprovalCheck) {
-      const approvalCheck = registry.checkApproval(toolName, toolCall.function.arguments);
+      const approvalCheck = registry.checkApproval(toolName, toolCall.function.arguments, this.projectRoot);
       if (approvalCheck.autoReject) {
         return {
           ok: false,
@@ -158,6 +160,7 @@ export class ToolExecutor {
       onProcessTimeoutControl: hooks?.onProcessTimeoutControl,
       onBeforeFileMutation: hooks?.onBeforeFileMutation,
       onAfterFileMutation: hooks?.onAfterFileMutation,
+      onEditApplied: hooks?.onEditApplied,
     });
   }
 

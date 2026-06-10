@@ -20,6 +20,8 @@ export type ToolExecutionContext = {
   onProcessTimeoutControl?: (processId: string | number, control: ProcessTimeoutControl | null) => void;
   onBeforeFileMutation?: (filePath: string) => void;
   onAfterFileMutation?: (filePath: string) => void;
+  /** 编辑工具成功替换后回调，传递文件路径和 unified diff 预览文本 */
+  onEditApplied?: (filePath: string, diffPreview: string) => void;
   bashTimeoutMs?: number;
   bashMinTimeoutMs?: number;
 };
@@ -35,13 +37,21 @@ export type ToolExecutionContext = {
 export type ToolApprovalCheckResult =
   | { action: "allow" }
   | { action: "reject"; reason: string }
-  | { action: "require" };
+  | { action: "require" }
+  | { action: "force_require" };
 
 /**
  * 工具级审批预检器签名。
  * 返回 ToolApprovalCheckResult 来决定此调用如何处理。
  */
-export type ToolApprovalChecker = (args: Record<string, unknown>) => ToolApprovalCheckResult;
+export type ToolApprovalContext = {
+  projectRoot?: string;
+};
+
+export type ToolApprovalChecker = (
+  args: Record<string, unknown>,
+  context?: ToolApprovalContext
+) => ToolApprovalCheckResult;
 
 // ─── 待审批信息 ────────────────────────────────────────
 

@@ -8,7 +8,8 @@
  * - require: 走正常审批流程（兜底）
  */
 
-import type { ToolApprovalChecker, ToolApprovalCheckResult } from "./types";
+import * as path from "path";
+import type { ToolApprovalChecker, ToolApprovalCheckResult, ToolApprovalContext } from "./types";
 
 // ─── 危险命令模式 ───────────────────────────────────────
 
@@ -215,11 +216,12 @@ export const writeApprovalChecker: ToolApprovalChecker = (
  * 检查规则：
  * 1. 文件路径指向系统关键位置 → 自动拒绝
  * 2. 文件是敏感配置文件 → 自动拒绝
- * 3. replace_all + 过短的 old_string → 自动拒绝（防止大范围误替换）
- * 4. 其他 → 走正常审批流程
+ * 3. 文件路径在项目根目录之外 → 强制审批（绕过 settings）
+ * 4. 其余 → 走 settings 配置的审批模式
  */
 export const editApprovalChecker: ToolApprovalChecker = (
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  ctx?: ToolApprovalContext
 ): ToolApprovalCheckResult => {
   const filePath = String(args.file_path ?? "").trim();
 
@@ -235,26 +237,26 @@ export const editApprovalChecker: ToolApprovalChecker = (
     if (sensitiveReason) {
       return { action: "reject", reason: sensitiveReason };
     }
-  }
 
-  // 3. replace_all + 过短 old_string → 可能造成大范围破坏
-  if (args.replace_all === true && typeof args.old_string === "string") {
-    const oldStr = args.old_string.trim();
-    if (oldStr.length > 0 && oldStr.length < 3) {
-      return {
-        action: "reject",
-        reason: `禁止对长度仅 ${oldStr.length} 个字符的模式执行 replace_all 操作 — 可能造成大范围意外替换`,
-      };
-    }
-    // 替换空白/纯标点符号也有风险
-    if (/^[\s\t\n\r]+$/.test(oldStr)) {
-      return {
-        action: "reject",
-        reason: "禁止对纯空白字符模式执行 replace_all 操作 — 可能造成大范围意外替换",
-      };
+    // 3. 项目外文件 → 强制审批（绕过 settings 模式，即使设了 none 也拦截）
+    if (ctx?.projectRoot && !isPathInsideProject(filePath, ctx.projectRoot)) {
+      return { action: "force_require" };
     }
   }
 
-  // 4. 其余需要审批
+  // 4. 其余走 settings 模式
   return { action: "require" };
 };
+
+// ─── 路径辅助 ────────────────────────────────────────────
+
+/**
+ * 检查目标路径是否在项目根目录内（或等于项目根目录本身）。
+ * 先 resolve 为绝对路径再比较，避免 .. 绕过。
+ */
+function isPathInsideProject(targetPath: string, projectRoot: string): boolean {
+  const resolvedTarget = path.resolve(targetPath);
+  const resolvedRoot = path.resolve(projectRoot);
+  const relative = path.relative(resolvedRoot, resolvedTarget);
+  return !relative.startsWith("..") && !path.isAbsolute(relative);
+}

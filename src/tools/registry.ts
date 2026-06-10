@@ -221,7 +221,8 @@ export class ToolRegistry {
    */
   checkApproval(
     toolName: string,
-    rawArguments: string
+    rawArguments: string,
+    projectRoot?: string
   ): {
     requiresApproval: boolean;
     autoReject: boolean;
@@ -245,7 +246,7 @@ export class ToolRegistry {
 
     // 1. 优先运行工具级审批预检器
     if (tool?.approvalChecker) {
-      const checkResult = tool.approvalChecker(parsedArgs);
+      const checkResult = tool.approvalChecker(parsedArgs, { projectRoot });
       if (checkResult.action === "reject") {
         return {
           requiresApproval: false,
@@ -258,6 +259,14 @@ export class ToolRegistry {
       if (checkResult.action === "allow") {
         return {
           requiresApproval: false,
+          autoReject: false,
+          parsedArgs,
+          summary: this.buildApprovalSummary(toolName, parsedArgs),
+        };
+      }
+      if (checkResult.action === "force_require") {
+        return {
+          requiresApproval: true,
           autoReject: false,
           parsedArgs,
           summary: this.buildApprovalSummary(toolName, parsedArgs),
