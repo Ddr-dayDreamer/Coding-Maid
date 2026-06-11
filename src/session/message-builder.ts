@@ -279,7 +279,10 @@ export class SessionMessageBuilder {
       (base as { tool_call_id?: string }).tool_call_id = messageParams.tool_call_id;
     }
     if (thinkingEnabled && message.role === "assistant") {
-      if (preserveReasoning && messageParams?.reasoning_content) {
+      if (messageParams?.tool_calls) {
+        // tool_calls 消息不应带 reasoning_content，避免 API 拒绝
+      } else if (preserveReasoning && messageParams?.reasoning_content) {
+        // 快速路径中保留思维链，避免 AI 丢失上下文
         (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
       } else {
         (base as { reasoning_content?: string }).reasoning_content = "";

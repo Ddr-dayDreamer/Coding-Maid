@@ -28,6 +28,11 @@ export const listDirTool: ToolRegistration = {
         description:
           "Maximum recursion depth when recursive=true. Default 5. Use -1 for unlimited (use with caution on large trees).",
       },
+      filterIgnored: {
+        type: "boolean",
+        description:
+          "If true, skip entries matched by .gitignore rules and built-in ignore list (node_modules/, .git/, dist/, etc). Default true.",
+      },
     },
     required: ["path"],
     additionalProperties: false,
@@ -65,6 +70,10 @@ Lists the contents of a directory, clearly showing which entries are files and w
     "maxDepth": {
       "description": "Maximum recursion depth. Default 5. Use -1 for unlimited.",
       "type": "number"
+    },
+    "filterIgnored": {
+      "description": "If true, skip entries matched by .gitignore rules and built-in ignore list. Default true.",
+      "type": "boolean"
     }
   },
   "required": ["path"]

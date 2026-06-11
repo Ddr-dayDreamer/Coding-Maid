@@ -340,9 +340,20 @@ function searchFiles(
 
 // ─── 格式化输出 ─────────────────────────────────────────
 
-function formatTextResults(results: TextMatch[], query: string): string {
+function formatTextResults(
+  results: TextMatch[],
+  query: string,
+  rootPath: string,
+  isRegexp: boolean,
+  includePattern: string | undefined,
+): string {
   if (results.length === 0) {
-    return `No results found for "${query}".`;
+    let msg = `No results found for "${query}"`;
+    msg += ` in "${rootPath}"`;
+    msg += isRegexp ? " (regex)" : " (text)";
+    if (includePattern) msg += ` with includePattern "${includePattern}"`;
+    msg += ".";
+    return msg;
   }
 
   const lines: string[] = [];
@@ -360,9 +371,18 @@ function formatTextResults(results: TextMatch[], query: string): string {
   return lines.join("\n").trimStart() + `\n\n(${results.length} result${results.length > 1 ? "s" : ""})`;
 }
 
-function formatFileResults(results: string[], query: string): string {
+function formatFileResults(
+  results: string[],
+  query: string,
+  rootPath: string,
+  includePattern: string | undefined,
+): string {
   if (results.length === 0) {
-    return `No files found matching "${query}".`;
+    let msg = `No files found matching "${query}"`;
+    msg += ` in "${rootPath}"`;
+    if (includePattern) msg += ` with includePattern "${includePattern}"`;
+    msg += ".";
+    return msg;
   }
 
   return results.join("\n") + `\n\n(${results.length} file${results.length > 1 ? "s" : ""})`;
@@ -424,7 +444,7 @@ export async function handleSearchTool(
       return {
         ok: true,
         name: "search",
-        output: formatTextResults(results, query),
+        output: formatTextResults(results, query, rootPath, isRegexp, includePattern),
         metadata: { mode: "text", total: results.length },
       };
     } else {
@@ -432,7 +452,7 @@ export async function handleSearchTool(
       return {
         ok: true,
         name: "search",
-        output: formatFileResults(results, query),
+        output: formatFileResults(results, query, rootPath, includePattern),
         metadata: { mode: "file", total: results.length },
       };
     }

@@ -5,7 +5,11 @@
   import ToolMessage from "./ToolMessage.svelte";
 
   let messagesContainer: HTMLDivElement | undefined = $state();
+  let streamingReasoningRef: HTMLDivElement | undefined = $state();
   let expandedIds = $state(new Set<string>());
+
+  /** 用户是否主动往上滚了（离开底部），为 true 时停止自动滚动 */
+  let userScrolledAway = $state(false);
 
   function toggleExpand(id: string) {
     if (expandedIds.has(id)) {
@@ -16,25 +20,62 @@
     expandedIds = new Set(expandedIds);
   }
 
-  // ─── 自动滚动 ──────────────────────────────────────────
-  // 必须无条件读取所有响应式依赖，避免 || 短路导致 Svelte 追踪不到后代依赖
-  $effect(() => {
-    const hasMessages = appState.messages.length > 0;
-    const streamingReasoning = appState.streamingReasoning;
-    const streamingContent = appState.streamingContent;
-    const isStreaming = appState.isStreaming;
+  /** 判断容器是否在底部（允许 50px 容差） */
+  function isAtBottom(el: HTMLElement): boolean {
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+  }
 
-    if (hasMessages || isStreaming) {
+  /** 如果用户没有滚离底部，则滚动到底 */
+  function scrollToBottomIfNeeded(el: HTMLElement) {
+    if (!userScrolledAway) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
+  /** 监听主容器的滚动事件，判断用户是否手动滚离底部 */
+  function handleMessagesScroll() {
+    if (!messagesContainer) return;
+    userScrolledAway = !isAtBottom(messagesContainer);
+  }
+
+  // ─── 新消息或流式内容变化时自动滚到底 ────────────────
+  $effect(() => {
+    // 追踪这些响应式值的变化
+    const msgs = appState.messages;
+    const reasoning = appState.streamingReasoning;
+    const content = appState.streamingContent;
+    const loading = appState.isLoading;
+
+    // 用这些值确保 effect 依赖它们
+    void msgs;
+    void reasoning;
+    void content;
+    void loading;
+
+    // 等待 DOM 更新后再滚动
+    requestAnimationFrame(() => {
+      if (messagesContainer) {
+        scrollToBottomIfNeeded(messagesContainer);
+      }
+    });
+  });
+
+  // ─── 流式推理框自动滚到底（同样尊重用户手动滚动） ──
+  $effect(() => {
+    const reasoning = appState.streamingReasoning;
+    if (!reasoning || !streamingReasoningRef) return;
+
+    if (!userScrolledAway) {
       requestAnimationFrame(() => {
-        if (messagesContainer) {
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        if (streamingReasoningRef) {
+          streamingReasoningRef.scrollTop = streamingReasoningRef.scrollHeight;
         }
       });
     }
   });
 </script>
 
-<div class="messages" bind:this={messagesContainer}>
+<div class="messages" bind:this={messagesContainer} onscroll={handleMessagesScroll}>
   {#each appState.messages as msg}
     {#if msg.role === "user"}
       <UserMessage {msg} />
@@ -65,7 +106,7 @@
         {#if appState.streamingReasoning}
           <div class="streaming-thinking">
             <span class="thinking-label">{appState.streamingReasoning.split("\n").find(l => l.trim().length > 0)?.trim().slice(0, 80) ?? "思考中…"}</span>
-            <div class="streaming-reasoning">{appState.streamingReasoning}</div>
+            <div class="streaming-reasoning" bind:this={streamingReasoningRef}>{appState.streamingReasoning}</div>
           </div>
         {/if}
         {#if appState.streamingContent}

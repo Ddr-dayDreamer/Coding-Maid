@@ -7,8 +7,64 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import ignore from "ignore";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types";
 import { posixPathToWindowsPath } from "../../utils/shell-utils";
+
+// ─── 常量 ───────────────────────────────────────────────
+
+const DEFAULT_GITIGNORE_PATTERNS = [
+  "node_modules/",
+  ".git/",
+  "dist/",
+  "build/",
+  "out/",
+  ".next/",
+  ".nuxt/",
+  ".venv/",
+  "venv/",
+  "__pycache__/",
+  "*.pyc",
+  "*.pyo",
+  ".pytest_cache/",
+  ".mypy_cache/",
+  ".ruff_cache/",
+  ".gradle/",
+  ".idea/",
+  ".vscode/",
+  "*.class",
+  "*.jar",
+  "*.war",
+  "target/",
+  ".gitignore",
+];
+
+/** 一个目录下最多显示的条目数，超过则截断 */
+const MAX_DIR_ENTRIES = 80;
+
+// ─── Gitignore 加载 ─────────────────────────────────────
+
+function loadGitignoreMatcher(
+  rootPath: string,
+): ((relPath: string, isDir: boolean) => boolean) | null {
+  const gitignorePath = path.join(rootPath, ".gitignore");
+  const ig = ignore();
+  ig.add(DEFAULT_GITIGNORE_PATTERNS);
+
+  if (fs.existsSync(gitignorePath)) {
+    try {
+      const content = fs.readFileSync(gitignorePath, "utf8");
+      ig.add(content);
+    } catch {
+      // 忽略读取失败
+    }
+  }
+
+  return (relPath: string, isDir: boolean) => {
+    if (!relPath) return false;
+    return ig.ignores(isDir ? `${relPath}/` : relPath);
+  };
+}
 
 // ─── 递归目录扫描 ─────────────────────────────────────
 
@@ -20,8 +76,18 @@ type DirEntry = {
 
 /**
  * 递归扫描目录（不跟随符号链接），返回树结构。
+ *
+ * @param isIgnored  回调函数，返回 true 表示该路径应被忽略
+ * @param maxEntries 单目录最多处理的条目数，超出则截断
  */
-function scanTree(dirPath: string, maxDepth: number, depth: number): DirEntry[] {
+function scanTree(
+  dirPath: string,
+  maxDepth: number,
+  depth: number,
+  isIgnored: ((relPath: string, isDir: boolean) => boolean) | null,
+  relBase: string,
+  maxEntries: number,
+): DirEntry[] {
   if (maxDepth >= 0 && depth > maxDepth) return [];
 
   let entries: fs.Dirent[];
@@ -40,19 +106,51 @@ function scanTree(dirPath: string, maxDepth: number, depth: number): DirEntry[] 
   });
 
   const result: DirEntry[] = [];
+  let addedCount = 0;
 
   for (const entry of entries) {
     // 跳过符号链接（防止死循环）
     if (entry.isSymbolicLink()) continue;
 
+    // gitignore 过滤
+    const relEntry = relBase ? `${relBase}/${entry.name}` : entry.name;
+    if (isIgnored && isIgnored(relEntry, entry.isDirectory())) continue;
+
+    // 截断检查：超过阈值后不再加入，只记录截断数
+    if (addedCount >= maxEntries) {
+      // 继续递归已加入的目录以确保它们的子树正确，但不再新增条目
+      continue;
+    }
+
+    addedCount++;
+
     if (entry.isDirectory()) {
       const subDir = path.join(dirPath, entry.name);
-      const children = scanTree(subDir, maxDepth, depth + 1);
+      const children = scanTree(subDir, maxDepth, depth + 1, isIgnored, relEntry, maxEntries);
       result.push({ name: entry.name, isDir: true, children });
     } else if (entry.isFile()) {
       result.push({ name: entry.name, isDir: false, children: [] });
     }
     // 忽略其他类型
+  }
+
+  // 如果实际条目数超过阈值，追加一个截断标记
+  const totalCount = entries.filter((e) => !e.isSymbolicLink()).length;
+  if (totalCount > maxEntries) {
+    const remaining = isIgnored
+      ? entries.filter((e) => {
+          if (e.isSymbolicLink()) return false;
+          const relEntry = relBase ? `${relBase}/${e.name}` : e.name;
+          return !isIgnored(relEntry, e.isDirectory());
+        }).length - maxEntries
+      : totalCount - maxEntries;
+    if (remaining > 0) {
+      result.push({
+        name: `… (${remaining} more entr${remaining === 1 ? "y" : "ies"}, truncated)`,
+        isDir: false,
+        children: [],
+      });
+    }
   }
 
   return result;
@@ -161,9 +259,12 @@ export async function handleListDirTool(
     };
   }
 
+  const filterIgnored = args.filterIgnored !== false;
+  const isIgnored = filterIgnored ? loadGitignoreMatcher(dirPath) : null;
+
   // ── Recursive tree mode ────────────────────────────
   if (recursive) {
-    const tree = scanTree(dirPath, maxDepth, 0);
+    const tree = scanTree(dirPath, maxDepth, 0, isIgnored, "", MAX_DIR_ENTRIES);
 
     const lines: string[] = [];
     lines.push(`📁 ${path.basename(dirPath) || dirPath}/`);
@@ -212,6 +313,7 @@ export async function handleListDirTool(
         path: dirPath,
         recursive: true,
         maxDepth,
+        filterIgnored,
       },
     };
   }
@@ -237,7 +339,15 @@ export async function handleListDirTool(
     return a.name.localeCompare(b.name);
   });
 
-  const { dirs, files } = renderFlat(entries);
+  // 过滤被 ignore 的条目（flat 模式下只过滤顶层条目）
+  const filteredEntries = isIgnored
+    ? entries.filter((e) => {
+        if (e.isSymbolicLink()) return false;
+        return !isIgnored(e.name, e.isDirectory());
+      })
+    : entries;
+
+  const { dirs, files } = renderFlat(filteredEntries);
 
   const lines: string[] = [];
   lines.push(`📁 ${path.basename(dirPath) || dirPath}`);
@@ -276,6 +386,7 @@ export async function handleListDirTool(
       path: dirPath,
       directories: dirs.length,
       files: files.length,
+      filterIgnored,
     },
   };
 }

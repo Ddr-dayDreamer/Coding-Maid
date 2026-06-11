@@ -7756,6 +7756,7 @@ ${component_stack}
   function MessageBoard($$anchor, $$props) {
     push($$props, true);
     let messagesContainer = state(void 0);
+    let streamingReasoningRef = state(void 0);
     let expandedIds = state(proxy(/* @__PURE__ */ new Set()));
     function toggleExpand(id) {
       if (get2(expandedIds).has(id)) {
@@ -7766,16 +7767,9 @@ ${component_stack}
       set(expandedIds, new Set(get2(expandedIds)), true);
     }
     user_effect(() => {
-      const hasMessages = appState.messages.length > 0;
-      const streamingReasoning = appState.streamingReasoning;
-      const streamingContent = appState.streamingContent;
-      const isStreaming = appState.isStreaming;
-      if (hasMessages || isStreaming) {
-        requestAnimationFrame(() => {
-          if (get2(messagesContainer)) {
-            get2(messagesContainer).scrollTop = get2(messagesContainer).scrollHeight;
-          }
-        });
+      const reasoning = appState.streamingReasoning;
+      if (reasoning && get2(streamingReasoningRef)) {
+        get2(streamingReasoningRef).scrollTop = get2(streamingReasoningRef).scrollHeight;
       }
     });
     var div = root_63();
@@ -7866,6 +7860,7 @@ ${component_stack}
             var div_7 = sibling(span, 2);
             var text_2 = child(div_7, true);
             reset(div_7);
+            bind_this(div_7, ($$value) => set(streamingReasoningRef, $$value), () => get2(streamingReasoningRef));
             reset(div_6);
             template_effect(
               ($0) => {
