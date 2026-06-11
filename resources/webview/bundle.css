@@ -576,6 +576,13 @@
   align-items: center;
   gap: 4px;
 }
+.approval-description.svelte-1gpypfo {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.85;
+  margin: 2px 0 4px;
+  line-height: 1.4;
+}
 .approval-params.svelte-1gpypfo {
   font-family: var(--vscode-editor-font-family, monospace);
   font-size: 11px;
@@ -662,11 +669,27 @@
   letter-spacing: 0.3px;
   flex-shrink: 0;
 }
-.tool-params.svelte-1gpypfo {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.75;
+.tool-summary.svelte-1gpypfo {
+  margin-left: 17px;
+  margin-top: 2px;
+}
+.tool-description.svelte-1gpypfo {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.85;
+  line-height: 1.4;
+}
+.tool-command-line.svelte-1gpypfo {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  color: var(--vscode-foreground);
+  opacity: 0.65;
+  line-height: 1.4;
+}
+.tool-prompt.svelte-1gpypfo {
+  opacity: 0.5;
+  margin-right: 4px;
+  user-select: none;
 }
 .tool-result.svelte-1gpypfo {
   margin: 0;

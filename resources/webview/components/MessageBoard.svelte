@@ -17,9 +17,14 @@
   }
 
   // ─── 自动滚动 ──────────────────────────────────────────
-
+  // 必须无条件读取所有响应式依赖，避免 || 短路导致 Svelte 追踪不到后代依赖
   $effect(() => {
-    if (appState.messages.length > 0 || appState.isStreaming) {
+    const hasMessages = appState.messages.length > 0;
+    const streamingReasoning = appState.streamingReasoning;
+    const streamingContent = appState.streamingContent;
+    const isStreaming = appState.isStreaming;
+
+    if (hasMessages || isStreaming) {
       requestAnimationFrame(() => {
         if (messagesContainer) {
           messagesContainer.scrollTop = messagesContainer.scrollHeight;

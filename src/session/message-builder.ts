@@ -259,7 +259,8 @@ export class SessionMessageBuilder {
   private sessionMessageToOpenAIMessage(
     message: SessionMessage,
     thinkingEnabled: boolean,
-    model: string
+    model: string,
+    preserveReasoning = false
   ): ChatCompletionMessageParam {
     const content = this.renderOpenAIMessageContent(message);
     const base: ChatCompletionMessageParam = {
@@ -278,7 +279,11 @@ export class SessionMessageBuilder {
       (base as { tool_call_id?: string }).tool_call_id = messageParams.tool_call_id;
     }
     if (thinkingEnabled && message.role === "assistant") {
-      (base as { reasoning_content?: string }).reasoning_content = "";
+      if (preserveReasoning && messageParams?.reasoning_content) {
+        (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
+      } else {
+        (base as { reasoning_content?: string }).reasoning_content = "";
+      }
     }
 
     if ((message.role === "user" || message.role === "system") && message.contentParams) {
@@ -304,8 +309,13 @@ export class SessionMessageBuilder {
    * 公开版 — 将单条 SessionMessage 转为 OpenAI ChatCompletionMessageParam。
    * 供 SessionActivator 快速路径使用，避免走完整配对逻辑。
    */
-  toOpenAIMessage(message: SessionMessage, thinkingEnabled: boolean, model: string): ChatCompletionMessageParam {
-    return this.sessionMessageToOpenAIMessage(message, thinkingEnabled, model);
+  toOpenAIMessage(
+    message: SessionMessage,
+    thinkingEnabled: boolean,
+    model: string,
+    preserveReasoning = false
+  ): ChatCompletionMessageParam {
+    return this.sessionMessageToOpenAIMessage(message, thinkingEnabled, model, preserveReasoning);
   }
 
   private renderOpenAIMessageContent(message: SessionMessage): string {

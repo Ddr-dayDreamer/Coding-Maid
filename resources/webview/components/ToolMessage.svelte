@@ -109,7 +109,23 @@
     api.send("approveTool", { toolCallId, action: "reject" });
   }
 
-  // ─── 工具名称 ──────────────────────────────
+  // ─── 工具名称与参数解析 ──────────────────────
+
+  /**
+   * 从 meta.function.arguments 中提取指定字段。
+   * arguments 是 JSON 字符串，解析后按字段名取值。
+   */
+  function getToolArg(key: string): string | null {
+    const fn = msg.meta?.function;
+    if (!fn || typeof fn !== "object") return null;
+    try {
+      const args = JSON.parse(String((fn as Record<string, unknown>).arguments ?? "{}")) as Record<string, unknown>;
+      const val = args[key];
+      return typeof val === "string" && val.trim() ? val.trim() : null;
+    } catch {
+      return null;
+    }
+  }
 
   function getToolName(): string {
     const fn = msg.meta?.function;
@@ -117,6 +133,16 @@
       return String((fn as Record<string, unknown>).name ?? "tool");
     }
     return "tool";
+  }
+
+  /** bash 工具的命令 */
+  function getToolCommand(): string | null {
+    return getToolArg("command");
+  }
+
+  /** bash 工具的描述（AI 填写的意图说明） */
+  function getToolDescription(): string | null {
+    return getToolArg("description");
   }
 
   function isUpdatePlan(): boolean {
@@ -187,6 +213,9 @@
               <span class="tool-icon">⚙</span>
               {item.toolName}
             </div>
+            {#if item.params?.description}
+              <div class="approval-description">{String(item.params.description)}</div>
+            {/if}
             <pre class="approval-params">{item.summary}</pre>
             <div class="approval-actions">
               <button
@@ -216,10 +245,17 @@
           <span class="collapse-icon">{expandedIds.has(msg.id) ? "▼" : "▶"}</span>
           <span class="tool-icon">⚙</span>
           <span class="tool-name">{getToolName()}</span>
-          {#if msg.meta?.paramsMd}
-            <span class="tool-params">{msg.meta.paramsMd}</span>
-          {/if}
         </button>
+        <div class="tool-summary">
+          {#if getToolDescription()}
+            <div class="tool-description">{getToolDescription()}</div>
+          {/if}
+          {#if getToolCommand()}
+            <div class="tool-command-line"><span class="tool-prompt">$</span> {getToolCommand()}</div>
+          {:else if msg.meta?.paramsMd}
+            <div class="tool-command-line">{msg.meta.paramsMd}</div>
+          {/if}
+        </div>
         {#if expandedIds.has(msg.id)}
           <div class="tool-result-wrap">
             {#if msg.meta?.resultMd}
@@ -318,6 +354,14 @@
     display: flex;
     align-items: center;
     gap: 4px;
+  }
+
+  .approval-description {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    opacity: 0.85;
+    margin: 2px 0 4px;
+    line-height: 1.4;
   }
 
   .approval-params {
@@ -426,6 +470,32 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     opacity: 0.75;
+  }
+
+  .tool-summary {
+    margin-left: 17px;
+    margin-top: 2px;
+  }
+
+  .tool-description {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    opacity: 0.85;
+    line-height: 1.4;
+  }
+
+  .tool-command-line {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 11px;
+    color: var(--vscode-foreground);
+    opacity: 0.65;
+    line-height: 1.4;
+  }
+
+  .tool-prompt {
+    opacity: 0.5;
+    margin-right: 4px;
+    user-select: none;
   }
 
   .tool-result {

@@ -7371,15 +7371,18 @@ ${component_stack}
   var root_15 = from_html(`<button><span class="option-label svelte-1gpypfo"> </span> <!></button>`);
   var root_24 = from_html(`<div class="question-item svelte-1gpypfo"><div class="question-text svelte-1gpypfo"> </div> <div class="question-options svelte-1gpypfo"></div></div>`);
   var root_34 = from_html(`<div class="question-form svelte-1gpypfo"><div class="question-hint svelte-1gpypfo">\u{1F4AC} \u7B49\u5F85\u56DE\u7B54</div> <!> <div class="question-other svelte-1gpypfo"><input type="text" placeholder="\u5176\u4ED6\u2026" class="svelte-1gpypfo"/></div> <button class="question-submit svelte-1gpypfo">\u53D1\u9001\u56DE\u7B54</button></div>`);
-  var root_44 = from_html(`<span class="approving-hint svelte-1gpypfo">\u5904\u7406\u4E2D\u2026</span>`);
-  var root_54 = from_html(`<div class="approval-item svelte-1gpypfo"><div class="approval-tool-name svelte-1gpypfo"><span class="tool-icon svelte-1gpypfo">\u2699</span> </div> <pre class="approval-params svelte-1gpypfo"> </pre> <div class="approval-actions svelte-1gpypfo"><button class="btn-approve svelte-1gpypfo">\u2705 \u6279\u51C6</button> <button class="btn-reject svelte-1gpypfo">\u274C \u62D2\u7EDD</button> <!></div></div>`);
-  var root_62 = from_html(`<div class="approval-card svelte-1gpypfo"><div class="approval-header svelte-1gpypfo">\u{1F510} \u5DE5\u5177\u8C03\u7528\u5F85\u5BA1\u6279</div> <!></div>`);
-  var root_72 = from_html(`<div class="plan-wrap svelte-1gpypfo"><!></div>`);
-  var root_8 = from_html(`<span class="tool-params svelte-1gpypfo"> </span>`);
-  var root_9 = from_html(`<pre class="tool-result svelte-1gpypfo"> </pre>`);
-  var root_10 = from_html(`<div class="tool-result-wrap svelte-1gpypfo"><!></div>`);
-  var root_11 = from_html(`<div class="tool-card svelte-1gpypfo"><button class="tool-header svelte-1gpypfo"><span class="collapse-icon svelte-1gpypfo"> </span> <span class="tool-icon svelte-1gpypfo">\u2699</span> <span class="tool-name svelte-1gpypfo"> </span> <!></button> <!></div>`);
-  var root_122 = from_html(`<div class="bubble-tool svelte-1gpypfo"><div class="bubble-avatar svelte-1gpypfo"></div> <div class="bubble-body svelte-1gpypfo"><!></div></div>`);
+  var root_44 = from_html(`<div class="approval-description svelte-1gpypfo"> </div>`);
+  var root_54 = from_html(`<span class="approving-hint svelte-1gpypfo">\u5904\u7406\u4E2D\u2026</span>`);
+  var root_62 = from_html(`<div class="approval-item svelte-1gpypfo"><div class="approval-tool-name svelte-1gpypfo"><span class="tool-icon svelte-1gpypfo">\u2699</span> </div> <!> <pre class="approval-params svelte-1gpypfo"> </pre> <div class="approval-actions svelte-1gpypfo"><button class="btn-approve svelte-1gpypfo">\u2705 \u6279\u51C6</button> <button class="btn-reject svelte-1gpypfo">\u274C \u62D2\u7EDD</button> <!></div></div>`);
+  var root_72 = from_html(`<div class="approval-card svelte-1gpypfo"><div class="approval-header svelte-1gpypfo">\u{1F510} \u5DE5\u5177\u8C03\u7528\u5F85\u5BA1\u6279</div> <!></div>`);
+  var root_8 = from_html(`<div class="plan-wrap svelte-1gpypfo"><!></div>`);
+  var root_9 = from_html(`<div class="tool-description svelte-1gpypfo"> </div>`);
+  var root_10 = from_html(`<div class="tool-command-line svelte-1gpypfo"><span class="tool-prompt svelte-1gpypfo">$</span> </div>`);
+  var root_11 = from_html(`<div class="tool-command-line svelte-1gpypfo"> </div>`);
+  var root_122 = from_html(`<pre class="tool-result svelte-1gpypfo"> </pre>`);
+  var root_132 = from_html(`<div class="tool-result-wrap svelte-1gpypfo"><!></div>`);
+  var root_142 = from_html(`<div class="tool-card svelte-1gpypfo"><button class="tool-header svelte-1gpypfo"><span class="collapse-icon svelte-1gpypfo"> </span> <span class="tool-icon svelte-1gpypfo">\u2699</span> <span class="tool-name svelte-1gpypfo"> </span></button> <div class="tool-summary svelte-1gpypfo"><!> <!></div> <!></div>`);
+  var root_152 = from_html(`<div class="bubble-tool svelte-1gpypfo"><div class="bubble-avatar svelte-1gpypfo"></div> <div class="bubble-body svelte-1gpypfo"><!></div></div>`);
   function ToolMessage($$anchor, $$props) {
     push($$props, true);
     let formValues = state(proxy({}));
@@ -7459,12 +7462,29 @@ ${component_stack}
       set(approving, toolCallId, true);
       api.send("approveTool", { toolCallId, action: "reject" });
     }
+    function getToolArg(key2) {
+      const fn = $$props.msg.meta?.function;
+      if (!fn || typeof fn !== "object") return null;
+      try {
+        const args = JSON.parse(String(fn.arguments ?? "{}"));
+        const val = args[key2];
+        return typeof val === "string" && val.trim() ? val.trim() : null;
+      } catch {
+        return null;
+      }
+    }
     function getToolName() {
       const fn = $$props.msg.meta?.function;
       if (fn && typeof fn === "object" && "name" in fn) {
         return String(fn.name ?? "tool");
       }
       return "tool";
+    }
+    function getToolCommand() {
+      return getToolArg("command");
+    }
+    function getToolDescription() {
+      return getToolArg("description");
     }
     function isUpdatePlan() {
       return getToolName() === "UpdatePlan" && isSuccessfulUpdatePlan();
@@ -7484,7 +7504,7 @@ ${component_stack}
     function hasAnswer() {
       return get2(formValues)[$$props.msg.id] || otherInputs[$$props.msg.id]?.trim();
     }
-    var div = root_122();
+    var div = root_152();
     var div_1 = sibling(child(div), 2);
     var node = child(div_1);
     {
@@ -7548,35 +7568,48 @@ ${component_stack}
         append($$anchor2, div_2);
       };
       var d = user_derived(() => isAskUserQuestion() && !get2(submittedQuestions).has($$props.msg.id));
-      var consequent_3 = ($$anchor2) => {
-        var div_7 = root_62();
+      var consequent_4 = ($$anchor2) => {
+        var div_7 = root_72();
         var node_3 = sibling(child(div_7), 2);
         each(node_3, 17, getPendingApprovals, index, ($$anchor3, item) => {
-          var div_8 = root_54();
+          var div_8 = root_62();
           var div_9 = child(div_8);
           var text_3 = sibling(child(div_9));
           reset(div_9);
-          var pre = sibling(div_9, 2);
-          var text_4 = child(pre, true);
-          reset(pre);
-          var div_10 = sibling(pre, 2);
-          var button_2 = child(div_10);
-          var button_3 = sibling(button_2, 2);
-          var node_4 = sibling(button_3, 2);
+          var node_4 = sibling(div_9, 2);
           {
             var consequent_2 = ($$anchor4) => {
-              var span_2 = root_44();
-              append($$anchor4, span_2);
+              var div_10 = root_44();
+              var text_4 = child(div_10, true);
+              reset(div_10);
+              template_effect(($0) => set_text(text_4, $0), [() => String(get2(item).params.description)]);
+              append($$anchor4, div_10);
             };
             if_block(node_4, ($$render) => {
-              if (get2(approving) === get2(item).toolCallId) $$render(consequent_2);
+              if (get2(item).params?.description) $$render(consequent_2);
             });
           }
-          reset(div_10);
+          var pre = sibling(node_4, 2);
+          var text_5 = child(pre, true);
+          reset(pre);
+          var div_11 = sibling(pre, 2);
+          var button_2 = child(div_11);
+          var button_3 = sibling(button_2, 2);
+          var node_5 = sibling(button_3, 2);
+          {
+            var consequent_3 = ($$anchor4) => {
+              var span_2 = root_54();
+              append($$anchor4, span_2);
+            };
+            if_block(node_5, ($$render) => {
+              if (get2(approving) === get2(item).toolCallId) $$render(consequent_3);
+            });
+          }
+          reset(div_11);
           reset(div_8);
           template_effect(() => {
             set_text(text_3, ` ${get2(item).toolName ?? ""}`);
-            set_text(text_4, get2(item).summary);
+            set_text(text_5, get2(item).summary);
             button_2.disabled = get2(approving) === get2(item).toolCallId;
             button_3.disabled = get2(approving) === get2(item).toolCallId;
           });
@@ -7588,82 +7621,107 @@ ${component_stack}
         append($$anchor2, div_7);
       };
       var d_1 = user_derived(() => isToolApproval());
-      var consequent_4 = ($$anchor2) => {
-        var div_11 = root_72();
-        var node_5 = child(div_11);
+      var consequent_5 = ($$anchor2) => {
+        var div_12 = root_8();
+        var node_6 = child(div_12);
         {
           let $0 = user_derived(() => $$props.msg.content ?? "");
-          PlanDisplay(node_5, {
+          PlanDisplay(node_6, {
             get content() {
               return get2($0);
             }
           });
         }
-        reset(div_11);
-        append($$anchor2, div_11);
+        reset(div_12);
+        append($$anchor2, div_12);
       };
       var d_2 = user_derived(() => isUpdatePlan());
       var alternate = ($$anchor2) => {
-        var div_12 = root_11();
-        var button_4 = child(div_12);
+        var div_13 = root_142();
+        var button_4 = child(div_13);
         var span_3 = child(button_4);
-        var text_5 = child(span_3, true);
+        var text_6 = child(span_3, true);
         reset(span_3);
         var span_4 = sibling(span_3, 4);
-        var text_6 = child(span_4, true);
+        var text_7 = child(span_4, true);
         reset(span_4);
-        var node_6 = sibling(span_4, 2);
+        reset(button_4);
+        var div_14 = sibling(button_4, 2);
+        var node_7 = child(div_14);
         {
-          var consequent_5 = ($$anchor3) => {
-            var span_5 = root_8();
-            var text_7 = child(span_5, true);
-            reset(span_5);
-            template_effect(() => set_text(text_7, $$props.msg.meta.paramsMd));
-            append($$anchor3, span_5);
+          var consequent_6 = ($$anchor3) => {
+            var div_15 = root_9();
+            var text_8 = child(div_15, true);
+            reset(div_15);
+            template_effect(($0) => set_text(text_8, $0), [() => getToolDescription()]);
+            append($$anchor3, div_15);
           };
-          if_block(node_6, ($$render) => {
-            if ($$props.msg.meta?.paramsMd) $$render(consequent_5);
+          var d_3 = user_derived(() => getToolDescription());
+          if_block(node_7, ($$render) => {
+            if (get2(d_3)) $$render(consequent_6);
           });
         }
-        reset(button_4);
-        var node_7 = sibling(button_4, 2);
+        var node_8 = sibling(node_7, 2);
         {
+          var consequent_7 = ($$anchor3) => {
+            var div_16 = root_10();
+            var text_9 = sibling(child(div_16));
+            reset(div_16);
+            template_effect(($0) => set_text(text_9, ` ${$0 ?? ""}`), [() => getToolCommand()]);
+            append($$anchor3, div_16);
+          };
+          var d_4 = user_derived(() => getToolCommand());
           var consequent_8 = ($$anchor3) => {
-            var div_13 = root_10();
-            var node_8 = child(div_13);
+            var div_17 = root_11();
+            var text_10 = child(div_17, true);
+            reset(div_17);
+            template_effect(() => set_text(text_10, $$props.msg.meta.paramsMd));
+            append($$anchor3, div_17);
+          };
+          if_block(node_8, ($$render) => {
+            if (get2(d_4)) $$render(consequent_7);
+            else if ($$props.msg.meta?.paramsMd) $$render(consequent_8, 1);
+          });
+        }
+        reset(div_14);
+        var node_9 = sibling(div_14, 2);
+        {
+          var consequent_11 = ($$anchor3) => {
+            var div_18 = root_132();
+            var node_10 = child(div_18);
             {
-              var consequent_6 = ($$anchor4) => {
-                var pre_1 = root_9();
-                var text_8 = child(pre_1, true);
+              var consequent_9 = ($$anchor4) => {
+                var pre_1 = root_122();
+                var text_11 = child(pre_1, true);
                 reset(pre_1);
-                template_effect(() => set_text(text_8, $$props.msg.meta.resultMd));
+                template_effect(() => set_text(text_11, $$props.msg.meta.resultMd));
                 append($$anchor4, pre_1);
               };
-              var consequent_7 = ($$anchor4) => {
-                var pre_2 = root_9();
-                var text_9 = child(pre_2, true);
+              var consequent_10 = ($$anchor4) => {
+                var pre_2 = root_122();
+                var text_12 = child(pre_2, true);
                 reset(pre_2);
-                template_effect(() => set_text(text_9, $$props.msg.content));
+                template_effect(() => set_text(text_12, $$props.msg.content));
                 append($$anchor4, pre_2);
               };
-              if_block(node_8, ($$render) => {
-                if ($$props.msg.meta?.resultMd) $$render(consequent_6);
-                else if ($$props.msg.content) $$render(consequent_7, 1);
+              if_block(node_10, ($$render) => {
+                if ($$props.msg.meta?.resultMd) $$render(consequent_9);
+                else if ($$props.msg.content) $$render(consequent_10, 1);
               });
             }
-            reset(div_13);
-            append($$anchor3, div_13);
+            reset(div_18);
+            append($$anchor3, div_18);
           };
-          var d_3 = user_derived(() => $$props.expandedIds.has($$props.msg.id));
-          if_block(node_7, ($$render) => {
-            if (get2(d_3)) $$render(consequent_8);
+          var d_5 = user_derived(() => $$props.expandedIds.has($$props.msg.id));
+          if_block(node_9, ($$render) => {
+            if (get2(d_5)) $$render(consequent_11);
           });
         }
-        reset(div_12);
+        reset(div_13);
         template_effect(
           ($0, $1) => {
-            set_text(text_5, $0);
-            set_text(text_6, $1);
+            set_text(text_6, $0);
+            set_text(text_7, $1);
           },
           [
             () => $$props.expandedIds.has($$props.msg.id) ? "\u25BC" : "\u25B6",
@@ -7671,12 +7729,12 @@ ${component_stack}
           ]
         );
         delegated("click", button_4, toggle);
-        append($$anchor2, div_12);
+        append($$anchor2, div_13);
       };
       if_block(node, ($$render) => {
         if (get2(d)) $$render(consequent_1);
-        else if (get2(d_1)) $$render(consequent_3, 1);
-        else if (get2(d_2)) $$render(consequent_4, 2);
+        else if (get2(d_1)) $$render(consequent_4, 1);
+        else if (get2(d_2)) $$render(consequent_5, 2);
         else $$render(alternate, -1);
       });
     }
@@ -7708,7 +7766,11 @@ ${component_stack}
       set(expandedIds, new Set(get2(expandedIds)), true);
     }
     user_effect(() => {
-      if (appState.messages.length > 0 || appState.isStreaming) {
+      const hasMessages = appState.messages.length > 0;
+      const streamingReasoning = appState.streamingReasoning;
+      const streamingContent = appState.streamingContent;
+      const isStreaming = appState.isStreaming;
+      if (hasMessages || isStreaming) {
         requestAnimationFrame(() => {
           if (get2(messagesContainer)) {
             get2(messagesContainer).scrollTop = get2(messagesContainer).scrollHeight;

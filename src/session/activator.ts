@@ -430,7 +430,8 @@ export class SessionActivator {
     const newMessages = conversationMessages.slice(this.cachedMessageCount);
 
     for (const msg of newMessages) {
-      result.push(this.messageBuilder.toOpenAIMessage(msg, thinkingEnabled, model));
+      // 快速路径中保留新 assistant 消息的 reasoning_content，避免 AI 丢失上下文重新规划
+      result.push(this.messageBuilder.toOpenAIMessage(msg, thinkingEnabled, model, /* preserveReasoning */ true));
     }
 
     return result;
