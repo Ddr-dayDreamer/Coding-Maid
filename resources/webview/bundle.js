@@ -7758,6 +7758,7 @@ ${component_stack}
     let messagesContainer = state(void 0);
     let streamingReasoningRef = state(void 0);
     let expandedIds = state(proxy(/* @__PURE__ */ new Set()));
+    let userScrolledAway = state(false);
     function toggleExpand(id) {
       if (get2(expandedIds).has(id)) {
         get2(expandedIds).delete(id);
@@ -7766,10 +7767,42 @@ ${component_stack}
       }
       set(expandedIds, new Set(get2(expandedIds)), true);
     }
+    function isAtBottom(el) {
+      return el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+    }
+    function scrollToBottomIfNeeded(el) {
+      if (!get2(userScrolledAway)) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+    function handleMessagesScroll() {
+      if (!get2(messagesContainer)) return;
+      set(userScrolledAway, !isAtBottom(get2(messagesContainer)));
+    }
+    user_effect(() => {
+      const msgs = appState.messages;
+      const reasoning = appState.streamingReasoning;
+      const content = appState.streamingContent;
+      const loading = appState.isLoading;
+      void msgs;
+      void reasoning;
+      void content;
+      void loading;
+      requestAnimationFrame(() => {
+        if (get2(messagesContainer)) {
+          scrollToBottomIfNeeded(get2(messagesContainer));
+        }
+      });
+    });
     user_effect(() => {
       const reasoning = appState.streamingReasoning;
-      if (reasoning && get2(streamingReasoningRef)) {
-        get2(streamingReasoningRef).scrollTop = get2(streamingReasoningRef).scrollHeight;
+      if (!reasoning || !get2(streamingReasoningRef)) return;
+      if (!get2(userScrolledAway)) {
+        requestAnimationFrame(() => {
+          if (get2(streamingReasoningRef)) {
+            get2(streamingReasoningRef).scrollTop = get2(streamingReasoningRef).scrollHeight;
+          }
+        });
       }
     });
     var div = root_63();
@@ -7913,6 +7946,7 @@ ${component_stack}
     }
     reset(div);
     bind_this(div, ($$value) => set(messagesContainer, $$value), () => get2(messagesContainer));
+    event("scroll", div, handleMessagesScroll);
     append($$anchor, div);
     pop();
   }

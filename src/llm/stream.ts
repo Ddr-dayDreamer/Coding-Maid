@@ -278,6 +278,27 @@ export class LlmStreamManager {
       choices: [{ message }],
       usage,
     };
+    // 只记录摘要，不记录完整消息体，避免日志爆炸
+    const messages = (Array.isArray(request.messages) ? request.messages : []) as Record<string, unknown>[];
+    const tools = (Array.isArray(request.tools) ? request.tools : []) as Record<string, unknown>[];
+    const requestSummary: Record<string, unknown> = {
+      messageCount: messages.length,
+      toolCount: tools.length,
+      totalContentChars: messages.reduce((sum, m) => {
+        const c = m.content;
+        return sum + (typeof c === "string" ? c.length : 0);
+      }, 0),
+      maxTokens: request.max_tokens,
+      temperature: request.temperature,
+      reasoningEffort: request.reasoning_effort,
+      stream: true,
+    };
+    const responseSummary: Record<string, unknown> = {
+      contentLength: content.length,
+      reasoningContentLength: reasoningContent.length,
+      toolCallCount: toolCalls.length,
+      usage,
+    };
     logLlmCompletion({
       enabled: debug?.enabled,
       location: debug?.location ?? "LlmStreamManager.createStream",
@@ -287,8 +308,8 @@ export class LlmStreamManager {
       baseURL,
       durationMs: Date.now() - startedAtMs,
       params: debug?.params,
-      request: streamRequest,
-      response: finalResponse,
+      request: requestSummary,
+      response: responseSummary,
     });
     return finalResponse;
   }
