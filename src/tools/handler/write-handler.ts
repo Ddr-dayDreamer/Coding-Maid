@@ -113,6 +113,9 @@ export async function handleWriteTool(
           },
         );
 
+        // 通知装饰管理器高亮变更行
+        context.onEditApplied?.(filePath, diffPreview ?? "");
+
         const lineCount = normalizedContent.split(/\r\n|\r|\n/).length;
         const prevLineCount = existingMetadata?.content
           ? existingMetadata.content.split(/\r\n|\r|\n/).length

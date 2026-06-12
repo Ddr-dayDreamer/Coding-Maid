@@ -47,9 +47,8 @@ export class EditorDecorationManager {
 
   /** 标记变更区域（累积式，不覆盖之前）。 */
   applyEditDecoration(filePath: string, diffPreview: string): void {
-    const parsed = this.parseDiffHunk(diffPreview);
-    if (!parsed) return;
-    const { range, removedLines } = parsed;
+    const hunks = this.parseDiffHunks(diffPreview);
+    if (hunks.length === 0) return;
 
     let entry = this.decorations.get(filePath);
 
@@ -60,9 +59,8 @@ export class EditorDecorationManager {
         isWholeLine: true,
       });
       const border = vscode.window.createTextEditorDecorationType({
-        isWholeLine: false,
+        isWholeLine: true,
         border: "3px solid rgba(231, 76, 60, 0.6)",
-        borderColor: "rgba(231, 76, 60, 0.6)",
         overviewRulerLane: vscode.OverviewRulerLane.Left,
         overviewRulerColor: new vscode.ThemeColor("diffEditor.removedTextBackground"),
         gutterIconPath: vscode.Uri.parse(
@@ -77,11 +75,17 @@ export class EditorDecorationManager {
       this.decorations.set(filePath, entry);
     }
 
-    // 累积绿色背景范围（所有变更都有）
-    entry.bgRanges.push(range);
-    // 累积红色删除标记范围（仅在本次有删除时才加）
-    if (removedLines > 0) {
-      entry.borderRanges.push(range);
+    for (const hunk of hunks) {
+      // 即使 newCount === 0，也生成一个单行范围以便标记删除
+      const endLine = Math.max(hunk.newStart, hunk.newStart + hunk.newCount - 1);
+      const range = new vscode.Range(
+        new vscode.Position(hunk.newStart - 1, 0),
+        new vscode.Position(endLine, 0),
+      );
+      entry.bgRanges.push(range);
+      if (hunk.removedLines > 0) {
+        entry.borderRanges.push(range);
+      }
     }
 
     // 应用到所有可见编辑器
@@ -103,25 +107,38 @@ export class EditorDecorationManager {
     editor.setDecorations(entry.border, entry.borderRanges);
   }
 
-  /** 从 unified diff @@ 头解析行范围和是否有删除。 */
-  private parseDiffHunk(
+  /** 解析所有 diff hunk，返回每个 hunk 的行范围信息和实际删除行数。 */
+  private parseDiffHunks(
     diff: string,
-  ): { range: vscode.Range; removedLines: number } | null {
-    const match = diff.match(
-      /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@/m,
-    );
-    if (!match) return null;
+  ): { newStart: number; newCount: number; removedLines: number }[] {
+    const results: { newStart: number; newCount: number; removedLines: number }[] = [];
+    const hunkHeaderRegex = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@/gm;
+    const headers: { match: RegExpExecArray; index: number }[] = [];
+    let match: RegExpExecArray | null;
 
-    const newStart = parseInt(match[3], 10);
-    const newCount = match[4] ? parseInt(match[4], 10) : 1;
-    const oldCount = match[2] ? parseInt(match[2], 10) : 1;
+    while ((match = hunkHeaderRegex.exec(diff)) !== null) {
+      headers.push({ match, index: match.index });
+    }
 
-    return {
-      range: new vscode.Range(
-        new vscode.Position(newStart - 1, 0),
-        new vscode.Position(newStart + newCount - 1, 0),
-      ),
-      removedLines: oldCount,
-    };
+    for (let i = 0; i < headers.length; i++) {
+      const { match: m } = headers[i];
+      const newStart = parseInt(m[3], 10);
+      const newCount = m[4] ? parseInt(m[4], 10) : 1;
+      const oldCount = m[2] ? parseInt(m[2], 10) : 1;
+
+      if (newCount === 0 && oldCount === 0) continue;
+
+      // hunk body 范围：从当前 @@ 到下一个 @@（或文件尾）
+      const hunkStart = m.index;
+      const hunkEnd = i + 1 < headers.length ? headers[i + 1].index : diff.length;
+      const hunkBody = diff.slice(hunkStart, hunkEnd);
+      const removedLines = hunkBody
+        .split("\n")
+        .filter((line) => line.startsWith("-") && !line.startsWith("---")).length;
+
+      results.push({ newStart, newCount, removedLines });
+    }
+
+    return results;
   }
 }
