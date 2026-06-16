@@ -361,9 +361,10 @@ export class SessionManager {
     console.log("[DEBUG] sendMessage: user msg appended, calling runActivate");
 
     this.activeSessionId = sessionId;
-    // 新用户消息 → 清空快速路径缓存 + 清除编辑器高亮装饰
+    // 新用户消息 → 清空快速路径缓存 + 清除编辑器高亮装饰 + 重置本轮修改文件列表
     this.activator.clearFastPathCache();
     this.editorDecorations.clearAll();
+    this.clearModifiedFiles(sessionId);
     await this.runActivate(sessionId, controller);
     console.log("[DEBUG] sendMessage: runActivate returned");
   }
@@ -542,6 +543,51 @@ export class SessionManager {
 
   // ═══════════════════════════════════════════════════════
   //  工具消息追加
+  /**
+   * 记录一个被编辑工具修改过的文件到会话条目中。
+   * 重复的文件路径会更新 lastModifiedAt。
+   */
+  private recordModifiedFile(sessionId: string, filePath: string): void {
+    this.storage.updateSessionEntry(sessionId, (entry) => {
+      const now = new Date().toISOString();
+      const existing = entry.modifiedFiles ?? [];
+      const idx = existing.findIndex((f) => f.filePath === filePath);
+      if (idx >= 0) {
+        const updated = [...existing];
+        updated[idx] = { ...updated[idx], lastModifiedAt: now };
+        return { ...entry, modifiedFiles: updated, updateTime: now };
+      }
+      return {
+        ...entry,
+        modifiedFiles: [...existing, { filePath, lastModifiedAt: now }],
+        updateTime: now,
+      };
+    });
+  }
+
+  /**
+   * 清空当前会话的修改文件列表（公开接口）。
+   * 同时清理编辑器中的编辑高亮装饰。
+   */
+  clearFileChanges(sessionId: string): void {
+    this.clearModifiedFiles(sessionId);
+    this.editorDecorations.clearAll();
+  }
+
+  /**
+   * 清空当前会话的修改文件列表。
+   * 用户发送新消息时调用，使得列表只显示当前这一轮 AI 回复修改的文件。
+   * 清空后立即通知前端更新。
+   */
+  private clearModifiedFiles(sessionId: string): void {
+    this.storage.updateSessionEntry(sessionId, (entry) => ({
+      ...entry,
+      modifiedFiles: [],
+      updateTime: new Date().toISOString(),
+    }));
+    this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+  }
+
   // ═══════════════════════════════════════════════════════
 
   /**
@@ -579,6 +625,7 @@ export class SessionManager {
       onEditApplied: (filePath, diffPreview) => {
         console.log("[DEBUG] manager: onEditApplied received", filePath);
         this.editorDecorations.applyEditDecoration(filePath, diffPreview);
+        this.recordModifiedFile(sessionId, filePath);
       },
       onProcessTimeoutControl: (pid, control) => {
         this.processMgr.setControl(sessionId, pid, control);
@@ -740,6 +787,9 @@ export class SessionManager {
       const result = await this.toolExecutor.executeToolCallRaw(sessionId, toolCall, {
         onBeforeFileMutation: (filePath) => this.fileHistory.prepareMutation(sessionId, filePath),
         onAfterFileMutation: (filePath) => this.fileHistory.recordMutation(sessionId, filePath),
+        onEditApplied: (filePath) => {
+          this.recordModifiedFile(sessionId, filePath);
+        },
       });
       const toolMessage = this.messageBuilder.buildToolMessage(
         sessionId,

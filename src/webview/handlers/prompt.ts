@@ -16,10 +16,11 @@ export function registerPromptHandlers(
   registerHandler("userPrompt", async (message) => {
     const prompt = String(message.prompt || "").trim();
     if (!prompt) return;
-    await handlePrompt(ctx, prompt);
-    // 发送后自动清除附加文件（包含代码段内存内容）
-    ctx.sessionManager.clearAllAttachments();
+    // 立即清除前端展示，让用户知道附加文件已被消费
     ctx.sendMessage({ type: "attachedFilesCleared" });
+    await handlePrompt(ctx, prompt);
+    // 发送后自动清除附加文件数据（代码段内存内容等）
+    ctx.sessionManager.clearAllAttachments();
   });
 
   registerHandler("interrupt", async () => {
@@ -81,6 +82,7 @@ async function handlePromptWithImages(ctx: HandlerContext, prompt: string, image
         sessionId: activeSessionId,
         status: activeSession.status,
         processes: serializeProcesses(activeSession.processes),
+        modifiedFiles: activeSession.modifiedFiles ?? undefined,
         tokenTelemetry: buildTokenTelemetry(ctx, activeSession),
       });
     }

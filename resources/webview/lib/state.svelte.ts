@@ -5,7 +5,7 @@
  * 注意：此文件必须使用 .svelte.ts 后缀才能使用 $state。
  */
 
-import type { SessionSummary, TokenTelemetry, LlmStreamProgressData, SessionMessageData, AttachedFile } from "../types";
+import type { SessionSummary, TokenTelemetry, LlmStreamProgressData, SessionMessageData, AttachedFile, ModifiedFileEntry } from "../types";
 
 // ─── Tab 页面 ────────────────────────────────────────────
 
@@ -67,6 +67,9 @@ class AppState {
 
   /** 是否有文件正被拖入界面（用于显示全页叠加层） */
   isDragOver = $state(false);
+
+  /** 当前会话被 edit/write 修改过的文件列表 */
+  modifiedFiles = $state<ModifiedFileEntry[]>([]);
 
   /** 流式输出暂存内容（打字机效果） */
   streamingContent = $state("");

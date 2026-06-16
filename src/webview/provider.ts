@@ -64,6 +64,7 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
           sessionId: entry.id,
           status: entry.status,
           processes: this.serializeProcesses(entry.processes),
+          modifiedFiles: entry.modifiedFiles ?? undefined,
           tokenTelemetry: this.buildTokenTelemetry(entry),
         });
       },

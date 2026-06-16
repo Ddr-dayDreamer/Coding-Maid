@@ -18,6 +18,7 @@ export type BackendMessage =
       messages: SessionMessageData[];
       tokenTelemetry?: TokenTelemetry;
       processes?: ProcessInfo[];
+      modifiedFiles?: ModifiedFileEntry[];
       activePreset?: string;
       activeProfile?: string;
     }
@@ -27,6 +28,7 @@ export type BackendMessage =
       sessionId: string;
       status: string;
       processes?: ProcessInfo[];
+      modifiedFiles?: ModifiedFileEntry[];
       tokenTelemetry?: TokenTelemetry;
     }
   | { type: "userMessage"; content: string }
@@ -48,6 +50,8 @@ export type FrontendMessage =
   | { type: "selectSession"; sessionId: string }
   | { type: "backToList" }
   | { type: "openFile"; filePath: string; line: number }
+  | { type: "openFileDiff"; filePath: string }
+  | { type: "clearFileChanges" }
   | { type: "deleteSession"; sessionId: string }
   | { type: "restoreSession"; sessionId: string; messageId: string }
   // 审批消息
@@ -172,4 +176,11 @@ export interface AttachedFile {
   fileName: string;
   /** 是否为代码段（非实体文件） */
   isSnippet?: boolean;
+}
+
+// ─── 修改的文件类型 ─────────────────────────
+
+export interface ModifiedFileEntry {
+  filePath: string;
+  lastModifiedAt: string;
 }

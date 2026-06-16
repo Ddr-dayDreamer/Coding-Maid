@@ -19,4 +19,5 @@ export type {
   UserPromptContent,
   SessionManagerOptions,
   LlmStreamProgress,
+  ModifiedFileEntry,
 } from "./types";

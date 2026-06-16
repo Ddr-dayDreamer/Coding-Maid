@@ -58,6 +58,15 @@ export type PendingApprovalItem = {
   rejectReason?: string;
 };
 
+// ─── 修改的文件条目 ─────────────────────────────────────
+
+export type ModifiedFileEntry = {
+  /** 被修改文件的绝对路径 */
+  filePath: string;
+  /** 最近一次修改的时间戳 */
+  lastModifiedAt: string;
+};
+
 // ─── 会话索引条目 ────────────────────────────────────────
 
 export type SessionEntry = {
@@ -77,6 +86,8 @@ export type SessionEntry = {
   processes: Map<string, SessionProcessEntry> | null;
   /** 待审批的工具调用列表（用户审批后才执行） */
   pendingApprovals?: PendingApprovalItem[] | null;
+  /** 本会话中 edit/write 工具修改过的文件列表 */
+  modifiedFiles?: ModifiedFileEntry[] | null;
 };
 
 // ─── 会话索引 ────────────────────────────────────────────

@@ -2,11 +2,13 @@
   import SessionBar from "./SessionBar.svelte";
   import MessageBoard from "./MessageBoard.svelte";
   import Composer from "./Composer.svelte";
+  import ModifiedFiles from "./ModifiedFiles.svelte";
 </script>
 
 <div class="chat-page">
   <SessionBar />
   <MessageBoard />
+  <ModifiedFiles />
   <Composer />
 </div>
 

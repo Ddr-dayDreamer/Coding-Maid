@@ -56,6 +56,7 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.isLoading = false;
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       appState.runningProcesses = normalizeProcesses(msg.processes);
+      appState.modifiedFiles = msg.modifiedFiles ?? [];
       appState.sessions = msg.sessions;
       appState.activePreset = msg.activePreset ?? "default";
       appState.activeProfile = msg.activeProfile ?? "default";
@@ -87,6 +88,7 @@ window.addEventListener("message", (event: MessageEvent) => {
       }
       appState.currentSessionStatus = msg.status;
       appState.runningProcesses = normalizeProcesses(msg.processes);
+      appState.modifiedFiles = msg.modifiedFiles ?? [];
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       if (msg.status === "completed" || msg.status === "interrupted" || msg.status === "failed") {
         appState.isLoading = false;
