@@ -544,42 +544,18 @@ export class SessionManager {
   //  工具消息追加
   // ═══════════════════════════════════════════════════════
 
-  private async appendToolMessages(sessionId: string, toolCalls: unknown[]): Promise<{ waitingForUser: boolean }> {
-    // ── 审批检查：先看是否有工具需要审批 ──
-    const pendingApprovals: PendingApprovalItem[] = [];
-    for (const tc of toolCalls) {
-      const parsed = this.toolExecutor.parseToolCallForApproval(tc);
-      if (parsed) {
-        const check = registry.checkApproval(parsed.name, parsed.rawArguments, this.projectRoot);
-        if (check.requiresApproval) {
-          pendingApprovals.push({
-            toolCallId: parsed.id,
-            toolName: parsed.name,
-            params: check.parsedArgs,
-            summary: check.summary,
-          });
-        }
-      }
-    }
-
-    if (pendingApprovals.length > 0) {
-      // 存到会话索引中（不存消息），等待用户审批
-      this.storage.updateSessionEntry(sessionId, (entry) => ({
-        ...entry,
-        pendingApprovals,
-        status: "waiting_for_user",
-        updateTime: new Date().toISOString(),
-      }));
-      this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
-
-      // 仅推送给前端展示，不落盘（避免恢复会话时出现过期审批卡片）
-      const approvalMessage = this.messageBuilder.buildToolApprovalMessage(sessionId, pendingApprovals);
-      this.onAssistantMessage(approvalMessage, true);
-
-      return { waitingForUser: true };
-    }
-
-    // ── 无需审批，直接执行 ──
+  /**
+   * 执行一批工具调用并将结果作为 tool 消息存入会话。
+   * 返回 { toolMessages, followUpMessages, waitingForUser }。
+   */
+  private async executeToolCallBatch(
+    sessionId: string,
+    toolCalls: unknown[],
+  ): Promise<{
+    toolMessages: SessionMessage[];
+    followUpMessages: SessionMessage[];
+    waitingForUser: boolean;
+  }> {
     const toolExecutions = await this.toolExecutor.executeToolCalls(sessionId, toolCalls, {
       onProcessStart: (pid, command) => {
         const session = this.getSession(sessionId);
@@ -623,10 +599,10 @@ export class SessionManager {
       shouldStop: () => !this.activator.hasController(sessionId),
     });
 
-    if (!this.activator.hasController(sessionId)) return { waitingForUser: false };
-
-    let waitingForUser = false;
+    const toolMessages: SessionMessage[] = [];
     const followUpMessages: SessionMessage[] = [];
+    let waitingForUser = false;
+
     for (const execution of toolExecutions) {
       if (execution.result.awaitUserResponse === true) waitingForUser = true;
       const toolFunction = this.messageBuilder.findToolFunction(toolCalls, execution.toolCallId);
@@ -636,8 +612,7 @@ export class SessionManager {
         execution.content,
         toolFunction
       );
-      this.storage.appendSessionMessage(sessionId, toolMessage);
-      this.onAssistantMessage(toolMessage, true);
+      toolMessages.push(toolMessage);
 
       for (const fup of execution.result.followUpMessages ?? []) {
         if (fup.role !== "system") continue;
@@ -646,7 +621,67 @@ export class SessionManager {
         );
       }
     }
-    for (const m of followUpMessages) this.storage.appendSessionMessage(sessionId, m);
+
+    return { toolMessages, followUpMessages, waitingForUser };
+  }
+
+  private async appendToolMessages(sessionId: string, toolCalls: unknown[]): Promise<{ waitingForUser: boolean }> {
+    // ── 第一步：分离需要审批和不需要审批的工具调用 ──
+    const approvalNeeded: { parsed: { id: string; name: string; rawArguments: string }; check: ReturnType<typeof registry.checkApproval> }[] = [];
+    const noApprovalNeeded: unknown[] = [];
+
+    for (const tc of toolCalls) {
+      const parsed = this.toolExecutor.parseToolCallForApproval(tc);
+      if (!parsed) {
+        // 无法解析的工具调用，仍尝试执行
+        noApprovalNeeded.push(tc);
+        continue;
+      }
+      const check = registry.checkApproval(parsed.name, parsed.rawArguments, this.projectRoot);
+      if (check.requiresApproval) {
+        approvalNeeded.push({ parsed, check });
+      } else {
+        noApprovalNeeded.push(tc);
+      }
+    }
+
+    // ── 第二步：立即执行不需要审批的工具 ──
+    // 即使有待审批的工具，无需审批的工具也应立即执行并落盘，
+    // 这样当审批通过后 LLM 恢复时，所有 tool_calls 都有对应的 tool 响应。
+    let waitingForUser = false;
+    if (noApprovalNeeded.length > 0) {
+      const result = await this.executeToolCallBatch(sessionId, noApprovalNeeded);
+      for (const tm of result.toolMessages) {
+        this.storage.appendSessionMessage(sessionId, tm);
+        this.onAssistantMessage(tm, true);
+      }
+      for (const m of result.followUpMessages) this.storage.appendSessionMessage(sessionId, m);
+      waitingForUser = result.waitingForUser;
+    }
+
+    // ── 第三步：处理需要审批的工具 ──
+    if (approvalNeeded.length > 0) {
+      const pendingApprovals: PendingApprovalItem[] = approvalNeeded.map(({ parsed, check }) => ({
+        toolCallId: parsed.id,
+        toolName: parsed.name,
+        params: check.parsedArgs,
+        summary: check.summary,
+      }));
+
+      this.storage.updateSessionEntry(sessionId, (entry) => ({
+        ...entry,
+        pendingApprovals,
+        status: "waiting_for_user",
+        updateTime: new Date().toISOString(),
+      }));
+      this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+
+      const approvalMessage = this.messageBuilder.buildToolApprovalMessage(sessionId, pendingApprovals);
+      this.onAssistantMessage(approvalMessage, true);
+
+      return { waitingForUser: true };
+    }
+
     return { waitingForUser };
   }
 
