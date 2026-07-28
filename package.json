@@ -73,7 +73,8 @@
     "vscode:prepublish": "pnpm run compile",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "package": "vsce package --no-dependencies --out ./dist/"
   },
   "devDependencies": {
     "@types/ejs": "^3.1.5",
