@@ -66,11 +66,11 @@
     "typecheck": "tsc -p ./ --noEmit",
     "bundle": "esbuild ./src/extension.ts --bundle --platform=node --format=cjs --target=node18 --outfile=out/extension.js --external:vscode --sourcemap --footer:js=\"module.exports = { activate, deactivate };\" --log-override:empty-import-meta=silent",
     "bundle:webview": "node ./scripts/build-webview.mjs",
-    "compile": "npm run typecheck && npm run bundle && npm run bundle:webview",
+    "compile": "pnpm run typecheck && pnpm run bundle && pnpm run bundle:webview",
     "test": "tsx --test src/tests/*.test.ts",
     "test:single": "tsx --test",
     "watch": "tsc -w -p ./ --noEmit",
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "pnpm run compile",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "build": "node scripts/build.mjs"
