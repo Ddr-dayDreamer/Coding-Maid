@@ -542,13 +542,13 @@ function applyReplacement(
 /**
  * Strip Read tool-style line number prefixes from each line.
  *
- * Read output format: "     6\tcontent"  (6-wide line number + tab + content)
+ * Read output format: "001|content"  (zero-padded line number + pipe + content)
  * If the AI accidentally included the line number prefix in old_string,
  * this will remove it and allow matching against the raw file content.
  */
 function stripReadLineNumberPrefixes(value: string): string {
-  // Pattern: optional leading whitespace + digits + tab, at line start
-  return value.replace(/^[ \t]*\d+\t/gm, "");
+  // Pattern: 3+ digits followed by pipe, at line start
+  return value.replace(/^\d{3,}\|/gm, "");
 }
 
 function buildClosestMatchMetadata(
@@ -580,7 +580,13 @@ function buildPreview(lines: string[], startLine: number, endLine: number): stri
 }
 
 function formatWithLineNumbers(lines: string[], startLine: number): string {
-  return lines.map((line, index) => `${String(startLine + index).padStart(6, " ")}\t${line}`).join("\n");
+  return lines
+    .map((line, index) => {
+      const lineNumber = startLine + index;
+      const prefix = `${String(lineNumber).padStart(3, "0")}|`;
+      return `${prefix}${line}`;
+    })
+    .join("\n");
 }
 
 function findClosestMatch(
