@@ -63,9 +63,7 @@
     const next = { ...(selections[msg.id] ?? {}) };
     if (multiSelect) {
       const current = Array.isArray(next[index]) ? (next[index] as string[]) : [];
-      next[index] = current.includes(value)
-        ? current.filter((v) => v !== value)
-        : [...current, value];
+      next[index] = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
     } else {
       next[index] = value;
     }
@@ -109,11 +107,23 @@
     }
   }
 
-  function getPendingApprovals(): { toolCallId: string; toolName: string; params: Record<string, unknown>; summary: string }[] {
+  function getPendingApprovals(): {
+    toolCallId: string;
+    toolName: string;
+    params: Record<string, unknown>;
+    summary: string;
+  }[] {
     try {
       const data = JSON.parse(msg.content ?? "{}") as Record<string, unknown>;
       const meta = data.metadata as Record<string, unknown> | undefined;
-      return (meta?.pendingApprovals as { toolCallId: string; toolName: string; params: Record<string, unknown>; summary: string }[]) ?? [];
+      return (
+        (meta?.pendingApprovals as {
+          toolCallId: string;
+          toolName: string;
+          params: Record<string, unknown>;
+          summary: string;
+        }[]) ?? []
+      );
     } catch {
       return [];
     }
@@ -205,7 +215,7 @@
                 <button
                   class="question-option"
                   class:selected={q.multiSelect
-                    ? (selections[msg.id]?.[i] as string[] ?? []).includes(opt.label)
+                    ? ((selections[msg.id]?.[i] as string[]) ?? []).includes(opt.label)
                     : selections[msg.id]?.[i] === opt.label}
                   onclick={() => selectOption(i, q.multiSelect, opt.label)}
                 >
@@ -226,11 +236,7 @@
             </div>
           </div>
         {/each}
-        <button
-          class="question-submit"
-          onclick={submitAnswer}
-          disabled={!hasAnswer()}
-        >发送回答</button>
+        <button class="question-submit" onclick={submitAnswer} disabled={!hasAnswer()}>发送回答</button>
       </div>
     {:else if isToolApproval()}
       <div class="approval-card">
@@ -256,14 +262,8 @@
               </div>
             {:else}
               <div class="approval-actions">
-                <button
-                  class="btn-approve"
-                  onclick={() => decideApproval(item.toolCallId, "approve")}
-                >✅ 批准</button>
-                <button
-                  class="btn-reject"
-                  onclick={() => decideApproval(item.toolCallId, "reject")}
-                >❌ 拒绝</button>
+                <button class="btn-approve" onclick={() => decideApproval(item.toolCallId, "approve")}>✅ 批准</button>
+                <button class="btn-reject" onclick={() => decideApproval(item.toolCallId, "reject")}>❌ 拒绝</button>
               </div>
             {/if}
           </div>
@@ -315,12 +315,18 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .bubble-tool::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 2px;
     top: -4px;
@@ -375,7 +381,7 @@
   .approval-item {
     margin-bottom: 8px;
     padding: 6px 8px;
-    background: var(--vscode-input-background, rgba(128,128,128,0.05));
+    background: var(--vscode-input-background, rgba(128, 128, 128, 0.05));
     border-radius: 4px;
     border: 1px solid var(--vscode-focusBorder);
   }
@@ -405,7 +411,7 @@
     word-break: break-all;
     margin: 4px 0;
     padding: 4px 6px;
-    background: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.1));
+    background: var(--vscode-textCodeBlock-background, rgba(128, 128, 128, 0.1));
     border-radius: 3px;
     max-height: 120px;
     overflow-y: auto;
@@ -607,7 +613,9 @@
     text-align: left;
     font-family: inherit;
     font-size: 12px;
-    transition: border-color 0.12s, background 0.12s;
+    transition:
+      border-color 0.12s,
+      background 0.12s;
   }
 
   .question-option:hover {
