@@ -57,7 +57,18 @@ export async function handleBashTool(
   const description = typeof args.description === "string" ? args.description.trim() : "";
 
   const startCwd = getSessionCwd(context.sessionId, context.projectRoot);
-  const { shellPath, shellArgs, marker } = buildShellCommand(command);
+  let shellCommand: { shellPath: string; shellArgs: string[]; marker: string };
+  try {
+    shellCommand = buildShellCommand(command);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      ok: false,
+      name: "bash",
+      error: message,
+    };
+  }
+  const { shellPath, shellArgs, marker } = shellCommand;
 
   const execution = await executeShellCommand(shellPath, shellArgs, startCwd, command, description, context);
   const result = buildToolCommandResult(

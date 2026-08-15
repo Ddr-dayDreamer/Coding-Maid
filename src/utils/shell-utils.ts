@@ -10,7 +10,18 @@ const WINDOWS_BASH_LOCATIONS = ["C:\\Program Files\\Git\\bin\\bash.exe", "C:\\Pr
 const NUL_REDIRECT_REGEX = /(\d?&?>+\s*)[Nn][Uu][Ll](?=\s|$|[|&;)\n])/g;
 let cachedGitBashPath: string | null = null;
 
-export type ShellKind = "bash" | "zsh" | "unknown";
+// 非 Windows 平台常用 shell 路径探测候选（按优先级排列）
+const LINUX_SHELL_CANDIDATES = [
+  "/bin/bash",
+  "/usr/bin/bash",
+  "/bin/zsh",
+  "/usr/bin/zsh",
+  "/bin/dash",
+  "/bin/sh",
+  "/usr/bin/sh",
+];
+
+export type ShellKind = "bash" | "zsh" | "sh" | "unknown";
 
 type WindowsGitBashLookup = {
   findExecutableCandidates: (executable: string) => string[];
@@ -62,11 +73,29 @@ export function resolveShellPath(): string {
     return findGitBashPath();
   }
 
+  // 优先使用 SHELL 环境变量（仅当它是可执行的 bash/zsh/sh）
   const envShell = process.env.SHELL;
-  if (envShell && getShellKind(envShell) !== "unknown") {
+  if (envShell && getShellKind(envShell) !== "unknown" && isExecutableFile(envShell)) {
     return envShell;
   }
-  return "/bin/bash";
+
+  // 其次：常用路径探测
+  for (const candidate of LINUX_SHELL_CANDIDATES) {
+    if (isExecutableFile(candidate)) {
+      return candidate;
+    }
+  }
+
+  // 再次：从 PATH 中查找
+  const shellFromPath = findShellInPath();
+  if (shellFromPath) {
+    return shellFromPath;
+  }
+
+  throw new Error(
+    "Coding-Maid could not find a usable POSIX shell (bash/zsh/sh). " +
+      "Install one or set the SHELL environment variable to a valid shell path."
+  );
 }
 
 export function getShellKind(shellPath: string): ShellKind {
@@ -77,7 +106,45 @@ export function getShellKind(shellPath: string): ShellKind {
   if (executable === "zsh" || executable === "zsh.exe") {
     return "zsh";
   }
+  if (
+    executable === "sh" ||
+    executable === "sh.exe" ||
+    executable === "dash" ||
+    executable === "dash.exe" ||
+    executable === "ash" ||
+    executable === "ash.exe"
+  ) {
+    return "sh";
+  }
   return "unknown";
+}
+
+/** 判断文件是否存在且可执行（非 Windows 平台使用 X_OK 权限位） */
+function isExecutableFile(filePath: string): boolean {
+  try {
+    fs.accessSync(filePath, fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 在 PATH 中查找可用的 bash/zsh/sh（仅非 Windows 平台使用） */
+function findShellInPath(): string | null {
+  const pathEnv = process.env.PATH ?? "";
+  const names = ["bash", "zsh", "sh", "dash", "ash"];
+  for (const dir of pathEnv.split(":")) {
+    if (!dir) {
+      continue;
+    }
+    for (const name of names) {
+      const candidate = path.join(dir, name);
+      if (isExecutableFile(candidate) && getShellKind(candidate) !== "unknown") {
+        return candidate;
+      }
+    }
+  }
+  return null;
 }
 
 export function buildShellInitCommand(shellPath: string): string | null {
@@ -86,6 +153,9 @@ export function buildShellInitCommand(shellPath: string): string | null {
       return ['ZSHRC="${ZDOTDIR:-$HOME}/.zshrc"', 'if [ -f "$ZSHRC" ]; then . "$ZSHRC"; fi'].join("; ");
     case "bash":
       return ['BASHRC="${BASH_ENV:-$HOME/.bashrc}"', 'if [ -f "$BASHRC" ]; then . "$BASHRC"; fi'].join("; ");
+    case "sh":
+      // POSIX sh 不读取 rc 文件，避免非交互输出污染 stdout
+      return null;
     default:
       return null;
   }
@@ -97,6 +167,9 @@ export function buildDisableExtglobCommand(shellPath: string): string | null {
       return "shopt -u extglob 2>/dev/null || true";
     case "zsh":
       return "setopt NO_EXTENDED_GLOB 2>/dev/null || true";
+    case "sh":
+      // POSIX sh 不支持 extglob，无需禁用
+      return null;
     default:
       return null;
   }
