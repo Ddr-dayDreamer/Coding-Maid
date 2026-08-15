@@ -94,7 +94,7 @@ export function resolveShellPath(): string {
 
   throw new Error(
     "Coding-Maid could not find a usable POSIX shell (bash/zsh/sh). " +
-      "Install one or set the SHELL environment variable to a valid shell path."
+    "Install one or set the SHELL environment variable to a valid shell path."
   );
 }
 

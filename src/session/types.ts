@@ -161,6 +161,8 @@ export type SessionManagerOptions = {
   onNotify?: (level: "success" | "error" | "warning" | "info", text: string, duration?: number) => void;
   onMcpStatusChanged?: () => void;
   onProcessStdout?: (pid: number, chunk: string) => void;
+  /** 单个审批项处理完成后的回调（用于前端同步审批状态） */
+  onApprovalProcessed?: (sessionId: string, toolCallId: string, action: "approve" | "reject") => void;
 };
 
 // ─── LLM 流进度 ──────────────────────────────────────────

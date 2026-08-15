@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SessionMessageData } from "../types";
   import { api } from "../lib/api";
+  import { appState } from "../lib/state.svelte";
   import PlanDisplay from "./PlanDisplay.svelte";
 
   let {
@@ -16,10 +17,12 @@
   // ─── AskUserQuestion 表单状态 ──────────────
 
   type QuestionOption = { label: string; description?: string };
-  type FormSelections = Record<string, string | string[]>;
+  /** 按"消息ID + 问题索引"存储选择，保证多问题互不干扰 */
+  type QuestionSelections = Record<number, string | string[]>;
 
-  let formValues = $state<FormSelections>({});
-  let otherInputs = $state<Record<string, string>>({});
+  let selections = $state<Record<string, QuestionSelections>>({});
+  /** 按"消息ID + 问题索引"存储"其他"输入 */
+  let otherInputs = $state<Record<string, Record<number, string>>>({});
   let submittedQuestions = $state(new Set<string>());
 
   function isAskUserQuestion(): boolean {
@@ -42,42 +45,59 @@
     }
   }
 
-  function selectOption(multiSelect: boolean | undefined, value: string) {
+  /** 取某个问题的最终答案（选项 + "其他"），没有答案返回 null */
+  function getQuestionAnswer(index: number, multiSelect: boolean | undefined): string | null {
+    const selected = selections[msg.id]?.[index];
+    const other = otherInputs[msg.id]?.[index]?.trim();
     if (multiSelect) {
-      const current = (formValues[msg.id] as string[]) ?? [];
-      formValues[msg.id] = current.includes(value)
+      const arr = Array.isArray(selected) ? [...selected] : [];
+      if (other) arr.push(other);
+      return arr.length > 0 ? arr.join(", ") : null;
+    }
+    if (other) return other;
+    if (typeof selected === "string" && selected) return selected;
+    return null;
+  }
+
+  function selectOption(index: number, multiSelect: boolean | undefined, value: string) {
+    const next = { ...(selections[msg.id] ?? {}) };
+    if (multiSelect) {
+      const current = Array.isArray(next[index]) ? (next[index] as string[]) : [];
+      next[index] = current.includes(value)
         ? current.filter((v) => v !== value)
         : [...current, value];
     } else {
-      formValues[msg.id] = value;
+      next[index] = value;
     }
-    formValues = { ...formValues };
+    selections = { ...selections, [msg.id]: next };
+  }
+
+  function setOther(index: number, value: string) {
+    const next = { ...(otherInputs[msg.id] ?? {}) };
+    next[index] = value;
+    otherInputs = { ...otherInputs, [msg.id]: next };
   }
 
   function submitAnswer() {
     const questions = getQuestions();
     const answers: string[] = [];
-    for (const q of questions) {
-      const val = formValues[msg.id];
-      if (q.multiSelect) {
-        const selected = (val as string[]) ?? [];
-        const other = otherInputs[msg.id]?.trim();
-        if (other) selected.push(other);
-        if (selected.length > 0) answers.push(`${q.question}: ${selected.join(", ")}`);
-      } else {
-        const selected = typeof val === "string" ? val : "";
-        const other = otherInputs[msg.id]?.trim();
-        if (other) answers.push(`${q.question}: ${other}`);
-        else if (selected) answers.push(`${q.question}: ${selected}`);
+    for (let i = 0; i < questions.length; i += 1) {
+      const answer = getQuestionAnswer(i, questions[i].multiSelect);
+      if (answer) {
+        answers.push(`${questions[i].question}: ${answer}`);
       }
     }
+    if (answers.length === 0) return; // 没有任何回答则不发送
     submittedQuestions = new Set([...submittedQuestions, msg.id]);
     api.send("userPrompt", { prompt: answers.join("\n") });
   }
 
   // ─── 工具审批 ──────────────────────────────
 
-  let approving = $state<string | null>(null);
+  /** 是否已对该 toolCallId 做出决定（读取全局审批决定，支持多审批项并存） */
+  function getApprovalDecision(toolCallId: string): "approve" | "reject" | null {
+    return appState.approvalDecisions[toolCallId] ?? null;
+  }
 
   function isToolApproval(): boolean {
     try {
@@ -99,14 +119,13 @@
     }
   }
 
-  function approveTool(toolCallId: string) {
-    approving = toolCallId;
-    api.send("approveTool", { toolCallId, action: "approve" });
-  }
-
-  function rejectTool(toolCallId: string) {
-    approving = toolCallId;
-    api.send("approveTool", { toolCallId, action: "reject" });
+  /** 乐观标记决定并推送后端；每个 toolCallId 独立记录，互不影响 */
+  function decideApproval(toolCallId: string, action: "approve" | "reject") {
+    appState.approvalDecisions = {
+      ...appState.approvalDecisions,
+      [toolCallId]: action,
+    };
+    api.send("approveTool", { toolCallId, action });
   }
 
   // ─── 工具名称与参数解析 ──────────────────────
@@ -164,7 +183,11 @@
   }
 
   function hasAnswer() {
-    return formValues[msg.id] || otherInputs[msg.id]?.trim();
+    const questions = getQuestions();
+    for (let i = 0; i < questions.length; i += 1) {
+      if (getQuestionAnswer(i, questions[i].multiSelect)) return true;
+    }
+    return false;
   }
 </script>
 
@@ -174,7 +197,7 @@
     {#if isAskUserQuestion() && !submittedQuestions.has(msg.id)}
       <div class="question-form">
         <div class="question-hint">💬 等待回答</div>
-        {#each getQuestions() as q}
+        {#each getQuestions() as q, i}
           <div class="question-item">
             <div class="question-text">{q.question}</div>
             <div class="question-options">
@@ -182,9 +205,9 @@
                 <button
                   class="question-option"
                   class:selected={q.multiSelect
-                    ? (formValues[msg.id] as string[] ?? []).includes(opt.label)
-                    : formValues[msg.id] === opt.label}
-                  onclick={() => selectOption(q.multiSelect, opt.label)}
+                    ? (selections[msg.id]?.[i] as string[] ?? []).includes(opt.label)
+                    : selections[msg.id]?.[i] === opt.label}
+                  onclick={() => selectOption(i, q.multiSelect, opt.label)}
                 >
                   <span class="option-label">{opt.label}</span>
                   {#if opt.description}
@@ -193,11 +216,16 @@
                 </button>
               {/each}
             </div>
+            <div class="question-other">
+              <input
+                type="text"
+                placeholder="其他…"
+                value={otherInputs[msg.id]?.[i] ?? ""}
+                oninput={(e) => setOther(i, (e.target as HTMLInputElement).value)}
+              />
+            </div>
           </div>
         {/each}
-        <div class="question-other">
-          <input type="text" placeholder="其他…" bind:value={otherInputs[msg.id]} />
-        </div>
         <button
           class="question-submit"
           onclick={submitAnswer}
@@ -208,6 +236,7 @@
       <div class="approval-card">
         <div class="approval-header">🔐 工具调用待审批</div>
         {#each getPendingApprovals() as item}
+          {@const decision = getApprovalDecision(item.toolCallId)}
           <div class="approval-item">
             <div class="approval-tool-name">
               <span class="tool-icon">⚙</span>
@@ -217,21 +246,26 @@
               <div class="approval-description">{String(item.params.description)}</div>
             {/if}
             <pre class="approval-params">{item.summary}</pre>
-            <div class="approval-actions">
-              <button
-                class="btn-approve"
-                onclick={() => approveTool(item.toolCallId)}
-                disabled={approving === item.toolCallId}
-              >✅ 批准</button>
-              <button
-                class="btn-reject"
-                onclick={() => rejectTool(item.toolCallId)}
-                disabled={approving === item.toolCallId}
-              >❌ 拒绝</button>
-              {#if approving === item.toolCallId}
-                <span class="approving-hint">处理中…</span>
-              {/if}
-            </div>
+            {#if decision}
+              <div class="approval-decided">
+                {#if decision === "approve"}
+                  <span class="approval-decided-ok">✅ 已批准</span>
+                {:else}
+                  <span class="approval-decided-no">❌ 已拒绝</span>
+                {/if}
+              </div>
+            {:else}
+              <div class="approval-actions">
+                <button
+                  class="btn-approve"
+                  onclick={() => decideApproval(item.toolCallId, "approve")}
+                >✅ 批准</button>
+                <button
+                  class="btn-reject"
+                  onclick={() => decideApproval(item.toolCallId, "reject")}
+                >❌ 拒绝</button>
+              </div>
+            {/if}
           </div>
         {/each}
       </div>
@@ -419,6 +453,20 @@
     font-size: 11px;
     color: var(--vscode-descriptionForeground);
     font-style: italic;
+  }
+
+  .approval-decided {
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .approval-decided-ok {
+    color: var(--vscode-charts-green, #3fb950);
+  }
+
+  .approval-decided-no {
+    color: var(--vscode-charts-red, #f85149);
   }
 
   /* ─── 工具调用卡片 ──────────────────────── */

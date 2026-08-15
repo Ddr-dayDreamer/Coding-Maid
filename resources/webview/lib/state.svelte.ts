@@ -62,6 +62,9 @@ class AppState {
   /** 审批配置（工具名 → 审批模式） */
   approvalConfig = $state<Record<string, string>>({});
 
+  /** 审批决定（toolCallId → approve/reject），供审批卡片展示已处理状态 */
+  approvalDecisions = $state<Record<string, "approve" | "reject">>({});
+
   /** 拖入的附加文件列表（前端展示用） */
   attachedFiles = $state<AttachedFile[]>([]);
 

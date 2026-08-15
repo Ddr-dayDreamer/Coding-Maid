@@ -85,6 +85,11 @@ export class SessionManager {
   private readonly onNotify?: (level: "success" | "error" | "warning" | "info", text: string, duration?: number) => void;
   private readonly onMcpStatusChanged?: () => void;
   private readonly onProcessStdout?: (pid: number, chunk: string) => void;
+  private readonly onApprovalProcessed?: (
+    sessionId: string,
+    toolCallId: string,
+    action: "approve" | "reject"
+  ) => void;
 
   /* 子模块 */
   private readonly storage: SessionStorage;
@@ -128,6 +133,7 @@ export class SessionManager {
     this.onNotify = options.onNotify;
     this.onMcpStatusChanged = options.onMcpStatusChanged;
     this.onProcessStdout = options.onProcessStdout;
+    this.onApprovalProcessed = options.onApprovalProcessed;
 
     this.storage = new SessionStorage(this.projectRoot);
     this.fileHistory = new SessionFileHistory(this.projectRoot, this.storage);
@@ -758,6 +764,9 @@ export class SessionManager {
       ...entry,
       pendingApprovals: remaining.length > 0 ? remaining : null,
     }));
+
+    // 通知前端该审批项已处理，同步卡片状态
+    this.onApprovalProcessed?.(sessionId, toolCallId, action);
 
     if (action === "reject") {
       // 用户拒绝：注入一条 tool 结果消息，告诉 LLM 用户拒绝了此调用

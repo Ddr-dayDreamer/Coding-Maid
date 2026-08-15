@@ -85,6 +85,10 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
         if (!this.webviewView) return;
         this.webviewView.webview.postMessage({ type: "notify", level, text, duration });
       },
+      onApprovalProcessed: (_sessionId, toolCallId, action) => {
+        if (!this.webviewView) return;
+        this.webviewView.webview.postMessage({ type: "approvalProcessed", toolCallId, action });
+      },
     });
 
     this.templatesDir = path.join(this.context.extensionUri.fsPath, "templates");

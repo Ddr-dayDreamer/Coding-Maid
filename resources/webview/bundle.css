@@ -627,10 +627,16 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
-.approving-hint.svelte-1gpypfo {
+.approval-decided.svelte-1gpypfo {
+  margin-top: 6px;
   font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-  font-style: italic;
+  font-weight: 600;
+}
+.approval-decided-ok.svelte-1gpypfo {
+  color: var(--vscode-charts-green, #3fb950);
+}
+.approval-decided-no.svelte-1gpypfo {
+  color: var(--vscode-charts-red, #f85149);
 }
 .tool-card.svelte-1gpypfo {
   font-size: 12px;

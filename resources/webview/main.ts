@@ -146,6 +146,15 @@ window.addEventListener("message", (event: MessageEvent) => {
     case "approvalConfig":
       appState.approvalConfig = msg.config;
       break;
+
+    case "approvalProcessed":
+      if (typeof msg.toolCallId === "string") {
+        appState.approvalDecisions = {
+          ...appState.approvalDecisions,
+          [msg.toolCallId]: msg.action === "reject" ? "reject" : "approve",
+        };
+      }
+      break;
   }
 });
 
