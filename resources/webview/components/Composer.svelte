@@ -136,12 +136,7 @@
       <div class="footer-right">
         {#if quickReplies.length > 0}
           <div class="quick-reply-wrap">
-            <button
-              class="quick-reply-btn"
-              class:open={quickReplyOpen}
-              onclick={toggleQuickReply}
-              title="快速回复"
-            >
+            <button class="quick-reply-btn" class:open={quickReplyOpen} onclick={toggleQuickReply} title="快速回复">
               <svg viewBox="0 0 16 16" width="14" height="14">
                 <path d="M9 0L1 9h4l-1 7 8-9H8l1-7z" fill="currentColor" />
               </svg>
