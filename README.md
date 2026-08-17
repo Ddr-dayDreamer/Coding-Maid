@@ -137,6 +137,30 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 
 说白了就是会缓存命中的
 
+## 快速回复（可选）
+
+不想每次打同样的话？比如每次对话结束想让 ai 总结并写入记忆，可以在预设目录下放一个 `quickReply.json`（与 `preset.json` 同级）：
+
+```
+~/.codingmaid/presets/<预设名>/
+├── preset.json
+└── quickReply.json   ← 可选，存在才生效
+```
+
+格式是一个数组，每项包含 `label`（下拉显示名）和 `content`（填入输入框的内容），`id` 可省略：
+
+```json
+[
+  { "label": "总结入记忆", "content": "请总结本次对话的要点，并使用记忆工具写入记忆。" },
+  { "label": "生成提交说明", "content": "请根据本次修改生成 git commit message 建议。" },
+  { "label": "继续", "content": "/continue" }
+]
+```
+
+- 快速回复**跟随预设**：切换预设后自动加载对应预设的 `quickReply.json`。
+- 找到该文件时，发送按钮旁会出现一个 ⚡ 按钮，点击弹出列表；选中后内容填入输入框（可再编辑），回车发送。
+- 没找到该文件时**完全不显示**入口，不影响现有功能。示例见 `templates/buildin_quickreply.json`。
+
 ## ~~**自定义Skills**~~
 
 啊，暂时禁用了，反正默认只带了两个skill，自己开关条目一下得了

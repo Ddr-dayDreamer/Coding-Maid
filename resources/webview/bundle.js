@@ -8554,9 +8554,12 @@ ${component_stack}
   delegate(["click", "dblclick"]);
 
   // resources/webview/components/Composer.svelte
-  var root12 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
-  var root_114 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
-  var root_210 = from_html(`<div><div class="input-wrap svelte-z2mbmf"><!> <textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C\uFF0C\u62D6\u5165\u6587\u4EF6\u6309\u4F4F Shift)" rows="1" class="svelte-z2mbmf"></textarea> <div class="composer-footer svelte-z2mbmf"><div class="footer-left svelte-z2mbmf"><!> <!> <!></div> <div class="footer-right"><button class="send-btn svelte-z2mbmf"><!></button></div></div></div></div>`);
+  var root12 = from_html(`<button class="dropdown-item svelte-z2mbmf"><span class="item-label svelte-z2mbmf"> </span></button>`);
+  var root_114 = from_html(`<div class="quick-reply-dropdown svelte-z2mbmf"></div>`);
+  var root_210 = from_html(`<div class="quick-reply-wrap svelte-z2mbmf"><button title="\u5FEB\u901F\u56DE\u590D"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M9 0L1 9h4l-1 7 8-9H8l1-7z" fill="currentColor"></path></svg></button> <!></div>`);
+  var root_310 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
+  var root_410 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
+  var root_57 = from_html(`<div><div class="input-wrap svelte-z2mbmf"><!> <textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C\uFF0C\u62D6\u5165\u6587\u4EF6\u6309\u4F4F Shift)" rows="1" class="svelte-z2mbmf"></textarea> <div class="composer-footer svelte-z2mbmf"><div class="footer-left svelte-z2mbmf"><!> <!> <!></div> <div class="footer-right svelte-z2mbmf"><!> <button class="send-btn svelte-z2mbmf"><!></button></div></div></div></div>`);
   function Composer($$anchor, $$props) {
     push($$props, true);
     let promptText = state("");
@@ -8611,7 +8614,31 @@ ${component_stack}
     function handleInput() {
       autoResize();
     }
-    var div = root_210();
+    let quickReplies = state(proxy([]));
+    let quickReplyOpen = state(false);
+    user_effect(() => {
+      const preset = appState.activePreset;
+      void loadQuickReplies(preset);
+    });
+    async function loadQuickReplies(preset) {
+      try {
+        set(quickReplies, await api.request("listQuickReplies", { preset }), true);
+      } catch {
+        set(quickReplies, [], true);
+      }
+    }
+    function toggleQuickReply() {
+      set(quickReplyOpen, !get2(quickReplyOpen));
+    }
+    function applyQuickReply(reply) {
+      set(promptText, reply.content, true);
+      set(quickReplyOpen, false);
+      void tick().then(() => {
+        autoResize();
+        get2(textareaEl)?.focus();
+      });
+    }
+    var div = root_57();
     let classes;
     var div_1 = child(div);
     var node = child(div_1);
@@ -8629,23 +8656,59 @@ ${component_stack}
     ProfileQuickSelector(node_3, {});
     reset(div_3);
     var div_4 = sibling(div_3, 2);
-    var button = child(div_4);
-    var node_4 = child(button);
+    var node_4 = child(div_4);
     {
-      var consequent = ($$anchor2) => {
-        var svg = root12();
+      var consequent_1 = ($$anchor2) => {
+        var div_5 = root_210();
+        var button = child(div_5);
+        let classes_1;
+        var node_5 = sibling(button, 2);
+        {
+          var consequent = ($$anchor3) => {
+            var div_6 = root_114();
+            each(div_6, 21, () => get2(quickReplies), (reply) => reply.id, ($$anchor4, reply) => {
+              var button_1 = root12();
+              var span = child(button_1);
+              var text_1 = child(span, true);
+              reset(span);
+              reset(button_1);
+              template_effect(() => set_text(text_1, get2(reply).label));
+              delegated("click", button_1, () => applyQuickReply(get2(reply)));
+              append($$anchor4, button_1);
+            });
+            reset(div_6);
+            append($$anchor3, div_6);
+          };
+          if_block(node_5, ($$render) => {
+            if (get2(quickReplyOpen)) $$render(consequent);
+          });
+        }
+        reset(div_5);
+        template_effect(() => classes_1 = set_class(button, 1, "quick-reply-btn svelte-z2mbmf", null, classes_1, { open: get2(quickReplyOpen) }));
+        delegated("click", button, toggleQuickReply);
+        append($$anchor2, div_5);
+      };
+      if_block(node_4, ($$render) => {
+        if (get2(quickReplies).length > 0) $$render(consequent_1);
+      });
+    }
+    var button_2 = sibling(node_4, 2);
+    var node_6 = child(button_2);
+    {
+      var consequent_2 = ($$anchor2) => {
+        var svg = root_310();
         append($$anchor2, svg);
       };
       var alternate = ($$anchor2) => {
-        var svg_1 = root_114();
+        var svg_1 = root_410();
         append($$anchor2, svg_1);
       };
-      if_block(node_4, ($$render) => {
-        if (appState.isProcessing) $$render(consequent);
+      if_block(node_6, ($$render) => {
+        if (appState.isProcessing) $$render(consequent_2);
         else $$render(alternate, -1);
       });
     }
-    reset(button);
+    reset(button_2);
     reset(div_4);
     reset(div_2);
     reset(div_1);
@@ -8653,15 +8716,15 @@ ${component_stack}
     template_effect(
       ($0) => {
         classes = set_class(div, 1, "composer svelte-z2mbmf", null, classes, { dragover: appState.isDragOver });
-        button.disabled = $0;
-        set_attribute2(button, "title", appState.isProcessing ? "\u4E2D\u65AD" : "\u53D1\u9001");
+        button_2.disabled = $0;
+        set_attribute2(button_2, "title", appState.isProcessing ? "\u4E2D\u65AD" : "\u53D1\u9001");
       },
       [() => !get2(promptText).trim() && !appState.isProcessing]
     );
     delegated("keydown", textarea_1, handleKeydown);
     delegated("input", textarea_1, handleInput);
     bind_value(textarea_1, () => get2(promptText), ($$value) => set(promptText, $$value));
-    delegated("click", button, sendPrompt);
+    delegated("click", button_2, sendPrompt);
     append($$anchor, div);
     pop();
   }
@@ -8780,9 +8843,9 @@ ${component_stack}
   var root15 = from_html(`<p class="hint svelte-199frlg">\u52A0\u8F7D\u4E2D...</p>`);
   var root_116 = from_html(`<p class="hint svelte-199frlg">\u6682\u65E0\u9884\u8BBE\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
   var root_212 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
-  var root_310 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
-  var root_410 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
-  var root_57 = from_html(`<div class="list-items svelte-199frlg"></div>`);
+  var root_311 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
+  var root_411 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
+  var root_58 = from_html(`<div class="list-items svelte-199frlg"></div>`);
   var root_65 = from_html(`<div class="preset-list-panel svelte-199frlg"><div class="list-header svelte-199frlg"><h2 class="svelte-199frlg">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-199frlg"> </span></div> <!> <div class="list-actions svelte-199frlg"><button class="action-btn primary svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u9884\u8BBE</button> <button class="action-btn svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M2.5 7.25a.75.75 0 0 1 1.5 0v4.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-4.5a.75.75 0 0 1 1.5 0v4.5A1.75 1.75 0 0 1 11.75 13h-7.5A1.75 1.75 0 0 1 2.5 11.75v-4.5Zm6.78-4.97a.75.75 0 0 1 0 1.06L7.81 4.81a.75.75 0 0 1-1.06 0L5.28 3.34a.75.75 0 0 1 1.06-1.06l.66.66V.75a.75.75 0 0 1 1.5 0v2.19l.66-.66a.75.75 0 0 1 .72-.22Z"></path></svg> \u5BFC\u5165</button></div></div>`);
   function PresetList($$anchor, $$props) {
     push($$props, true);
@@ -8810,9 +8873,9 @@ ${component_stack}
         append($$anchor2, p_1);
       };
       var alternate = ($$anchor2) => {
-        var div_2 = root_57();
+        var div_2 = root_58();
         each(div_2, 21, presets, (preset) => preset.name, ($$anchor3, preset) => {
-          var div_3 = root_410();
+          var div_3 = root_411();
           let classes;
           var div_4 = child(div_3);
           var div_5 = child(div_4);
@@ -8832,7 +8895,7 @@ ${component_stack}
           var node_2 = sibling(strong, 2);
           {
             var consequent_3 = ($$anchor4) => {
-              var span_2 = root_310();
+              var span_2 = root_311();
               append($$anchor4, span_2);
             };
             if_block(node_2, ($$render) => {
@@ -9004,7 +9067,7 @@ ${component_stack}
   var root17 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
   var root_118 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
   var root_213 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
-  var root_311 = from_html(`<div class="macro-inline svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F</button> <!></div>`);
+  var root_312 = from_html(`<div class="macro-inline svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F</button> <!></div>`);
   function MacroPanel($$anchor, $$props) {
     push($$props, true);
     let oninsert = prop($$props, "oninsert", 3, (_macro) => {
@@ -9046,7 +9109,7 @@ ${component_stack}
         ]
       }
     ];
-    var div = root_311();
+    var div = root_312();
     var button = child(div);
     var svg = child(button);
     let classes;
@@ -9099,7 +9162,7 @@ ${component_stack}
   var root18 = from_html(`<button> </button>`);
   var root_119 = from_html(`<div><!> <!></div>`);
   var root_214 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
-  var root_312 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
+  var root_313 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
   function PresetEditor($$anchor, $$props) {
     push($$props, true);
     let definition = prop($$props, "definition", 19, () => ({
@@ -9236,7 +9299,7 @@ ${component_stack}
     function handleSave() {
       onsave()(get2(editName), deepClone(get2(editDef)));
     }
-    var div = root_312();
+    var div = root_313();
     var div_1 = child(div);
     var button = child(div_1);
     var h2 = sibling(button, 2);
@@ -9531,9 +9594,9 @@ ${component_stack}
   var root20 = from_html(`<div class="new-profile-bar svelte-1no2ghb"><input class="new-profile-input svelte-1no2ghb" type="text" placeholder="\u8F93\u5165\u914D\u7F6E\u540D\u79F0..."/> <button class="action-btn primary svelte-1no2ghb">\u521B\u5EFA</button> <button class="action-btn svelte-1no2ghb">\u53D6\u6D88</button></div>`);
   var root_120 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
   var root_215 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
-  var root_313 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
-  var root_411 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
-  var root_58 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
+  var root_314 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
+  var root_412 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
+  var root_59 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
   var root_66 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
   var root_73 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14" class="spin svelte-1no2ghb"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Z"></path></svg>`);
   var root_82 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Zm2.5 4.15a.75.75 0 0 1 .1 1.06l-3 3.5a.75.75 0 0 1-1.1.04l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.47-2.88a.75.75 0 0 1 1-.13Z"></path></svg>`);
@@ -9718,7 +9781,7 @@ ${component_stack}
           var node_2 = child(div_5);
           {
             var consequent_3 = ($$anchor4) => {
-              var input_2 = root_313();
+              var input_2 = root_314();
               remove_input_defaults(input_2);
               delegated("keydown", input_2, handleRenameKeydown);
               event("blur", input_2, confirmRename);
@@ -9731,7 +9794,7 @@ ${component_stack}
               var node_3 = child(div_6);
               {
                 var consequent_4 = ($$anchor5) => {
-                  var span_1 = root_411();
+                  var span_1 = root_412();
                   append($$anchor5, span_1);
                 };
                 if_block(node_3, ($$render) => {
@@ -9744,7 +9807,7 @@ ${component_stack}
               var node_4 = sibling(strong, 2);
               {
                 var consequent_5 = ($$anchor5) => {
-                  var span_2 = root_58();
+                  var span_2 = root_59();
                   append($$anchor5, span_2);
                 };
                 if_block(node_4, ($$render) => {
@@ -9822,8 +9885,8 @@ ${component_stack}
   var root21 = from_html(`<div class="loading-indicator svelte-ccpdy5"><div class="spinner svelte-ccpdy5"></div> <span>\u52A0\u8F7D\u4E2D\u2026</span></div>`);
   var root_121 = from_html(`<div class="tool-row svelte-ccpdy5"><div class="tool-info svelte-ccpdy5"><span class="tool-name svelte-ccpdy5"> </span> <span class="tool-label svelte-ccpdy5"> </span></div> <div class="tool-control svelte-ccpdy5"><div class="mode-indicator svelte-ccpdy5"></div> <select class="mode-select svelte-ccpdy5"><option>\u65E0\u9700\u5BA1\u6279</option><option>\u9700\u8981\u5BA1\u6279</option></select></div></div>`);
   var root_216 = from_html(`<div class="save-bar svelte-ccpdy5"><button class="btn-save svelte-ccpdy5">\u{1F4BE} \u4FDD\u5B58\u66F4\u6539</button> <span class="save-hint svelte-ccpdy5">\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539</span></div>`);
-  var root_314 = from_html(`<div class="batch-actions svelte-ccpdy5"><button class="btn-batch svelte-ccpdy5">\u{1F512} \u5168\u90E8\u9700\u8981\u5BA1\u6279</button> <button class="btn-batch svelte-ccpdy5">\u{1F513} \u5168\u90E8\u65E0\u9700\u5BA1\u6279</button></div> <div class="tool-list svelte-ccpdy5"></div> <!>`, 1);
-  var root_412 = from_html(`<div class="approval-page svelte-ccpdy5"><div class="page-header svelte-ccpdy5"><h3 class="svelte-ccpdy5">\u{1F510} \u5DE5\u5177\u5BA1\u6279\u8BBE\u7F6E</h3> <p class="page-hint svelte-ccpdy5">\u8BBE\u7F6E\u5404\u5DE5\u5177\u662F\u5426\u9700\u8981\u7528\u6237\u5BA1\u6279\u540E\u624D\u6267\u884C\u3002\u672A\u8BBE\u7F6E\u7684\u5DE5\u5177\u9ED8\u8BA4<span class="badge-require svelte-ccpdy5">\u9700\u8981\u5BA1\u6279</span>\u3002</p></div> <!></div>`);
+  var root_315 = from_html(`<div class="batch-actions svelte-ccpdy5"><button class="btn-batch svelte-ccpdy5">\u{1F512} \u5168\u90E8\u9700\u8981\u5BA1\u6279</button> <button class="btn-batch svelte-ccpdy5">\u{1F513} \u5168\u90E8\u65E0\u9700\u5BA1\u6279</button></div> <div class="tool-list svelte-ccpdy5"></div> <!>`, 1);
+  var root_413 = from_html(`<div class="approval-page svelte-ccpdy5"><div class="page-header svelte-ccpdy5"><h3 class="svelte-ccpdy5">\u{1F510} \u5DE5\u5177\u5BA1\u6279\u8BBE\u7F6E</h3> <p class="page-hint svelte-ccpdy5">\u8BBE\u7F6E\u5404\u5DE5\u5177\u662F\u5426\u9700\u8981\u7528\u6237\u5BA1\u6279\u540E\u624D\u6267\u884C\u3002\u672A\u8BBE\u7F6E\u7684\u5DE5\u5177\u9ED8\u8BA4<span class="badge-require svelte-ccpdy5">\u9700\u8981\u5BA1\u6279</span>\u3002</p></div> <!></div>`);
   function ApprovalPage($$anchor, $$props) {
     push($$props, true);
     const BUILTIN_TOOLS2 = getBuiltinToolIds();
@@ -9921,7 +9984,7 @@ ${component_stack}
           return "var(--vscode-descriptionForeground)";
       }
     }
-    var div = root_412();
+    var div = root_413();
     var node = sibling(child(div), 2);
     {
       var consequent = ($$anchor2) => {
@@ -9929,7 +9992,7 @@ ${component_stack}
         append($$anchor2, div_1);
       };
       var alternate = ($$anchor2) => {
-        var fragment = root_314();
+        var fragment = root_315();
         var div_2 = first_child(fragment);
         var button = child(div_2);
         var button_1 = sibling(button, 2);

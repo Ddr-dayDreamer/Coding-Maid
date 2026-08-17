@@ -19,6 +19,12 @@ export function registerPresetHandlers(
     ctx.respond(message.requestId as string, true, data);
   });
 
+  registerHandler("listQuickReplies", async (message) => {
+    const presetName = String(message.preset || "").trim() || getActivePreset();
+    const replies = ctx.sessionManager.presetMgr.listQuickReplies(presetName);
+    ctx.respond(message.requestId as string, true, replies);
+  });
+
   registerHandler("getPreset", async (message) => {
     const name = String(message.name || "").trim();
     if (!name) {

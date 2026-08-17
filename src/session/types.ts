@@ -209,6 +209,16 @@ export type PresetMeta = {
   path: string;
 };
 
+/** 快速回复条目（可选 quickReply.json，跟随预设） */
+export type QuickReply = {
+  /** 可选，缺省时使用 label 作为 id */
+  id?: string;
+  /** 下拉列表中的显示名称 */
+  label: string;
+  /** 填入输入框的回复内容 */
+  content: string;
+};
+
 /** 宏解析上下文 */
 /** {{editor_selection}} 宏所需 — 编辑器选中内容的定位信息 */
 export type EditorSelectionInfo = {

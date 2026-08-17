@@ -11,7 +11,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import type { PresetDefinition, PresetEntry, PresetMeta, MacroContext, SessionMessage } from "../session/types";
+import type { PresetDefinition, PresetEntry, PresetMeta, MacroContext, SessionMessage, QuickReply } from "../session/types";
 import type { SessionMessageBuilder } from "../session/message-builder";
 import { MacroEngine } from "./macros";
 import { registry } from "../tools/index";
@@ -20,6 +20,7 @@ import { registry } from "../tools/index";
 
 const PRESETS_DIR_NAME = "presets";
 const PRESET_FILE_NAME = "preset.json";
+const QUICK_REPLY_FILE_NAME = "quickReply.json";
 const DEFAULT_PRESET_NAME = "default";
 
 // ─── 内置工具列表 ────────────────────────────────────────
@@ -74,6 +75,32 @@ export class PresetManager {
     }
 
     return metas;
+  }
+
+  /**
+   * 读取指定预设的快速回复列表（可选功能）。
+   * 约定：quickReply.json 放在预设目录下、preset.json 旁边。
+   * 文件不存在 / 损坏 / 内容不是数组时返回空列表，不影响现有功能。
+   */
+  listQuickReplies(presetName: string): QuickReply[] {
+    const quickReplyPath = path.join(this.presetsDir, presetName, QUICK_REPLY_FILE_NAME);
+    if (!fs.existsSync(quickReplyPath)) return [];
+
+    try {
+      const raw = JSON.parse(fs.readFileSync(quickReplyPath, "utf8"));
+      if (!Array.isArray(raw)) return [];
+
+      return raw
+        .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+        .filter((item) => typeof item.label === "string" && typeof item.content === "string")
+        .map((item, index) => ({
+          id: typeof item.id === "string" && item.id.trim() ? item.id : `quick-${index}`,
+          label: item.label as string,
+          content: item.content as string,
+        }));
+    } catch {
+      return [];
+    }
   }
 
   /** 加载指定预设 */

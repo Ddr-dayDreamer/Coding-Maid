@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import { appState } from "../lib/state.svelte";
   import { api } from "../lib/api";
   import ContextMeter from "./ContextMeter.svelte";
   import PresetQuickSelector from "./PresetQuickSelector.svelte";
   import ProfileQuickSelector from "./ProfileQuickSelector.svelte";
   import AttachedFilesBar from "./AttachedFilesBar.svelte";
+  import type { QuickReply } from "../types";
 
   let promptText = $state("");
   let textareaEl: HTMLTextAreaElement | undefined = $state();
@@ -78,6 +80,40 @@
   function handleInput() {
     autoResize();
   }
+
+  // ─── 快速回复 ─────────────────────────────────────
+  // 可选功能：预设目录下存在 quickReply.json 时，发送按钮旁出现入口。
+  // 跟随当前激活的预设，切换预设时自动重新加载。
+
+  let quickReplies = $state<QuickReply[]>([]);
+  let quickReplyOpen = $state(false);
+
+  $effect(() => {
+    const preset = appState.activePreset;
+    void loadQuickReplies(preset);
+  });
+
+  async function loadQuickReplies(preset: string) {
+    try {
+      quickReplies = await api.request<QuickReply[]>("listQuickReplies", { preset });
+    } catch {
+      quickReplies = [];
+    }
+  }
+
+  function toggleQuickReply() {
+    quickReplyOpen = !quickReplyOpen;
+  }
+
+  /** 选中快速回复：填入输入框（可再编辑），聚焦以便发送 */
+  function applyQuickReply(reply: QuickReply) {
+    promptText = reply.content;
+    quickReplyOpen = false;
+    void tick().then(() => {
+      autoResize();
+      textareaEl?.focus();
+    });
+  }
 </script>
 
 <div class="composer" class:dragover={appState.isDragOver}>
@@ -98,6 +134,29 @@
         <ProfileQuickSelector />
       </div>
       <div class="footer-right">
+        {#if quickReplies.length > 0}
+          <div class="quick-reply-wrap">
+            <button
+              class="quick-reply-btn"
+              class:open={quickReplyOpen}
+              onclick={toggleQuickReply}
+              title="快速回复"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14">
+                <path d="M9 0L1 9h4l-1 7 8-9H8l1-7z" fill="currentColor" />
+              </svg>
+            </button>
+            {#if quickReplyOpen}
+              <div class="quick-reply-dropdown">
+                {#each quickReplies as reply (reply.id)}
+                  <button class="dropdown-item" onclick={() => applyQuickReply(reply)}>
+                    <span class="item-label">{reply.label}</span>
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
         <button
           class="send-btn"
           onclick={sendPrompt}
@@ -173,6 +232,74 @@
     display: flex;
     gap: 6px;
     align-items: center;
+  }
+
+  .footer-right {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .quick-reply-wrap {
+    position: relative;
+  }
+
+  .quick-reply-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    color: var(--vscode-foreground);
+    transition: background 0.15s;
+  }
+
+  .quick-reply-btn:hover,
+  .quick-reply-btn.open {
+    background: var(--vscode-toolbar-hoverBackground);
+  }
+
+  .quick-reply-dropdown {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    right: 0;
+    z-index: 100;
+    min-width: 200px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+    padding: 4px 0;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 7px 12px;
+    border: none;
+    background: transparent;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .dropdown-item:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+
+  .item-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .send-btn {

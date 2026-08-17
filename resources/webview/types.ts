@@ -94,6 +94,13 @@ export interface SessionMessageData {
   };
 }
 
+/** 快速回复条目（来自预设目录下的可选 quickReply.json） */
+export interface QuickReply {
+  id: string;
+  label: string;
+  content: string;
+}
+
 export interface TokenTelemetry {
   model: string;
   /** 模型的上下文窗口上限（tokens），默认 1,000,000 */
