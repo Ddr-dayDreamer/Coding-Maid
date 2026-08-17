@@ -159,10 +159,10 @@ function loadSession(ctx: HandlerContext, sessionId: string): void {
         html:
           m.role !== "tool"
             ? ctx.md.render(
-                m.content ||
-                  ((m.messageParams as Record<string, unknown> | null)?.reasoning_content as string) ||
-                  "",
-              )
+              m.content ||
+              ((m.messageParams as Record<string, unknown> | null)?.reasoning_content as string) ||
+              "",
+            )
             : undefined,
         meta: m.meta,
         checkpointHash: m.checkpointHash,
@@ -189,8 +189,7 @@ function buildTokenTelemetry(ctx: HandlerContext, session: SessionEntry | null) 
   const settings = ctx.resolveCurrentSettings();
   return {
     model: settings.model,
-    thinkingEnabled: settings.thinkingEnabled ?? false,
-    reasoningEffort: settings.reasoningEffort ?? "max",
+
     contextLimit: settings.contextLimit ?? 1_000_000,
     usage: session?.usage ?? null,
     lastUsage: session?.lastUsage ?? null,

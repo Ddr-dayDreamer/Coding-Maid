@@ -3,34 +3,34 @@
 // 后端 → 前端
 export type BackendMessage =
   | {
-      type: "initializeEmpty";
-      sessions: SessionSummary[];
-      status: string | null;
-      tokenTelemetry?: TokenTelemetry;
-      activePreset?: string;
-      activeProfile?: string;
-    }
+    type: "initializeEmpty";
+    sessions: SessionSummary[];
+    status: string | null;
+    tokenTelemetry?: TokenTelemetry;
+    activePreset?: string;
+    activeProfile?: string;
+  }
   | {
-      type: "loadSession";
-      sessionId: string;
-      summary: string;
-      status: string;
-      messages: SessionMessageData[];
-      tokenTelemetry?: TokenTelemetry;
-      processes?: ProcessInfo[];
-      modifiedFiles?: ModifiedFileEntry[];
-      activePreset?: string;
-      activeProfile?: string;
-    }
+    type: "loadSession";
+    sessionId: string;
+    summary: string;
+    status: string;
+    messages: SessionMessageData[];
+    tokenTelemetry?: TokenTelemetry;
+    processes?: ProcessInfo[];
+    modifiedFiles?: ModifiedFileEntry[];
+    activePreset?: string;
+    activeProfile?: string;
+  }
   | { type: "showSessionsList"; sessions: SessionSummary[] }
   | {
-      type: "sessionStatus";
-      sessionId: string;
-      status: string;
-      processes?: ProcessInfo[];
-      modifiedFiles?: ModifiedFileEntry[];
-      tokenTelemetry?: TokenTelemetry;
-    }
+    type: "sessionStatus";
+    sessionId: string;
+    status: string;
+    processes?: ProcessInfo[];
+    modifiedFiles?: ModifiedFileEntry[];
+    tokenTelemetry?: TokenTelemetry;
+  }
   | { type: "userMessage"; content: string }
   | { type: "assistant"; html: string }
   | { type: "appendMessage"; message: SessionMessageData; shouldConnect: boolean }
@@ -96,7 +96,6 @@ export interface SessionMessageData {
 
 export interface TokenTelemetry {
   model: string;
-  thinkingEnabled: boolean;
   /** 模型的上下文窗口上限（tokens），默认 1,000,000 */
   contextLimit: number;
   /** 整个对话的累计用量 */

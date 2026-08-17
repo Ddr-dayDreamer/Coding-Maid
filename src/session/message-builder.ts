@@ -215,7 +215,6 @@ export class SessionMessageBuilder {
    */
   buildOpenAIMessages(
     messages: SessionMessage[],
-    thinkingEnabled: boolean,
     model: string
   ): ChatCompletionMessageParam[] {
     const activeMessages = messages;
@@ -228,7 +227,7 @@ export class SessionMessageBuilder {
         continue;
       }
 
-      openAIMessages.push(this.sessionMessageToOpenAIMessage(message, thinkingEnabled, model));
+      openAIMessages.push(this.sessionMessageToOpenAIMessage(message, model));
 
       const toolCalls = this.getAssistantToolCalls(message);
       if (toolCalls.length === 0) {
@@ -244,7 +243,7 @@ export class SessionMessageBuilder {
         const pairedToolIndex = toolPairings.get(this.buildToolPairingKey(index, toolCallIndex));
         if (pairedToolIndex != null) {
           openAIMessages.push(
-            this.sessionMessageToOpenAIMessage(activeMessages[pairedToolIndex], thinkingEnabled, model)
+            this.sessionMessageToOpenAIMessage(activeMessages[pairedToolIndex], model)
           );
           continue;
         }
@@ -258,9 +257,7 @@ export class SessionMessageBuilder {
 
   private sessionMessageToOpenAIMessage(
     message: SessionMessage,
-    thinkingEnabled: boolean,
-    model: string,
-    preserveReasoning = false
+    model: string
   ): ChatCompletionMessageParam {
     const content = this.renderOpenAIMessageContent(message);
     const base: ChatCompletionMessageParam = {
@@ -278,15 +275,10 @@ export class SessionMessageBuilder {
     if (messageParams?.tool_call_id) {
       (base as { tool_call_id?: string }).tool_call_id = messageParams.tool_call_id;
     }
-    if (thinkingEnabled && message.role === "assistant") {
-      if (messageParams?.tool_calls) {
-        // tool_calls 消息不应带 reasoning_content，避免 API 拒绝
-      } else if (preserveReasoning && messageParams?.reasoning_content) {
-        // 快速路径中保留思维链，避免 AI 丢失上下文
-        (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
-      } else {
-        (base as { reasoning_content?: string }).reasoning_content = "";
-      }
+    if (message.role === "assistant" && messageParams?.reasoning_content) {
+      // 有思维链内容时回传给 API，避免 AI 丢失上下文
+      // （tool_calls 消息一般不带 reasoning_content，此处天然不会附加）
+      (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
     }
 
     if ((message.role === "user" || message.role === "system") && message.contentParams) {
@@ -312,13 +304,8 @@ export class SessionMessageBuilder {
    * 公开版 — 将单条 SessionMessage 转为 OpenAI ChatCompletionMessageParam。
    * 供 SessionActivator 快速路径使用，避免走完整配对逻辑。
    */
-  toOpenAIMessage(
-    message: SessionMessage,
-    thinkingEnabled: boolean,
-    model: string,
-    preserveReasoning = false
-  ): ChatCompletionMessageParam {
-    return this.sessionMessageToOpenAIMessage(message, thinkingEnabled, model, preserveReasoning);
+  toOpenAIMessage(message: SessionMessage, model: string): ChatCompletionMessageParam {
+    return this.sessionMessageToOpenAIMessage(message, model);
   }
 
   private renderOpenAIMessageContent(message: SessionMessage): string {

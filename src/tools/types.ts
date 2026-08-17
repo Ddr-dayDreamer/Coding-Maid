@@ -5,7 +5,7 @@
  */
 
 import type OpenAI from "openai";
-import type { ReasoningEffort } from "../settings";
+
 
 // ─── 工具上下文 ─────────────────────────────────────────
 
@@ -122,8 +122,6 @@ export type CreateOpenAIClient = () => {
   client: OpenAI | null;
   model: string;
   baseURL?: string;
-  thinkingEnabled?: boolean;
-  reasoningEffort?: ReasoningEffort;
   params?: Record<string, unknown>;
   notify?: string;
   webSearchTool?: string;

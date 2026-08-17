@@ -139,13 +139,22 @@ export class LlmStreamManager {
     let estimatedTokens = 0;
     this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "start", sessionId);
 
-    const streamRequest = {
+    const streamRequest: Record<string, unknown> = {
       ...request,
       stream: true,
       stream_options: {
         ...(isUsageRecord(request.stream_options) ? request.stream_options : {}),
         include_usage: true,
       },
+    };
+
+    // `extra_body` 是 OpenAI SDK 的专用参数，必须放在 create() 的第二个参数中，
+    // SDK 会将其内容合并进实际发送的请求体。若留在 body 里会被当作普通字段序列化，
+    // 导致 GLM 等严格校验的 API 报 "Extra inputs are not permitted, field: 'extra_body'"。
+    const { extra_body, ...rest } = streamRequest;
+    const createOptions: Record<string, unknown> = {
+      ...(options ?? {}),
+      ...(extra_body !== undefined ? { extra_body } : {}),
     };
 
     let response: unknown;
@@ -155,7 +164,7 @@ export class LlmStreamManager {
           body: Record<string, unknown>,
           options?: Record<string, unknown>
         ) => Promise<unknown>
-      )(streamRequest, options);
+      )(rest, createOptions);
     } catch (error) {
       this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "end", sessionId);
       throw error;

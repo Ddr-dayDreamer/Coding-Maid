@@ -1,6 +1,5 @@
 import {
   type ConnectionProfile,
-  type ReasoningEffort,
   getActiveProfile,
   listProfiles,
   loadProfile,
@@ -18,7 +17,6 @@ import {
 
 // ─── Re-export types for backward compatibility ─────────────────────────────
 
-export type { ReasoningEffort } from "./utils/connection-profiles";
 export type { ApprovalMode, ApprovalConfig, McpServerConfig } from "./utils/global-settings";
 
 /**
@@ -29,8 +27,6 @@ export type ResolvedSettings = {
   apiKey?: string;
   baseURL: string;
   model: string;
-  thinkingEnabled?: boolean;
-  reasoningEffort?: ReasoningEffort;
   contextLimit?: number;
   params?: Record<string, unknown>;
   /** 是否启用调试日志（统一开关，控制 LLM 请求日志 + prompt 调试输出） */
@@ -62,8 +58,6 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSetting
     apiKey: profile?.apiKey,
     baseURL,
     model,
-    thinkingEnabled: profile?.thinkingEnabled,
-    reasoningEffort: profile?.reasoningEffort,
     contextLimit: profile?.contextLimit,
     params: profile?.params,
     debugEnabled: globalSettings.debugEnabled ?? false,
@@ -79,7 +73,6 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSetting
 
 export {
   type ConnectionProfile,
-  type ReasoningEffort as ReasoningEffortAlias,
   PLACEHOLDER_API_KEY,
   isRealApiKey,
   getActiveProfile,

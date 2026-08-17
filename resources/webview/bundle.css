@@ -563,7 +563,7 @@
 .approval-item.svelte-1gpypfo {
   margin-bottom: 8px;
   padding: 6px 8px;
-  background: var(--vscode-input-background, rgba(128,128,128,0.05));
+  background: var(--vscode-input-background, rgba(128, 128, 128, 0.05));
   border-radius: 4px;
   border: 1px solid var(--vscode-focusBorder);
 }
@@ -590,7 +590,7 @@
   word-break: break-all;
   margin: 4px 0;
   padding: 4px 6px;
-  background: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.1));
+  background: var(--vscode-textCodeBlock-background, rgba(128, 128, 128, 0.1));
   border-radius: 3px;
   max-height: 120px;
   overflow-y: auto;

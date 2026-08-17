@@ -64,11 +64,26 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
   "name": "default",
   "model": "deepseek-v4-flash",
   "baseURL": "https://api.deepseek.com",
-  "thinkingEnabled": true,
-  "reasoningEffort": "max",
+  "apiKey": "place_your_api_key_here",
+  "contextLimit": 1000000,
+  "params": {
+    "thinking": { "type": "enabled" },
+    "reasoning_effort": "max"
+  }
+}
+```
+
+思考强度等模型/API 特有参数统一放在 `params` 里，代码不会自动注入任何字段。
+换用不同 API（如 GLM）时，把不支持的字段去掉即可，例如：
+
+```
+{
+  "name": "glm",
+  "model": "glm-4.5",
+  "baseURL": "https://xxx",
   "apiKey": "place_your_api_key_here",
   "params": {
-    "stream": true
+    "reasoning_effort": "high"
   }
 }
 ```
@@ -132,7 +147,7 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 
 - `deepseek-v4-pro`（推荐使用）
 - `deepseek-v4-flash`（虽然推荐pro但是我穷的平时只用flash，也就是说这个插件也是...）
-- 任何其他 OpenAI 兼容模型（不知道，用不起，没测试）
+- 其他 OpenAI 兼容模型（报错了记得改配置参数）
 
 
 ## 审批系统

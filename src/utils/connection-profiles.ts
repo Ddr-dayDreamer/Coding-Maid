@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as os from "os";
 import { encrypt, decrypt, isEncrypted } from "./crypto-utils";
 import {
   type CodingMaidSettings,
@@ -29,8 +28,6 @@ export function isRealApiKey(key: string | undefined | null): boolean {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type ReasoningEffort = "high" | "max";
-
 /**
  * 连接预设的磁盘存储格式
  * - 新保存的预设使用 `apiKeyEncrypted`（AES-256-GCM 加密）
@@ -44,10 +41,6 @@ export type ConnectionProfileStored = {
   apiKeyEncrypted?: string;
   /** 明文 API Key（仅用于手动编辑 JSON 时的读取回退，保存时会自动加密） */
   apiKey?: string;
-  /** 是否启用思考模式，不设置时由 params 或模型默认行为决定 */
-  thinkingEnabled?: boolean;
-  /** 思考强度，仅 thinkingEnabled 为 true 时生效 */
-  reasoningEffort?: ReasoningEffort;
   /**
    * 模型的上下文窗口上限（tokens）。
    * 用于前端 context meter 显示用量比例。不设置时默认 1,000,000（DeepSeek V4）。
@@ -55,9 +48,10 @@ export type ConnectionProfileStored = {
   contextLimit?: number;
   /**
    * 附加 API 请求参数，会直接合并到 chat.completions.create() 的请求体中。
-   * 例如：{ "temperature": 0.7, "max_tokens": 4096, "top_p": 0.9 }
-   * 可用于覆盖默认参数或传入模型特有参数（如 Gemini 的 thinking_level）。
-   * 此字段优先级最高，会覆盖 thinkingEnabled/reasoningEffort 生成的默认参数。
+   * 这是所有模型/API 特有参数的统一入口：
+   * - 顶层字段（temperature、max_tokens、thinking、reasoning_effort 等）会原样发送；
+   * - 若使用 `extra_body` 键，其内容会被 SDK 合并进请求体（不会作为字段发送）；
+   * - 代码不会自动注入任何字段，不同 API 不支持的字段需由用户自行排除。
    */
   params?: Record<string, unknown>;
 };
@@ -70,14 +64,12 @@ export type ConnectionProfile = {
   model: string;
   baseURL: string;
   apiKey?: string;
-  /** 是否启用思考模式，不设置时由 params 或模型默认行为决定 */
-  thinkingEnabled?: boolean;
-  /** 思考强度，仅 thinkingEnabled 为 true 时生效 */
-  reasoningEffort?: ReasoningEffort;
   /** 模型的上下文窗口上限（tokens），不设置时默认 1,000,000 */
   contextLimit?: number;
   /**
    * 附加 API 请求参数，直接合并到 chat.completions.create() 的请求体中。
+   * 所有模型/API 特有参数（如 thinking、reasoning_effort）统一在此配置，
+   * 代码不会自动注入任何字段。
    */
   params?: Record<string, unknown>;
 };
@@ -166,8 +158,7 @@ export function loadProfile(name: string, cryptoKey: string): ConnectionProfile 
       model: stored.model,
       baseURL: stored.baseURL,
       apiKey,
-      thinkingEnabled: stored.thinkingEnabled,
-      reasoningEffort: stored.reasoningEffort,
+      contextLimit: stored.contextLimit,
       params: stored.params,
     };
   } catch {
@@ -185,8 +176,7 @@ function writeProfileFile(profile: ConnectionProfile, cryptoKey: string): void {
     name: profile.name,
     model: profile.model,
     baseURL: profile.baseURL,
-    thinkingEnabled: profile.thinkingEnabled,
-    reasoningEffort: profile.reasoningEffort,
+    contextLimit: profile.contextLimit,
     apiKey: profile.apiKey,
     params: profile.params,
   };

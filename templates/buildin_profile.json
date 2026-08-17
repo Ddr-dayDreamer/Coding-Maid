@@ -2,10 +2,13 @@
   "name": "default",
   "model": "deepseek-v4-flash",
   "baseURL": "https://api.deepseek.com",
-  "thinkingEnabled": true,
-  "reasoningEffort": "max",
   "apiKey": "place_your_api_key_here",
+  "contextLimit": 1000000,
   "params": {
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoning_effort": "max",
     "stream": true
   }
 }

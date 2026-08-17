@@ -6,7 +6,6 @@
  */
 
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { buildThinkingRequestOptions } from "../utils/openai-thinking";
 import { getExtensionRoot, getTools } from "../prompt";
 import type { ToolDefinition } from "../prompt";
 import type { CreateOpenAIClient } from "../tools/types";
@@ -97,8 +96,6 @@ export class SessionActivator {
       client,
       model,
       baseURL,
-      thinkingEnabled,
-      reasoningEffort,
       params,
       notify,
       env,
@@ -184,7 +181,7 @@ export class SessionActivator {
         // ── 快速路径：tool 回调轮次，复用缓存 ──
         let messages: ChatCompletionMessageParam[];
         if (this.canUseFastPath(conversationMessages)) {
-          messages = this.buildFastPathMessages(conversationMessages, thinkingEnabled ?? false, model);
+          messages = this.buildFastPathMessages(conversationMessages, model);
           console.log("[DEBUG] activate: using fast path, messages count =", messages.length);
         } else {
           // ── 完整渲染 ──
@@ -241,7 +238,7 @@ export class SessionActivator {
           }
 
           // 构建消息 → 调用 LLM
-          messages = this.messageBuilder.buildOpenAIMessages(fullMessages, thinkingEnabled ?? false, model);
+          messages = this.messageBuilder.buildOpenAIMessages(fullMessages, model);
           console.log("[DEBUG] activate: openai messages count =", messages.length);
         }
 
@@ -249,15 +246,10 @@ export class SessionActivator {
         this.cachedOpenAIMessages = messages;
         this.cachedMessageCount = conversationMessages.length;
 
-        const thinkingOptions = thinkingEnabled
-          ? buildThinkingRequestOptions(thinkingEnabled, baseURL, reasoningEffort)
-          : {};
-
         const requestBody = {
           model,
           messages,
           tools: getTools(opts.getPromptToolOptions(), opts.mcpToolDefinitions),
-          ...thinkingOptions,
           ...params,
         };
 
@@ -273,7 +265,7 @@ export class SessionActivator {
             enabled: opts.debugEnabled,
             location: "SessionActivator.activate",
             baseURL,
-            params: { iteration, thinkingEnabled, reasoningEffort },
+            params: { iteration },
           }
         );
 
@@ -423,7 +415,6 @@ export class SessionActivator {
    */
   private buildFastPathMessages(
     conversationMessages: SessionMessage[],
-    thinkingEnabled: boolean,
     model: string
   ): ChatCompletionMessageParam[] {
     const result: ChatCompletionMessageParam[] = [...this.cachedOpenAIMessages!];
@@ -431,7 +422,7 @@ export class SessionActivator {
 
     for (const msg of newMessages) {
       // 快速路径中保留新 assistant 消息的 reasoning_content，避免 AI 丢失上下文重新规划
-      result.push(this.messageBuilder.toOpenAIMessage(msg, thinkingEnabled, model, /* preserveReasoning */ true));
+      result.push(this.messageBuilder.toOpenAIMessage(msg, model));
     }
 
     return result;

@@ -24,7 +24,7 @@ import {
   resolveSettingsWithCryptoKey,
   ensureInitialConfig,
 } from "../settings";
-import type { ResolvedSettings, ReasoningEffort } from "../settings";
+import type { ResolvedSettings } from "../settings";
 import type { HandlerContext } from "./handler-context";
 import { registerAllHandlers } from "./handlers/index";
 
@@ -180,8 +180,6 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     client: OpenAI | null;
     model: string;
     baseURL: string;
-    thinkingEnabled?: boolean;
-    reasoningEffort?: ReasoningEffort;
     params?: Record<string, unknown>;
     notify?: string;
     webSearchTool?: string;
@@ -189,19 +187,17 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     machineId?: string;
   } {
     const settings = this.resolveCurrentSettings();
-    const { apiKey, baseURL, model, thinkingEnabled, reasoningEffort, params, notify, webSearchTool } = settings;
+    const { apiKey, baseURL, model, params, notify, webSearchTool } = settings;
     const machineId = vscode.env.machineId;
 
     if (!apiKey) {
-      return { client: null, model, baseURL, thinkingEnabled, reasoningEffort, params, notify, webSearchTool, machineId };
+      return { client: null, model, baseURL, params, notify, webSearchTool, machineId };
     }
 
     return {
       client: new OpenAI({ apiKey, baseURL: baseURL || undefined }),
       model,
       baseURL,
-      thinkingEnabled,
-      reasoningEffort,
       params,
       notify,
       webSearchTool,
@@ -213,8 +209,6 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     const settings = this.resolveCurrentSettings();
     return {
       model: settings.model,
-      thinkingEnabled: settings.thinkingEnabled ?? false,
-      reasoningEffort: settings.reasoningEffort ?? "max",
       contextLimit: settings.contextLimit ?? 1_000_000,
       usage: session?.usage ?? null,
       lastUsage: session?.lastUsage ?? null,

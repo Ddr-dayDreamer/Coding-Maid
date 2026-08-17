@@ -116,8 +116,6 @@ function buildTokenTelemetry(ctx: HandlerContext, session: { usage?: unknown; la
   const settings = ctx.resolveCurrentSettings();
   return {
     model: settings.model,
-    thinkingEnabled: settings.thinkingEnabled ?? false,
-    reasoningEffort: settings.reasoningEffort ?? "max",
     contextLimit: settings.contextLimit ?? 1_000_000,
     usage: session?.usage ?? null,
     lastUsage: session?.lastUsage ?? null,
