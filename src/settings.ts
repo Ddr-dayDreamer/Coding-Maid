@@ -27,6 +27,8 @@ export type ResolvedSettings = {
   apiKey?: string;
   baseURL: string;
   model: string;
+  /** 是否需要为 assistant 消息组装 reasoning_content（未设置时自动检测 params.thinking） */
+  reasoningPassback?: boolean;
   contextLimit?: number;
   params?: Record<string, unknown>;
   /** 是否启用调试日志（统一开关，控制 LLM 请求日志 + prompt 调试输出） */
@@ -58,6 +60,7 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSetting
     apiKey: profile?.apiKey,
     baseURL,
     model,
+    reasoningPassback: profile?.reasoningPassback,
     contextLimit: profile?.contextLimit,
     params: profile?.params,
     debugEnabled: globalSettings.debugEnabled ?? false,

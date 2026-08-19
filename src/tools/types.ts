@@ -122,6 +122,7 @@ export type CreateOpenAIClient = () => {
   client: OpenAI | null;
   model: string;
   baseURL?: string;
+  reasoningPassback?: boolean;
   params?: Record<string, unknown>;
   notify?: string;
   webSearchTool?: string;

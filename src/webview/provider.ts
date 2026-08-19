@@ -180,6 +180,7 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     client: OpenAI | null;
     model: string;
     baseURL: string;
+    reasoningPassback?: boolean;
     params?: Record<string, unknown>;
     notify?: string;
     webSearchTool?: string;
@@ -187,17 +188,18 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     machineId?: string;
   } {
     const settings = this.resolveCurrentSettings();
-    const { apiKey, baseURL, model, params, notify, webSearchTool } = settings;
+    const { apiKey, baseURL, model, reasoningPassback, params, notify, webSearchTool } = settings;
     const machineId = vscode.env.machineId;
 
     if (!apiKey) {
-      return { client: null, model, baseURL, params, notify, webSearchTool, machineId };
+      return { client: null, model, baseURL, reasoningPassback, params, notify, webSearchTool, machineId };
     }
 
     return {
       client: new OpenAI({ apiKey, baseURL: baseURL || undefined }),
       model,
       baseURL,
+      reasoningPassback,
       params,
       notify,
       webSearchTool,

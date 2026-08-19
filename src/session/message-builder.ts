@@ -215,6 +215,7 @@ export class SessionMessageBuilder {
    */
   buildOpenAIMessages(
     messages: SessionMessage[],
+    thinkingEnabled: boolean,
     model: string
   ): ChatCompletionMessageParam[] {
     const activeMessages = messages;
@@ -227,7 +228,7 @@ export class SessionMessageBuilder {
         continue;
       }
 
-      openAIMessages.push(this.sessionMessageToOpenAIMessage(message, model));
+      openAIMessages.push(this.sessionMessageToOpenAIMessage(message, thinkingEnabled, model));
 
       const toolCalls = this.getAssistantToolCalls(message);
       if (toolCalls.length === 0) {
@@ -243,7 +244,7 @@ export class SessionMessageBuilder {
         const pairedToolIndex = toolPairings.get(this.buildToolPairingKey(index, toolCallIndex));
         if (pairedToolIndex != null) {
           openAIMessages.push(
-            this.sessionMessageToOpenAIMessage(activeMessages[pairedToolIndex], model)
+            this.sessionMessageToOpenAIMessage(activeMessages[pairedToolIndex], thinkingEnabled, model)
           );
           continue;
         }
@@ -257,6 +258,7 @@ export class SessionMessageBuilder {
 
   private sessionMessageToOpenAIMessage(
     message: SessionMessage,
+    thinkingEnabled: boolean,
     model: string
   ): ChatCompletionMessageParam {
     const content = this.renderOpenAIMessageContent(message);
@@ -275,10 +277,11 @@ export class SessionMessageBuilder {
     if (messageParams?.tool_call_id) {
       (base as { tool_call_id?: string }).tool_call_id = messageParams.tool_call_id;
     }
-    if (message.role === "assistant" && messageParams?.reasoning_content) {
-      // 有思维链内容时回传给 API，避免 AI 丢失上下文
-      // （tool_calls 消息一般不带 reasoning_content，此处天然不会附加）
-      (base as { reasoning_content?: string }).reasoning_content = messageParams.reasoning_content;
+    if (message.role === "assistant" && thinkingEnabled) {
+      // DeepSeek 等模型的 thinking 模式要求所有 assistant 消息（包括预设注入、
+      // 历史消息）都必须携带 reasoning_content 字段（即使为空字符串），否则报 400。
+      const reasoningContent = messageParams?.reasoning_content;
+      (base as { reasoning_content?: string }).reasoning_content = reasoningContent ?? "";
     }
 
     if ((message.role === "user" || message.role === "system") && message.contentParams) {
@@ -304,8 +307,8 @@ export class SessionMessageBuilder {
    * 公开版 — 将单条 SessionMessage 转为 OpenAI ChatCompletionMessageParam。
    * 供 SessionActivator 快速路径使用，避免走完整配对逻辑。
    */
-  toOpenAIMessage(message: SessionMessage, model: string): ChatCompletionMessageParam {
-    return this.sessionMessageToOpenAIMessage(message, model);
+  toOpenAIMessage(message: SessionMessage, thinkingEnabled: boolean, model: string): ChatCompletionMessageParam {
+    return this.sessionMessageToOpenAIMessage(message, thinkingEnabled, model);
   }
 
   private renderOpenAIMessageContent(message: SessionMessage): string {

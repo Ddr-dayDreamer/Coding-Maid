@@ -16,6 +16,7 @@ import type { SessionEntry, SessionMessage } from "./types";
 import type { LlmStreamManager } from "../llm/stream";
 import { accumulateUsage } from "../llm/stream";
 import { logPromptDebug } from "../utils/debug-logger";
+import { resolveReasoningPassback } from "../utils/thinking";
 import type { PresetManager } from "../preset/manager";
 
 // ─── Activate 选项 ───────────────────────────────────────
@@ -96,10 +97,14 @@ export class SessionActivator {
       client,
       model,
       baseURL,
+      reasoningPassback,
       params,
       notify,
       env,
     } = this.createOpenAIClient();
+    // 是否需要在消息中组装 reasoning_content：
+    // 优先用 profile 显式配置 reasoningPassback，未配置时回退到检测 params.thinking
+    const thinkingEnabled = resolveReasoningPassback(params, reasoningPassback);
     const now = new Date().toISOString();
 
     console.log("[DEBUG] activate: client ready?", !!client, "model:", model);
@@ -181,7 +186,7 @@ export class SessionActivator {
         // ── 快速路径：tool 回调轮次，复用缓存 ──
         let messages: ChatCompletionMessageParam[];
         if (this.canUseFastPath(conversationMessages)) {
-          messages = this.buildFastPathMessages(conversationMessages, model);
+          messages = this.buildFastPathMessages(conversationMessages, thinkingEnabled, model);
           console.log("[DEBUG] activate: using fast path, messages count =", messages.length);
         } else {
           // ── 完整渲染 ──
@@ -238,7 +243,7 @@ export class SessionActivator {
           }
 
           // 构建消息 → 调用 LLM
-          messages = this.messageBuilder.buildOpenAIMessages(fullMessages, model);
+          messages = this.messageBuilder.buildOpenAIMessages(fullMessages, thinkingEnabled, model);
           console.log("[DEBUG] activate: openai messages count =", messages.length);
         }
 
@@ -415,6 +420,7 @@ export class SessionActivator {
    */
   private buildFastPathMessages(
     conversationMessages: SessionMessage[],
+    thinkingEnabled: boolean,
     model: string
   ): ChatCompletionMessageParam[] {
     const result: ChatCompletionMessageParam[] = [...this.cachedOpenAIMessages!];
@@ -422,7 +428,7 @@ export class SessionActivator {
 
     for (const msg of newMessages) {
       // 快速路径中保留新 assistant 消息的 reasoning_content，避免 AI 丢失上下文重新规划
-      result.push(this.messageBuilder.toOpenAIMessage(msg, model));
+      result.push(this.messageBuilder.toOpenAIMessage(msg, thinkingEnabled, model));
     }
 
     return result;

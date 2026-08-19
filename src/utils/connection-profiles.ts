@@ -42,6 +42,15 @@ export type ConnectionProfileStored = {
   /** 明文 API Key（仅用于手动编辑 JSON 时的读取回退，保存时会自动加密） */
   apiKey?: string;
   /**
+   * 是否需要为 assistant 消息组装 reasoning_content 并回传给 API。
+   * 与 params 是否发送 thinking 参数相互独立：
+   * - 不设置时：自动检测 params.thinking.type === "enabled" 是否为 true；
+   * - 某些模型默认开启思考但无需（或不能）在 params 传 thinking 时，
+   *   可显式设为 true 强制回传 reasoning_content；
+   * - 不需要思考的模型可显式设为 false 禁止回传。
+   */
+  reasoningPassback?: boolean;
+  /**
    * 模型的上下文窗口上限（tokens）。
    * 用于前端 context meter 显示用量比例。不设置时默认 1,000,000（DeepSeek V4）。
    */
@@ -64,6 +73,11 @@ export type ConnectionProfile = {
   model: string;
   baseURL: string;
   apiKey?: string;
+  /**
+   * 是否需要为 assistant 消息组装 reasoning_content 并回传给 API。
+   * 与 params 是否发送 thinking 参数相互独立；不设置时自动检测 params.thinking。
+   */
+  reasoningPassback?: boolean;
   /** 模型的上下文窗口上限（tokens），不设置时默认 1,000,000 */
   contextLimit?: number;
   /**
@@ -158,6 +172,7 @@ export function loadProfile(name: string, cryptoKey: string): ConnectionProfile 
       model: stored.model,
       baseURL: stored.baseURL,
       apiKey,
+      reasoningPassback: stored.reasoningPassback,
       contextLimit: stored.contextLimit,
       params: stored.params,
     };
@@ -176,6 +191,7 @@ function writeProfileFile(profile: ConnectionProfile, cryptoKey: string): void {
     name: profile.name,
     model: profile.model,
     baseURL: profile.baseURL,
+    reasoningPassback: profile.reasoningPassback,
     contextLimit: profile.contextLimit,
     apiKey: profile.apiKey,
     params: profile.params,
