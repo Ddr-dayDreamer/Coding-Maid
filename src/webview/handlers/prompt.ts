@@ -56,6 +56,42 @@ export function registerPromptHandlers(
   registerHandler("clearAttachedFiles", async () => {
     ctx.sessionManager.clearAllAttachments();
   });
+
+  // ─── 附加文件内容（webview 拿不到路径时，主进程写临时文件） ──
+
+  registerHandler("attachFileContents", async (message) => {
+    const files = Array.isArray(message.files) ? message.files : [];
+    const filePaths: string[] = [];
+    for (const raw of files) {
+      const f = raw as { name?: unknown; data?: unknown; mime?: unknown };
+      const name = typeof f.name === "string" && f.name ? f.name : "dropped-file";
+      const mime = typeof f.mime === "string" ? f.mime : "";
+      const uint8 = toUint8Array(f.data);
+      if (!uint8) continue;
+      // 存入内存映射（不写磁盘），返回虚拟路径
+      const key = ctx.sessionManager.attachDndContent(name, mime, uint8);
+      if (key) filePaths.push(key);
+    }
+    ctx.respond(message.requestId as string, true, { filePaths });
+  });
+}
+
+// ─── 拖放内容工具 ────────────────────────────────────────
+
+/**
+ * 把 webview postMessage 传来的二进制数据归一化为 Uint8Array。
+ * 传输后可能保留 Uint8Array，也可能变成 ArrayBuffer 或普通数字数组。
+ */
+function toUint8Array(data: unknown): Uint8Array | null {
+  if (data instanceof Uint8Array) return data;
+  if (data instanceof ArrayBuffer) return new Uint8Array(data);
+  if (ArrayBuffer.isView(data)) {
+    return new Uint8Array((data as ArrayBufferView).buffer);
+  }
+  if (Array.isArray(data) && data.every((v) => typeof v === "number")) {
+    return Uint8Array.from(data as number[]);
+  }
+  return null;
 }
 
 async function handlePrompt(ctx: HandlerContext, prompt: string): Promise<void> {
@@ -65,12 +101,14 @@ async function handlePrompt(ctx: HandlerContext, prompt: string): Promise<void> 
 /**
  * 将附加文件组装为用户消息的 content parts。
  * - 代码段（snippetContents）→ text part
- * - 图像文件 → image_url part（base64 data URL）
- * - 其他文本文件 → text part（带行数截断）
+ * - 拖入文件内容（dndContents，内存）→ text part 或 image_url part
+ * - 磁盘图像文件 → image_url part（base64 data URL）
+ * - 其他磁盘文本文件 → text part（带行数截断）
  */
 function buildFileParts(
   attachedFiles: string[],
-  snippetContents: Record<string, string>
+  snippetContents: Record<string, string>,
+  dndContents: Record<string, { data: Uint8Array; mime: string }>
 ): UserPromptFilePart[] {
   const parts: UserPromptFilePart[] = [];
   for (const filePath of attachedFiles) {
@@ -80,6 +118,23 @@ function buildFileParts(
       parts.push({ type: "text", path: filePath, content: snippet });
       continue;
     }
+
+    // 拖入文件内容（内存，虚拟路径 dnd://...）
+    const dnd = dndContents[filePath];
+    if (dnd) {
+      const mime = dnd.mime || "";
+      const isImage = mime.startsWith("image/") || isImageExtension(path.extname(filePath).toLowerCase());
+      if (isImage) {
+        const dataUrl = `data:${mime || "application/octet-stream"};base64,${Buffer.from(dnd.data).toString("base64")}`;
+        parts.push({ type: "image", path: filePath, dataUrl });
+      } else {
+        const text = Buffer.from(dnd.data).toString("utf8").replace(/^\uFEFF/, "");
+        if (text) parts.push({ type: "text", path: filePath, content: text });
+      }
+      continue;
+    }
+
+    // 磁盘文件
     const ext = path.extname(filePath).toLowerCase();
     if (isImageExtension(ext)) {
       const dataUrl = readImageAsDataUrl(filePath);
@@ -110,7 +165,8 @@ async function handlePromptWithImages(ctx: HandlerContext, prompt: string, image
   // 组装附加文件 parts（代码段 → text，图片 → image_url，其他文本 → text）
   const attachedFiles = ctx.sessionManager.getAttachedFiles();
   const snippetContents = ctx.sessionManager.getAttachedSnippetContents();
-  const fileParts = buildFileParts(attachedFiles, snippetContents);
+  const dndContents = ctx.sessionManager.getAttachedDndContents();
+  const fileParts = buildFileParts(attachedFiles, snippetContents, dndContents);
 
   // 先让前端显示用户气泡 + 加载状态（后端处理完 LLM 后会发 appendMessage 替换为真实消息）
   const displayPrompt =

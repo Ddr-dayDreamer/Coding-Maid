@@ -33,13 +33,23 @@ export const bashTool: ToolRegistration = {
 
 Executes a given bash command. Working directory persists between commands; shell state (everything else) does not. The shell environment is initialized from the user's profile (bash or zsh).
 
-On Windows, Bash runs through Git Bash. Use POSIX commands and quote Windows paths carefully.
+On Windows, Bash runs through Git Bash (MSYS2/MinGW). This is NOT native Linux and NOT WSL — use POSIX syntax, but be aware:
+- Some GNU tools (e.g. \`rg\`, \`tree\`, \`realpath\`) may NOT be installed. If a command reports "command not found", avoid retrying the same approach — prefer the dedicated tools listed below.
+- In bash, file paths use POSIX form (e.g. /c/Users/...). In file tools (read/write/edit/list_dir/search), use Windows form (e.g. C:\\Users\\...).
+- Output from Windows-native programs may be GBK-encoded. If you see mojibake, prefer the dedicated tools below.
 
-IMPORTANT: This tool is for terminal operations like git, npm, docker, etc. DO NOT use it for file operations (reading, writing, editing, searching, finding files) - use the specialized tools for this instead.
+This tool is best suited for development operations like git, npm, pnpm, docker, builds, and tests. For file operations, prefer the dedicated tools — they are more reliable across platforms:
+- Listing a directory: prefer list_dir over ls / find
+- Reading a file: prefer read over cat / head / tail
+- Editing a file: prefer edit over sed / awk
+- Writing a file: prefer write over echo > / cat <<EOF
+- Searching file contents: prefer search over rg / grep -r / find
+- Finding files by name: prefer search with mode="file" over find
+- Getting compile/lint errors: prefer get_errors
 
-IMPORTANT: Before reaching for generic shell pipelines, prefer purpose-built CLI tools when they make the task more accurate, safer, faster, or easier to understand:
-- Use \`ripgrep\` (\`rg\`) when you need to search file contents by text or regex across the workspace; prefer it over slower tools like \`grep\`.
+IMPORTANT: Prefer purpose-built tools over ad-hoc shell pipelines when they are more accurate, safer, faster, or easier to understand:
 - Use \`jq\` when you need to inspect, filter, or transform JSON output; prefer it over ad-hoc parsing with \`sed\`, \`awk\`, or Python one-liners.
+- Prefer the \`search\` tool over \`rg\`/\`grep -r\`/\`find\` for code search — it works natively on every platform.
 
 Before executing the command, please follow these steps:
 

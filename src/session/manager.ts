@@ -115,6 +115,8 @@ export class SessionManager {
   private attachedFiles: string[] | undefined;
   /** 代码段虚拟路径→内容映射（不写磁盘） */
   private attachedSnippetContents: Record<string, string> = {};
+  /** 拖入文件内容映射（虚拟路径→内容，不写磁盘） */
+  private attachedDndContents: Record<string, { data: Uint8Array; mime: string }> = {};
 
   /* 运行时状态 */
   private activeSessionId: string | null = null;
@@ -227,18 +229,41 @@ export class SessionManager {
     this.attachedSnippetContents[key] = content;
   }
 
+  /** 获取拖入文件内容映射（虚拟路径→内容） */
+  getAttachedDndContents(): Record<string, { data: Uint8Array; mime: string }> {
+    return this.attachedDndContents;
+  }
+
+  /**
+   * 存储拖入文件内容（不写磁盘），返回虚拟路径 key（形如 dnd://<name>）。
+   * 同名文件自动追加序号，避免 key 冲突。
+   */
+  attachDndContent(originalName: string, mime: string, data: Uint8Array): string {
+    const base = originalName.replace(/[\\/:*?"<>|]/g, "_").trim() || "dropped-file";
+    let key = `dnd://${base}`;
+    let counter = 1;
+    while (this.attachedDndContents[key]) {
+      key = `dnd://${base} (${counter})`;
+      counter++;
+    }
+    this.attachedDndContents[key] = { data, mime };
+    return key;
+  }
+
   /** 移除单个附加文件（同时清理内存中的代码段） */
   removeAttachedFile(filePath: string): void {
     if (this.attachedFiles) {
       this.attachedFiles = this.attachedFiles.filter((f) => f !== filePath);
     }
     delete this.attachedSnippetContents[filePath];
+    delete this.attachedDndContents[filePath];
   }
 
   /** 清空所有附加文件及代码段内容 */
   clearAllAttachments(): void {
     this.attachedFiles = [];
     this.attachedSnippetContents = {};
+    this.attachedDndContents = {};
   }
 
   addSessionSystemMessage(
@@ -706,7 +731,10 @@ export class SessionManager {
         this.storage.appendSessionMessage(sessionId, tm);
         this.onAssistantMessage(tm, true);
       }
-      for (const m of result.followUpMessages) this.storage.appendSessionMessage(sessionId, m);
+      for (const m of result.followUpMessages) {
+        this.storage.appendSessionMessage(sessionId, m);
+        this.onAssistantMessage(m, true);
+      }
       waitingForUser = result.waitingForUser;
     }
 
@@ -806,6 +834,18 @@ export class SessionManager {
       );
       this.storage.appendSessionMessage(sessionId, toolMessage);
       this.onAssistantMessage(toolMessage, true);
+
+      // 审批通过后执行结果中的 follow-up 消息（如 read 读图的图片）同样落盘并实时推送
+      for (const fup of result.followUpMessages ?? []) {
+        if (fup.role !== "user") continue;
+        const followUpMsg = this.messageBuilder.buildUserMessageWithContentParams(
+          sessionId,
+          fup.content,
+          fup.contentParams ?? null
+        );
+        this.storage.appendSessionMessage(sessionId, followUpMsg);
+        this.onAssistantMessage(followUpMsg, true);
+      }
     }
 
     // 如果所有待审批项都已处理，恢复 LLM 循环

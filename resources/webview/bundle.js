@@ -7012,7 +7012,10 @@ ${component_stack}
   delegate(["click"]);
 
   // resources/webview/components/UserMessage.svelte
-  var root3 = from_html(`<div class="user-row svelte-10hwl6j"><button class="rollback-btn svelte-10hwl6j" title="\u56DE\u9000\u5230\u6B64">\u21A9</button> <div class="bubble-user svelte-10hwl6j"><div class="bubble-body svelte-10hwl6j"><div class="bubble-content svelte-10hwl6j"> </div></div></div></div>`);
+  var root3 = from_html(`<img class="attach-img svelte-10hwl6j"/>`);
+  var root_13 = from_html(`<details class="attach-text svelte-10hwl6j"><summary class="svelte-10hwl6j">\u{1F4CE} \u9644\u52A0\u6587\u4EF6</summary> <pre class="svelte-10hwl6j"> </pre></details>`);
+  var root_22 = from_html(`<div class="attachments svelte-10hwl6j"></div>`);
+  var root_32 = from_html(`<div class="user-row svelte-10hwl6j"><button class="rollback-btn svelte-10hwl6j" title="\u56DE\u9000\u5230\u6B64">\u21A9</button> <div class="bubble-user svelte-10hwl6j"><div class="bubble-body svelte-10hwl6j"><div class="bubble-content svelte-10hwl6j"> </div> <!></div></div></div>`);
   function UserMessage($$anchor, $$props) {
     push($$props, true);
     function rollback() {
@@ -7024,13 +7027,68 @@ ${component_stack}
         messageId: $$props.msg.id
       });
     }
-    var div = root3();
+    function parseContentParams(params) {
+      if (!Array.isArray(params)) return [];
+      const result = [];
+      for (const raw of params) {
+        if (!raw || typeof raw !== "object") continue;
+        const part = raw;
+        if (part.type === "text" && typeof part.text === "string") {
+          result.push({ type: "text", text: part.text });
+        } else if (part.type === "image_url") {
+          const img = part.image_url;
+          if (img && typeof img === "object" && typeof img.url === "string") {
+            result.push({ type: "image_url", image_url: { url: img.url } });
+          }
+        }
+      }
+      return result;
+    }
+    let parts = user_derived(() => parseContentParams($$props.msg.contentParams));
+    var div = root_32();
     var button = child(div);
     var div_1 = sibling(button, 2);
     var div_2 = child(div_1);
     var div_3 = child(div_2);
     var text2 = child(div_3, true);
     reset(div_3);
+    var node = sibling(div_3, 2);
+    {
+      var consequent_1 = ($$anchor2) => {
+        var div_4 = root_22();
+        each(div_4, 21, () => get2(parts), index, ($$anchor3, part, i) => {
+          var fragment = comment();
+          var node_1 = first_child(fragment);
+          {
+            var consequent = ($$anchor4) => {
+              var img_1 = root3();
+              set_attribute2(img_1, "alt", `\u9644\u52A0\u56FE\u7247 ${i + 1}`);
+              template_effect(() => set_attribute2(img_1, "src", get2(part).image_url.url));
+              append($$anchor4, img_1);
+            };
+            var alternate = ($$anchor4) => {
+              var details = root_13();
+              var pre = sibling(child(details), 2);
+              var text_1 = child(pre, true);
+              reset(pre);
+              reset(details);
+              template_effect(() => set_text(text_1, get2(part).text));
+              append($$anchor4, details);
+            };
+            if_block(node_1, ($$render) => {
+              if (get2(part).type === "image_url") $$render(consequent);
+              else $$render(alternate, -1);
+            });
+          }
+          append($$anchor3, fragment);
+        });
+        reset(div_4);
+        append($$anchor2, div_4);
+      };
+      if_block(node, ($$render) => {
+        if (get2(parts).length > 0) $$render(consequent_1);
+      });
+    }
     reset(div_2);
     reset(div_1);
     reset(div);
@@ -7043,9 +7101,9 @@ ${component_stack}
 
   // resources/webview/components/AssistantMessage.svelte
   var root4 = from_html(`<div class="bubble-content html svelte-11dqytc"></div>`);
-  var root_13 = from_html(`<div class="bubble-content svelte-11dqytc"> </div>`);
-  var root_22 = from_html(`<div class="thinking-content svelte-11dqytc"><!></div>`);
-  var root_32 = from_html(`<div class="thinking-block"><button class="thinking-header svelte-11dqytc"><span class="collapse-icon svelte-11dqytc"> </span> <span class="thinking-label svelte-11dqytc"> </span></button> <!></div>`);
+  var root_14 = from_html(`<div class="bubble-content svelte-11dqytc"> </div>`);
+  var root_23 = from_html(`<div class="thinking-content svelte-11dqytc"><!></div>`);
+  var root_33 = from_html(`<div class="thinking-block"><button class="thinking-header svelte-11dqytc"><span class="collapse-icon svelte-11dqytc"> </span> <span class="thinking-label svelte-11dqytc"> </span></button> <!></div>`);
   var root_42 = from_html(`<div class="thinking-content svelte-11dqytc"><div class="bubble-content svelte-11dqytc"> </div></div>`);
   var root_52 = from_html(`<div class="reasoning-toggle svelte-11dqytc"><button class="thinking-header svelte-11dqytc"><span class="collapse-icon svelte-11dqytc"> </span> <span class="thinking-label svelte-11dqytc"> </span></button> <!></div>`);
   var root_6 = from_html(`<!> <!>`, 1);
@@ -7077,7 +7135,7 @@ ${component_stack}
     var node = child(div_1);
     {
       var consequent_2 = ($$anchor2) => {
-        var div_2 = root_32();
+        var div_2 = root_33();
         var button = child(div_2);
         var span = child(button);
         var text_1 = child(span, true);
@@ -7089,7 +7147,7 @@ ${component_stack}
         var node_1 = sibling(button, 2);
         {
           var consequent_1 = ($$anchor3) => {
-            var div_3 = root_22();
+            var div_3 = root_23();
             var node_2 = child(div_3);
             {
               var consequent = ($$anchor4) => {
@@ -7099,7 +7157,7 @@ ${component_stack}
                 append($$anchor4, div_4);
               };
               var alternate = ($$anchor4) => {
-                var div_5 = root_13();
+                var div_5 = root_14();
                 var text_3 = child(div_5, true);
                 reset(div_5);
                 template_effect(() => set_text(text_3, $$props.msg.content));
@@ -7191,7 +7249,7 @@ ${component_stack}
             append($$anchor3, div_9);
           };
           var alternate_1 = ($$anchor3) => {
-            var div_10 = root_13();
+            var div_10 = root_14();
             var text_7 = child(div_10, true);
             reset(div_10);
             template_effect(() => set_text(text_7, $$props.msg.content));
@@ -7218,9 +7276,9 @@ ${component_stack}
 
   // resources/webview/components/PlanDisplay.svelte
   var root5 = from_html(`<div><span class="task-icon svelte-uhf122"> </span> <span class="task-text svelte-uhf122"> </span></div>`);
-  var root_14 = from_html(`<div class="task-separator svelte-uhf122"></div>`);
-  var root_23 = from_html(`<div class="task-heading-2 svelte-uhf122"> </div>`);
-  var root_33 = from_html(`<div class="task-heading-1 svelte-uhf122"> </div>`);
+  var root_15 = from_html(`<div class="task-separator svelte-uhf122"></div>`);
+  var root_24 = from_html(`<div class="task-heading-2 svelte-uhf122"> </div>`);
+  var root_34 = from_html(`<div class="task-heading-1 svelte-uhf122"> </div>`);
   var root_43 = from_html(`<div class="task-text svelte-uhf122"> </div>`);
   var root_53 = from_html(`<div class="plan-display svelte-uhf122"><div class="plan-header svelte-uhf122">\u{1F4CB} \u5F53\u524D\u8BA1\u5212</div> <div class="plan-body svelte-uhf122"></div></div>`);
   function PlanDisplay($$anchor, $$props) {
@@ -7334,11 +7392,11 @@ ${component_stack}
               append($$anchor4, div_2);
             };
             var consequent_1 = ($$anchor4) => {
-              var div_3 = root_14();
+              var div_3 = root_15();
               append($$anchor4, div_3);
             };
             var consequent_2 = ($$anchor4) => {
-              var div_4 = root_23();
+              var div_4 = root_24();
               var text_3 = child(div_4, true);
               reset(div_4);
               template_effect(($0) => set_text(text_3, $0), [() => get2(item).text.replace(/^##+\s*/, "")]);
@@ -7346,7 +7404,7 @@ ${component_stack}
             };
             var d = user_derived(() => get2(item).text.startsWith("##"));
             var consequent_3 = ($$anchor4) => {
-              var div_5 = root_33();
+              var div_5 = root_34();
               var text_4 = child(div_5, true);
               reset(div_5);
               template_effect(($0) => set_text(text_4, $0), [() => get2(item).text.replace(/^#\s*/, "")]);
@@ -7384,9 +7442,9 @@ ${component_stack}
 
   // resources/webview/components/ToolMessage.svelte
   var root6 = from_html(`<span class="option-desc svelte-1gpypfo"> </span>`);
-  var root_15 = from_html(`<button><span class="option-label svelte-1gpypfo"> </span> <!></button>`);
-  var root_24 = from_html(`<div class="question-item svelte-1gpypfo"><div class="question-text svelte-1gpypfo"> </div> <div class="question-options svelte-1gpypfo"></div> <div class="question-other svelte-1gpypfo"><input type="text" placeholder="\u5176\u4ED6\u2026" class="svelte-1gpypfo"/></div></div>`);
-  var root_34 = from_html(`<div class="question-form svelte-1gpypfo"><div class="question-hint svelte-1gpypfo">\u{1F4AC} \u7B49\u5F85\u56DE\u7B54</div> <!> <button class="question-submit svelte-1gpypfo">\u53D1\u9001\u56DE\u7B54</button></div>`);
+  var root_16 = from_html(`<button><span class="option-label svelte-1gpypfo"> </span> <!></button>`);
+  var root_25 = from_html(`<div class="question-item svelte-1gpypfo"><div class="question-text svelte-1gpypfo"> </div> <div class="question-options svelte-1gpypfo"></div> <div class="question-other svelte-1gpypfo"><input type="text" placeholder="\u5176\u4ED6\u2026" class="svelte-1gpypfo"/></div></div>`);
+  var root_35 = from_html(`<div class="question-form svelte-1gpypfo"><div class="question-hint svelte-1gpypfo">\u{1F4AC} \u7B49\u5F85\u56DE\u7B54</div> <!> <button class="question-submit svelte-1gpypfo">\u53D1\u9001\u56DE\u7B54</button></div>`);
   var root_44 = from_html(`<div class="approval-description svelte-1gpypfo"> </div>`);
   var root_54 = from_html(`<span class="approval-decided-ok svelte-1gpypfo">\u2705 \u5DF2\u6279\u51C6</span>`);
   var root_62 = from_html(`<span class="approval-decided-no svelte-1gpypfo">\u274C \u5DF2\u62D2\u7EDD</span>`);
@@ -7399,7 +7457,7 @@ ${component_stack}
   var root_132 = from_html(`<div class="tool-command-line svelte-1gpypfo"><span class="tool-prompt svelte-1gpypfo">$</span> </div>`);
   var root_142 = from_html(`<div class="tool-command-line svelte-1gpypfo"> </div>`);
   var root_152 = from_html(`<pre class="tool-result svelte-1gpypfo"> </pre>`);
-  var root_16 = from_html(`<div class="tool-result-wrap svelte-1gpypfo"><!></div>`);
+  var root_162 = from_html(`<div class="tool-result-wrap svelte-1gpypfo"><!></div>`);
   var root_17 = from_html(`<div class="tool-card svelte-1gpypfo"><button class="tool-header svelte-1gpypfo"><span class="collapse-icon svelte-1gpypfo"> </span> <span class="tool-icon svelte-1gpypfo">\u2699</span> <span class="tool-name svelte-1gpypfo"> </span></button> <div class="tool-summary svelte-1gpypfo"><!> <!></div> <!></div>`);
   var root_18 = from_html(`<div class="bubble-tool svelte-1gpypfo"><div class="bubble-avatar svelte-1gpypfo"></div> <div class="bubble-body svelte-1gpypfo"><!></div></div>`);
   function ToolMessage($$anchor, $$props) {
@@ -7541,16 +7599,16 @@ ${component_stack}
     var node = child(div_1);
     {
       var consequent_1 = ($$anchor2) => {
-        var div_2 = root_34();
+        var div_2 = root_35();
         var node_1 = sibling(child(div_2), 2);
         each(node_1, 17, getQuestions, index, ($$anchor3, q, i) => {
-          var div_3 = root_24();
+          var div_3 = root_25();
           var div_4 = child(div_3);
           var text2 = child(div_4, true);
           reset(div_4);
           var div_5 = sibling(div_4, 2);
           each(div_5, 21, () => get2(q).options, index, ($$anchor4, opt) => {
-            var button = root_15();
+            var button = root_16();
             let classes;
             var span = child(button);
             var text_1 = child(span, true);
@@ -7741,7 +7799,7 @@ ${component_stack}
         var node_10 = sibling(div_15, 2);
         {
           var consequent_12 = ($$anchor3) => {
-            var div_19 = root_16();
+            var div_19 = root_162();
             var node_11 = child(div_19);
             {
               var consequent_10 = ($$anchor4) => {
@@ -7802,8 +7860,8 @@ ${component_stack}
   // resources/webview/components/MessageBoard.svelte
   var root7 = from_html(`<div class="bubble-system svelte-12vix06"><div class="bubble-body svelte-12vix06"> </div></div>`);
   var root_19 = from_html(`<div class="empty-state svelte-12vix06"><div class="empty-icon svelte-12vix06">\u{1F4AC}</div> <p class="svelte-12vix06">\u5F00\u59CB\u65B0\u7684\u5BF9\u8BDD</p> <p class="empty-hint svelte-12vix06">\u8F93\u5165\u6D88\u606F\u5E76\u6309 Enter \u53D1\u9001</p></div>`);
-  var root_25 = from_html(`<div class="streaming-thinking svelte-12vix06"><span class="thinking-label svelte-12vix06"> </span> <div class="streaming-reasoning svelte-12vix06"> </div></div>`);
-  var root_35 = from_html(`<div class="streaming-answer svelte-12vix06"><div class="bubble-content svelte-12vix06"> <span class="cursor svelte-12vix06">\u258A</span></div></div>`);
+  var root_26 = from_html(`<div class="streaming-thinking svelte-12vix06"><span class="thinking-label svelte-12vix06"> </span> <div class="streaming-reasoning svelte-12vix06"> </div></div>`);
+  var root_36 = from_html(`<div class="streaming-answer svelte-12vix06"><div class="bubble-content svelte-12vix06"> <span class="cursor svelte-12vix06">\u258A</span></div></div>`);
   var root_45 = from_html(`<div class="bubble-streaming svelte-12vix06"><div class="bubble-avatar svelte-12vix06"></div> <div class="bubble-body svelte-12vix06"><!> <!></div></div>`);
   var root_55 = from_html(`<div class="loading-indicator svelte-12vix06"><div class="spinner svelte-12vix06"></div> <span class="svelte-12vix06">\u7B49\u5F85\u54CD\u5E94\u2026</span></div>`);
   var root_63 = from_html(`<div class="messages svelte-12vix06"><!> <!> <!></div>`);
@@ -7940,7 +7998,7 @@ ${component_stack}
         var node_4 = child(div_5);
         {
           var consequent_4 = ($$anchor3) => {
-            var div_6 = root_25();
+            var div_6 = root_26();
             var span = child(div_6);
             var text_1 = child(span, true);
             reset(span);
@@ -7967,7 +8025,7 @@ ${component_stack}
         var node_5 = sibling(node_4, 2);
         {
           var consequent_5 = ($$anchor3) => {
-            var div_8 = root_35();
+            var div_8 = root_36();
             var div_9 = child(div_8);
             var text_3 = child(div_9, true);
             next();
@@ -8008,8 +8066,8 @@ ${component_stack}
   // resources/webview/components/ContextMeter.svelte
   var root8 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8F93\u5165</span> <span class="svelte-vvns5x"> </span></div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8F93\u51FA</span> <span class="svelte-vvns5x"> </span></div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8BF7\u6C42\u6B21\u6570</span> <span class="svelte-vvns5x"> </span></div>`, 1);
   var root_110 = from_html(`<div class="meter-empty svelte-vvns5x">\u6682\u65E0\u7528\u91CF\u6570\u636E</div>`);
-  var root_26 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u672C\u6B21\u7F13\u5B58</span> <span class="svelte-vvns5x"> </span></div>`);
-  var root_36 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u7D2F\u8BA1\u7F13\u5B58</span> <span class="svelte-vvns5x"> </span></div>`);
+  var root_27 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u672C\u6B21\u7F13\u5B58</span> <span class="svelte-vvns5x"> </span></div>`);
+  var root_37 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u7D2F\u8BA1\u7F13\u5B58</span> <span class="svelte-vvns5x"> </span></div>`);
   var root_46 = from_html(`<!> <!>`, 1);
   var root_56 = from_html(`<div class="meter-tooltip svelte-vvns5x" role="tooltip"><div class="meter-tooltip-header svelte-vvns5x"> </div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u4E0A\u4E0B\u6587</span> <span class="svelte-vvns5x"> </span></div> <!> <!></div>`);
   var root_64 = from_html(`<span class="context-meter svelte-vvns5x" role="img"><svg viewBox="0 0 24 24" width="18" height="18" class="ring-svg svelte-vvns5x"><circle cx="12" cy="12" fill="none" stroke="var(--vscode-input-border, #333)" stroke-width="2" transform="rotate(-90 12 12)"></circle><circle cx="12" cy="12" fill="none" stroke-width="2" stroke-linecap="round" transform="rotate(-90 12 12)"></circle></svg> <!></span>`);
@@ -8137,7 +8195,7 @@ ${component_stack}
             var node_3 = first_child(fragment_1);
             {
               var consequent_1 = ($$anchor4) => {
-                var div_7 = root_26();
+                var div_7 = root_27();
                 var span_5 = sibling(child(div_7), 2);
                 var text_5 = child(span_5, true);
                 reset(span_5);
@@ -8152,7 +8210,7 @@ ${component_stack}
             var node_4 = sibling(node_3, 2);
             {
               var consequent_2 = ($$anchor4) => {
-                var div_8 = root_36();
+                var div_8 = root_37();
                 var span_6 = sibling(child(div_8), 2);
                 var text_6 = child(span_6, true);
                 reset(span_6);
@@ -8212,8 +8270,8 @@ ${component_stack}
   // resources/webview/components/PresetQuickSelector.svelte
   var root9 = from_html(`<span class="check svelte-afcpaa">\u2713</span>`);
   var root_111 = from_html(`<button><span class="item-name svelte-afcpaa"> </span> <!></button>`);
-  var root_27 = from_html(`<div class="empty svelte-afcpaa">\u6682\u65E0\u9884\u8BBE</div>`);
-  var root_37 = from_html(`<div class="dropdown svelte-afcpaa"></div>`);
+  var root_28 = from_html(`<div class="empty svelte-afcpaa">\u6682\u65E0\u9884\u8BBE</div>`);
+  var root_38 = from_html(`<div class="dropdown svelte-afcpaa"></div>`);
   var root_47 = from_html(`<div class="quick-selector svelte-afcpaa"><button class="badge-btn svelte-afcpaa"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div>`);
   function PresetQuickSelector($$anchor, $$props) {
     push($$props, true);
@@ -8246,7 +8304,7 @@ ${component_stack}
     var node = sibling(button, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var div_1 = root_37();
+        var div_1 = root_38();
         each(
           div_1,
           21,
@@ -8277,7 +8335,7 @@ ${component_stack}
             append($$anchor3, button_1);
           },
           ($$anchor3) => {
-            var div_2 = root_27();
+            var div_2 = root_28();
             append($$anchor3, div_2);
           }
         );
@@ -8302,8 +8360,8 @@ ${component_stack}
   // resources/webview/components/ProfileQuickSelector.svelte
   var root10 = from_html(`<span class="check svelte-hh7eb2">\u2713</span>`);
   var root_112 = from_html(`<button><span class="item-name svelte-hh7eb2"> </span> <!></button>`);
-  var root_28 = from_html(`<div class="empty svelte-hh7eb2">\u6682\u65E0\u914D\u7F6E</div>`);
-  var root_38 = from_html(`<div class="dropdown svelte-hh7eb2"></div>`);
+  var root_29 = from_html(`<div class="empty svelte-hh7eb2">\u6682\u65E0\u914D\u7F6E</div>`);
+  var root_39 = from_html(`<div class="dropdown svelte-hh7eb2"></div>`);
   var root_48 = from_html(`<div class="quick-selector svelte-hh7eb2"><button class="badge-btn svelte-hh7eb2"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div>`);
   function ProfileQuickSelector($$anchor, $$props) {
     push($$props, true);
@@ -8336,7 +8394,7 @@ ${component_stack}
     var node = sibling(button, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var div_1 = root_38();
+        var div_1 = root_39();
         each(
           div_1,
           21,
@@ -8367,7 +8425,7 @@ ${component_stack}
             append($$anchor3, button_1);
           },
           ($$anchor3) => {
-            var div_2 = root_28();
+            var div_2 = root_29();
             append($$anchor3, div_2);
           }
         );
@@ -8434,8 +8492,8 @@ ${component_stack}
   // resources/webview/components/AttachedFilesBar.svelte
   var root11 = from_html(`<span class="attached-count svelte-1j8bp8d"> </span>`);
   var root_113 = from_html(`<button class="action-btn clear svelte-1j8bp8d" title="\u6E05\u7A7A\u5168\u90E8">\u6E05\u7A7A</button>`);
-  var root_29 = from_html(`<span class="chip svelte-1j8bp8d"><span class="chip-icon svelte-1j8bp8d"> </span> <span class="chip-name svelte-1j8bp8d"> </span> <button class="chip-remove svelte-1j8bp8d" title="\u79FB\u9664">\u2715</button></span>`);
-  var root_39 = from_html(`<div class="attached-chips svelte-1j8bp8d"></div>`);
+  var root_210 = from_html(`<span class="chip svelte-1j8bp8d"><span class="chip-icon svelte-1j8bp8d"> </span> <span class="chip-name svelte-1j8bp8d"> </span> <button class="chip-remove svelte-1j8bp8d" title="\u79FB\u9664">\u2715</button></span>`);
+  var root_310 = from_html(`<div class="attached-chips svelte-1j8bp8d"></div>`);
   var root_49 = from_html(`<div class="attached-bar svelte-1j8bp8d"><div class="attached-header svelte-1j8bp8d"><span class="attached-label svelte-1j8bp8d">\u9644\u52A0\u6587\u4EF6-Shift\u62D6\u5165\u6587\u4EF6 <!></span> <div class="attached-actions svelte-1j8bp8d"><button class="action-btn svelte-1j8bp8d" title="\u5C06\u7F16\u8F91\u5668\u4E2D\u9009\u4E2D\u7684\u4EE3\u7801\u9644\u52A0\u4E3A\u4EE3\u7801\u6BB5"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M4.5 2C3.12 2 2 3.12 2 4.5v7C2 12.88 3.12 14 4.5 14h7c1.38 0 2.5-1.12 2.5-2.5v-7C14 3.12 12.88 2 11.5 2h-7zM4 4.5C4 3.67 4.67 3 5.5 3h5c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5h-5A1.5 1.5 0 014 9.5v-5zm2 .5v5h1V5H6zm3 0v5h1V5H9z"></path></svg> \u9644\u52A0\u9009\u4E2D\u4EE3\u7801</button> <!></div></div> <!></div>`);
   function AttachedFilesBar($$anchor, $$props) {
     push($$props, true);
@@ -8512,9 +8570,9 @@ ${component_stack}
     var node_2 = sibling(div_1, 2);
     {
       var consequent_2 = ($$anchor2) => {
-        var div_3 = root_39();
+        var div_3 = root_310();
         each(div_3, 21, () => appState.attachedFiles, (file) => file.filePath, ($$anchor3, file) => {
-          var span_2 = root_29();
+          var span_2 = root_210();
           var span_3 = child(span_2);
           var text_1 = child(span_3, true);
           reset(span_3);
@@ -8556,8 +8614,8 @@ ${component_stack}
   // resources/webview/components/Composer.svelte
   var root12 = from_html(`<button class="dropdown-item svelte-z2mbmf"><span class="item-label svelte-z2mbmf"> </span></button>`);
   var root_114 = from_html(`<div class="quick-reply-dropdown svelte-z2mbmf"></div>`);
-  var root_210 = from_html(`<div class="quick-reply-wrap svelte-z2mbmf"><button title="\u5FEB\u901F\u56DE\u590D"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M9 0L1 9h4l-1 7 8-9H8l1-7z" fill="currentColor"></path></svg></button> <!></div>`);
-  var root_310 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
+  var root_211 = from_html(`<div class="quick-reply-wrap svelte-z2mbmf"><button title="\u5FEB\u901F\u56DE\u590D"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M9 0L1 9h4l-1 7 8-9H8l1-7z" fill="currentColor"></path></svg></button> <!></div>`);
+  var root_311 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
   var root_410 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
   var root_57 = from_html(`<div><div class="input-wrap svelte-z2mbmf"><!> <textarea placeholder="\u8F93\u5165\u6D88\u606F... (Shift+Enter \u6362\u884C\uFF0C\u62D6\u5165\u6587\u4EF6\u6309\u4F4F Shift)" rows="1" class="svelte-z2mbmf"></textarea> <div class="composer-footer svelte-z2mbmf"><div class="footer-left svelte-z2mbmf"><!> <!> <!></div> <div class="footer-right svelte-z2mbmf"><!> <button class="send-btn svelte-z2mbmf"><!></button></div></div></div></div>`);
   function Composer($$anchor, $$props) {
@@ -8659,7 +8717,7 @@ ${component_stack}
     var node_4 = child(div_4);
     {
       var consequent_1 = ($$anchor2) => {
-        var div_5 = root_210();
+        var div_5 = root_211();
         var button = child(div_5);
         let classes_1;
         var node_5 = sibling(button, 2);
@@ -8696,7 +8754,7 @@ ${component_stack}
     var node_6 = child(button_2);
     {
       var consequent_2 = ($$anchor2) => {
-        var svg = root_310();
+        var svg = root_311();
         append($$anchor2, svg);
       };
       var alternate = ($$anchor2) => {
@@ -8733,7 +8791,7 @@ ${component_stack}
   // resources/webview/components/ModifiedFiles.svelte
   var root13 = from_html(`<div class="file-item svelte-1miwrjb" role="button" tabindex="0" title="\u5DE6\u952E\u6253\u5F00 \uFF5C \u53F3\u952E Diff"><svg class="file-icon svelte-1miwrjb" viewBox="0 0 16 16" width="12" height="12"><path d="M2 1.5C2 .67 2.67 0 3.5 0h5.59c.4 0 .78.16 1.06.44l3.41 3.41c.28.28.44.66.44 1.06V14.5c0 .83-.67 1.5-1.5 1.5h-9A1.5 1.5 0 012 14.5V1.5z" fill="currentColor" opacity="0.3"></path><path d="M9 0v3c0 .55.45 1 1 1h3" fill="none" stroke="currentColor" stroke-width="1.2"></path></svg> <span class="file-name svelte-1miwrjb"> </span> <span class="file-dir svelte-1miwrjb"> </span></div>`);
   var root_115 = from_html(`<div class="file-list svelte-1miwrjb"></div>`);
-  var root_211 = from_html(`<div class="modified-files svelte-1miwrjb"><div class="header svelte-1miwrjb" role="button" tabindex="0"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg> <span class="header-label svelte-1miwrjb">\u4FEE\u6539\u7684\u6587\u4EF6</span> <span class="header-count svelte-1miwrjb"> </span> <button class="clear-btn svelte-1miwrjb" title="\u6E05\u9664\u4FEE\u6539\u6587\u4EF6\u5217\u8868\u4E0E\u7F16\u8F91\u5668\u9AD8\u4EAE">&times;</button></div> <!></div>`);
+  var root_212 = from_html(`<div class="modified-files svelte-1miwrjb"><div class="header svelte-1miwrjb" role="button" tabindex="0"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg> <span class="header-label svelte-1miwrjb">\u4FEE\u6539\u7684\u6587\u4EF6</span> <span class="header-count svelte-1miwrjb"> </span> <button class="clear-btn svelte-1miwrjb" title="\u6E05\u9664\u4FEE\u6539\u6587\u4EF6\u5217\u8868\u4E0E\u7F16\u8F91\u5668\u9AD8\u4EAE">&times;</button></div> <!></div>`);
   function ModifiedFiles($$anchor, $$props) {
     push($$props, true);
     let collapsed = state(false);
@@ -8761,7 +8819,7 @@ ${component_stack}
     var node = first_child(fragment);
     {
       var consequent_1 = ($$anchor2) => {
-        var div = root_211();
+        var div = root_212();
         var div_1 = child(div);
         var svg = child(div_1);
         let classes;
@@ -8842,8 +8900,8 @@ ${component_stack}
   // resources/webview/components/PresetList.svelte
   var root15 = from_html(`<p class="hint svelte-199frlg">\u52A0\u8F7D\u4E2D...</p>`);
   var root_116 = from_html(`<p class="hint svelte-199frlg">\u6682\u65E0\u9884\u8BBE\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
-  var root_212 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
-  var root_311 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
+  var root_213 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
+  var root_312 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
   var root_411 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
   var root_58 = from_html(`<div class="list-items svelte-199frlg"></div>`);
   var root_65 = from_html(`<div class="preset-list-panel svelte-199frlg"><div class="list-header svelte-199frlg"><h2 class="svelte-199frlg">\u9884\u8BBE\u7BA1\u7406</h2> <span class="badge svelte-199frlg"> </span></div> <!> <div class="list-actions svelte-199frlg"><button class="action-btn primary svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u9884\u8BBE</button> <button class="action-btn svelte-199frlg"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M2.5 7.25a.75.75 0 0 1 1.5 0v4.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-4.5a.75.75 0 0 1 1.5 0v4.5A1.75 1.75 0 0 1 11.75 13h-7.5A1.75 1.75 0 0 1 2.5 11.75v-4.5Zm6.78-4.97a.75.75 0 0 1 0 1.06L7.81 4.81a.75.75 0 0 1-1.06 0L5.28 3.34a.75.75 0 0 1 1.06-1.06l.66.66V.75a.75.75 0 0 1 1.5 0v2.19l.66-.66a.75.75 0 0 1 .72-.22Z"></path></svg> \u5BFC\u5165</button></div></div>`);
@@ -8882,7 +8940,7 @@ ${component_stack}
           var node_1 = child(div_5);
           {
             var consequent_2 = ($$anchor4) => {
-              var span_1 = root_212();
+              var span_1 = root_213();
               append($$anchor4, span_1);
             };
             if_block(node_1, ($$render) => {
@@ -8895,7 +8953,7 @@ ${component_stack}
           var node_2 = sibling(strong, 2);
           {
             var consequent_3 = ($$anchor4) => {
-              var span_2 = root_311();
+              var span_2 = root_312();
               append($$anchor4, span_2);
             };
             if_block(node_2, ($$render) => {
@@ -9066,8 +9124,8 @@ ${component_stack}
   // resources/webview/components/MacroPanel.svelte
   var root17 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
   var root_118 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
-  var root_213 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
-  var root_312 = from_html(`<div class="macro-inline svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F</button> <!></div>`);
+  var root_214 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
+  var root_313 = from_html(`<div class="macro-inline svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F</button> <!></div>`);
   function MacroPanel($$anchor, $$props) {
     push($$props, true);
     let oninsert = prop($$props, "oninsert", 3, (_macro) => {
@@ -9107,7 +9165,7 @@ ${component_stack}
         ]
       }
     ];
-    var div = root_312();
+    var div = root_313();
     var button = child(div);
     var svg = child(button);
     let classes;
@@ -9116,7 +9174,7 @@ ${component_stack}
     var node = sibling(button, 2);
     {
       var consequent = ($$anchor2) => {
-        var div_1 = root_213();
+        var div_1 = root_214();
         each(div_1, 21, () => MACROS, index, ($$anchor3, group) => {
           var div_2 = root_118();
           var span = child(div_2);
@@ -9159,8 +9217,8 @@ ${component_stack}
   // resources/webview/components/PresetEditor.svelte
   var root18 = from_html(`<button> </button>`);
   var root_119 = from_html(`<div><!> <!></div>`);
-  var root_214 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
-  var root_313 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
+  var root_215 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
+  var root_314 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
   function PresetEditor($$anchor, $$props) {
     push($$props, true);
     let definition = prop($$props, "definition", 19, () => ({
@@ -9297,7 +9355,7 @@ ${component_stack}
     function handleSave() {
       onsave()(get2(editName), deepClone(get2(editDef)));
     }
-    var div = root_313();
+    var div = root_314();
     var div_1 = child(div);
     var button = child(div_1);
     var h2 = sibling(button, 2);
@@ -9397,7 +9455,7 @@ ${component_stack}
     var node_3 = sibling(node, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var p = root_214();
+        var p = root_215();
         append($$anchor2, p);
       };
       if_block(node_3, ($$render) => {
@@ -9591,8 +9649,8 @@ ${component_stack}
   // resources/webview/components/ProfilePage.svelte
   var root20 = from_html(`<div class="new-profile-bar svelte-1no2ghb"><input class="new-profile-input svelte-1no2ghb" type="text" placeholder="\u8F93\u5165\u914D\u7F6E\u540D\u79F0..."/> <button class="action-btn primary svelte-1no2ghb">\u521B\u5EFA</button> <button class="action-btn svelte-1no2ghb">\u53D6\u6D88</button></div>`);
   var root_120 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_215 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
-  var root_314 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
+  var root_216 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
+  var root_315 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
   var root_412 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
   var root_59 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
   var root_66 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
@@ -9767,7 +9825,7 @@ ${component_stack}
         append($$anchor2, p);
       };
       var consequent_2 = ($$anchor2) => {
-        var p_1 = root_215();
+        var p_1 = root_216();
         append($$anchor2, p_1);
       };
       var alternate_2 = ($$anchor2) => {
@@ -9779,7 +9837,7 @@ ${component_stack}
           var node_2 = child(div_5);
           {
             var consequent_3 = ($$anchor4) => {
-              var input_2 = root_314();
+              var input_2 = root_315();
               remove_input_defaults(input_2);
               delegated("keydown", input_2, handleRenameKeydown);
               event("blur", input_2, confirmRename);
@@ -9882,8 +9940,8 @@ ${component_stack}
   // resources/webview/components/ApprovalPage.svelte
   var root21 = from_html(`<div class="loading-indicator svelte-ccpdy5"><div class="spinner svelte-ccpdy5"></div> <span>\u52A0\u8F7D\u4E2D\u2026</span></div>`);
   var root_121 = from_html(`<div class="tool-row svelte-ccpdy5"><div class="tool-info svelte-ccpdy5"><span class="tool-name svelte-ccpdy5"> </span> <span class="tool-label svelte-ccpdy5"> </span></div> <div class="tool-control svelte-ccpdy5"><div class="mode-indicator svelte-ccpdy5"></div> <select class="mode-select svelte-ccpdy5"><option>\u65E0\u9700\u5BA1\u6279</option><option>\u9700\u8981\u5BA1\u6279</option></select></div></div>`);
-  var root_216 = from_html(`<div class="save-bar svelte-ccpdy5"><button class="btn-save svelte-ccpdy5">\u{1F4BE} \u4FDD\u5B58\u66F4\u6539</button> <span class="save-hint svelte-ccpdy5">\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539</span></div>`);
-  var root_315 = from_html(`<div class="batch-actions svelte-ccpdy5"><button class="btn-batch svelte-ccpdy5">\u{1F512} \u5168\u90E8\u9700\u8981\u5BA1\u6279</button> <button class="btn-batch svelte-ccpdy5">\u{1F513} \u5168\u90E8\u65E0\u9700\u5BA1\u6279</button></div> <div class="tool-list svelte-ccpdy5"></div> <!>`, 1);
+  var root_217 = from_html(`<div class="save-bar svelte-ccpdy5"><button class="btn-save svelte-ccpdy5">\u{1F4BE} \u4FDD\u5B58\u66F4\u6539</button> <span class="save-hint svelte-ccpdy5">\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539</span></div>`);
+  var root_316 = from_html(`<div class="batch-actions svelte-ccpdy5"><button class="btn-batch svelte-ccpdy5">\u{1F512} \u5168\u90E8\u9700\u8981\u5BA1\u6279</button> <button class="btn-batch svelte-ccpdy5">\u{1F513} \u5168\u90E8\u65E0\u9700\u5BA1\u6279</button></div> <div class="tool-list svelte-ccpdy5"></div> <!>`, 1);
   var root_413 = from_html(`<div class="approval-page svelte-ccpdy5"><div class="page-header svelte-ccpdy5"><h3 class="svelte-ccpdy5">\u{1F510} \u5DE5\u5177\u5BA1\u6279\u8BBE\u7F6E</h3> <p class="page-hint svelte-ccpdy5">\u8BBE\u7F6E\u5404\u5DE5\u5177\u662F\u5426\u9700\u8981\u7528\u6237\u5BA1\u6279\u540E\u624D\u6267\u884C\u3002\u672A\u8BBE\u7F6E\u7684\u5DE5\u5177\u9ED8\u8BA4<span class="badge-require svelte-ccpdy5">\u9700\u8981\u5BA1\u6279</span>\u3002</p></div> <!></div>`);
   function ApprovalPage($$anchor, $$props) {
     push($$props, true);
@@ -9990,7 +10048,7 @@ ${component_stack}
         append($$anchor2, div_1);
       };
       var alternate = ($$anchor2) => {
-        var fragment = root_315();
+        var fragment = root_316();
         var div_2 = first_child(fragment);
         var button = child(div_2);
         var button_1 = sibling(button, 2);
@@ -10036,7 +10094,7 @@ ${component_stack}
         var node_1 = sibling(div_3, 2);
         {
           var consequent_1 = ($$anchor3) => {
-            var div_8 = root_216();
+            var div_8 = root_217();
             var button_2 = child(div_8);
             next(2);
             reset(div_8);
@@ -10149,15 +10207,34 @@ ${component_stack}
       appState.isDragOver = false;
       const dt = e.dataTransfer;
       if (!dt) return;
+      const paths = [];
       try {
         const uriList = dt.getData("text/uri-list");
-        if (uriList) {
-          const filePaths = parseUriList(uriList);
-          if (filePaths.length > 0) {
-            await attachFiles(filePaths);
-          }
-        }
+        if (uriList) paths.push(...parseUriList(uriList));
       } catch {
+      }
+      if (paths.length === 0) {
+        try {
+          const plain = dt.getData("text/plain");
+          if (plain) paths.push(...parsePlainPaths(plain));
+        } catch {
+        }
+      }
+      if (paths.length === 0 && dt.files && dt.files.length > 0) {
+        const withoutPath = [];
+        for (const file of Array.from(dt.files)) {
+          const p = getFilePathFromFile(file);
+          if (p) paths.push(p);
+          else withoutPath.push(file);
+        }
+        if (withoutPath.length > 0) {
+          const contentPaths = await attachFilesFromContent(withoutPath);
+          paths.push(...contentPaths);
+        }
+      }
+      const unique = [...new Set(paths.filter(Boolean))];
+      if (unique.length > 0) {
+        await attachFiles(unique);
       }
     }
     function parseUriList(text2) {
@@ -10169,6 +10246,47 @@ ${component_stack}
         }
         return decoded;
       }).filter(Boolean);
+    }
+    function parsePlainPaths(text2) {
+      return text2.split("\n").map((line) => line.trim()).filter((line) => line && !line.startsWith("#")).map((line) => {
+        if (!line.startsWith("file://")) return line;
+        const decoded = decodeURIComponent(line.slice(7));
+        if (decoded.startsWith("/") && /^\/[A-Za-z]:/.test(decoded)) {
+          return decoded.slice(1);
+        }
+        return decoded;
+      }).filter(Boolean);
+    }
+    function getFilePathFromFile(file) {
+      try {
+        const w = globalThis.vscode?.webUtils;
+        if (w && typeof w.getPathForFile === "function") {
+          const p = w.getPathForFile(file);
+          if (p) return p;
+        }
+      } catch {
+      }
+      const legacy = file.path;
+      return typeof legacy === "string" && legacy ? legacy : void 0;
+    }
+    const DND_MAX_BYTES = 100 * 1024 * 1024;
+    async function attachFilesFromContent(files) {
+      const items2 = [];
+      for (const file of files) {
+        if (file.size > DND_MAX_BYTES) continue;
+        try {
+          const buf = await file.arrayBuffer();
+          items2.push({ name: file.name, mime: file.type, data: new Uint8Array(buf) });
+        } catch {
+        }
+      }
+      if (items2.length === 0) return [];
+      try {
+        const res = await api.request("attachFileContents", { files: items2 });
+        return res.filePaths ?? [];
+      } catch {
+        return [];
+      }
     }
     async function attachFiles(filePaths) {
       const existing = new Set(appState.attachedFiles.map((f) => f.filePath));

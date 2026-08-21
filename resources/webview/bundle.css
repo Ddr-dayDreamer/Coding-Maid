@@ -313,6 +313,42 @@
 .bubble-content.svelte-10hwl6j p:last-child {
   margin-bottom: 0;
 }
+.attachments.svelte-10hwl6j {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.attach-img.svelte-10hwl6j {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--vscode-foreground) 20%, transparent);
+  object-fit: contain;
+  background: var(--vscode-editor-background);
+}
+.attach-text.svelte-10hwl6j {
+  font-size: 12px;
+}
+.attach-text.svelte-10hwl6j summary:where(.svelte-10hwl6j) {
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.85;
+}
+.attach-text.svelte-10hwl6j summary:where(.svelte-10hwl6j):hover {
+  opacity: 1;
+}
+.attach-text.svelte-10hwl6j pre:where(.svelte-10hwl6j) {
+  margin: 6px 0 0;
+  padding: 8px;
+  overflow-x: auto;
+  font-size: 12px;
+  border-radius: 4px;
+  background: var(--vscode-textPreformat-background, var(--vscode-editor-background));
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/AssistantMessage.esbuild-svelte-fake-css */
 .bubble-assistant.svelte-11dqytc {

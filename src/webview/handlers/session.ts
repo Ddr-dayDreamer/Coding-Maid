@@ -155,6 +155,7 @@ function loadSession(ctx: HandlerContext, sessionId: string): void {
         sessionId: m.sessionId,
         role: m.role,
         content: m.content,
+        contentParams: m.contentParams,
         messageParams: m.messageParams,
         html:
           m.role !== "tool"

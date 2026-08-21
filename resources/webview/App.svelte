@@ -51,16 +51,44 @@
     const dt = e.dataTransfer;
     if (!dt) return;
 
+    const paths: string[] = [];
+
+    // 1. text/uri-list（VS Code 资源管理器 + Shift、部分系统文件拖拽）
     try {
       const uriList = dt.getData("text/uri-list");
-      if (uriList) {
-        const filePaths = parseUriList(uriList);
-        if (filePaths.length > 0) {
-          await attachFiles(filePaths);
-        }
-      }
+      if (uriList) paths.push(...parseUriList(uriList));
     } catch {
-      // 静默失败
+      // 某些环境 getData 会抛异常，忽略
+    }
+
+    // 2. text/plain（可能是纯路径/文件列表）
+    if (paths.length === 0) {
+      try {
+        const plain = dt.getData("text/plain");
+        if (plain) paths.push(...parsePlainPaths(plain));
+      } catch {
+        // ignore
+      }
+    }
+
+    // 3. dataTransfer.files（Windows 文件管理器等）
+    // 优先尝试 webUtils 解析路径；拿不到路径的文件把内容发给主进程写临时文件
+    if (paths.length === 0 && dt.files && dt.files.length > 0) {
+      const withoutPath: File[] = [];
+      for (const file of Array.from(dt.files)) {
+        const p = getFilePathFromFile(file);
+        if (p) paths.push(p);
+        else withoutPath.push(file);
+      }
+      if (withoutPath.length > 0) {
+        const contentPaths = await attachFilesFromContent(withoutPath);
+        paths.push(...contentPaths);
+      }
+    }
+
+    const unique = [...new Set(paths.filter(Boolean))];
+    if (unique.length > 0) {
+      await attachFiles(unique);
     }
   }
 
@@ -79,6 +107,64 @@
         return decoded;
       })
       .filter(Boolean);
+  }
+
+  /** 解析 text/plain 为文件绝对路径列表（支持 file:// 前缀或裸路径） */
+  function parsePlainPaths(text: string): string[] {
+    return text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => {
+        if (!line.startsWith("file://")) return line;
+        const decoded = decodeURIComponent(line.slice(7));
+        if (decoded.startsWith("/") && /^\/[A-Za-z]:/.test(decoded)) {
+          return decoded.slice(1);
+        }
+        return decoded;
+      })
+      .filter(Boolean);
+  }
+
+  /** 从拖入的 File 对象获取绝对路径（尽力而为，webview 隔离下可能拿不到） */
+  function getFilePathFromFile(file: File): string | undefined {
+    // VS Code 在某些渲染环境注入的 webUtils（有则用）
+    try {
+      const w = (globalThis as { vscode?: { webUtils?: { getPathForFile(f: File): string } } }).vscode?.webUtils;
+      if (w && typeof w.getPathForFile === "function") {
+        const p = w.getPathForFile(file);
+        if (p) return p;
+      }
+    } catch {
+      // ignore
+    }
+    // 回退：旧 Electron 非标准 File.path 属性
+    const legacy = (file as File & { path?: string }).path;
+    return typeof legacy === "string" && legacy ? legacy : undefined;
+  }
+
+  /** 单文件内容搬运上限（避免超大文件阻塞） */
+  const DND_MAX_BYTES = 100 * 1024 * 1024;
+
+  /** 把拖入但无路径的文件内容发给主进程写临时文件，返回绝对路径列表 */
+  async function attachFilesFromContent(files: File[]): Promise<string[]> {
+    const items: { name: string; mime: string; data: Uint8Array }[] = [];
+    for (const file of files) {
+      if (file.size > DND_MAX_BYTES) continue;
+      try {
+        const buf = await file.arrayBuffer();
+        items.push({ name: file.name, mime: file.type, data: new Uint8Array(buf) });
+      } catch {
+        // 读取失败跳过
+      }
+    }
+    if (items.length === 0) return [];
+    try {
+      const res = await api.request<{ filePaths: string[] }>("attachFileContents", { files: items });
+      return res.filePaths ?? [];
+    } catch {
+      return [];
+    }
   }
 
   /** 附加文件：前端更新展示 + 通知后端 */
@@ -195,7 +281,11 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 </style>
