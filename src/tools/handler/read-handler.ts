@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { ToolExecutionContext, ToolExecutionFollowUpMessage, ToolExecutionResult } from "../types";
-import { readTextFileWithMetadata } from "../../utils/file-utils";
+import { readTextFileWithMetadata, isImageExtension, getImageMimeType } from "../../utils/file-utils";
 import { isAbsoluteFilePath, markFileRead, normalizeFilePath } from "../../utils/state";
 
 const DEFAULT_LINE_LIMIT = 2000;
@@ -233,40 +233,10 @@ function formatWithLineNumbers(lines: string[], startLineNumber: number): string
     .join("\n");
 }
 
-function isImageExtension(ext: string): boolean {
-  return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".svg", ".ico", ".avif"].includes(ext);
-}
-
-function getImageMimeType(ext: string): string {
-  switch (ext) {
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".gif":
-      return "image/gif";
-    case ".webp":
-      return "image/webp";
-    case ".bmp":
-      return "image/bmp";
-    case ".tif":
-    case ".tiff":
-      return "image/tiff";
-    case ".svg":
-      return "image/svg+xml";
-    case ".ico":
-      return "image/x-icon";
-    case ".avif":
-      return "image/avif";
-    case ".png":
-    default:
-      return "image/png";
-  }
-}
-
 function buildImageFollowUpMessage(filePath: string, mime: string, buffer: Buffer): ToolExecutionFollowUpMessage {
   const fileName = path.basename(filePath);
   return {
-    role: "system",
+    role: "user",
     content:
       `The read tool has loaded \`${fileName}\`. ` + "Use the attached image content to answer the original request.",
     contentParams: [

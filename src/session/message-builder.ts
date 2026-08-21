@@ -61,25 +61,56 @@ export class SessionMessageBuilder {
 
   buildUserMessage(sessionId: string, prompt: UserPromptContent): SessionMessage {
     const now = new Date().toISOString();
-    const imageParams =
-      prompt.imageUrls
-        ?.filter((url) => Boolean(url))
-        .map((url) => ({
-          type: "image_url" as const,
-          image_url: { url },
-        })) ?? [];
+    const contentParams: ChatCompletionContentPart[] = [];
+
+    // 附加文件 parts（文本 → text part，图片 → image_url part）
+    for (const part of prompt.fileParts ?? []) {
+      if (part.type === "text") {
+        contentParams.push({ type: "text", text: `[${part.path}]\n\`\`\`\n${part.content}\n\`\`\`` });
+      } else {
+        contentParams.push({ type: "image_url", image_url: { url: part.dataUrl } });
+      }
+    }
+
+    // 直接传入的图片（粘贴等）
+    for (const url of prompt.imageUrls?.filter((u) => Boolean(u)) ?? []) {
+      contentParams.push({ type: "image_url", image_url: { url } });
+    }
 
     return {
       id: crypto.randomUUID(),
       sessionId,
       role: "user",
       content: prompt.text ?? "",
-      contentParams: imageParams.length > 0 ? imageParams : null,
+      contentParams: contentParams.length > 0 ? contentParams : null,
       messageParams: null,
       visible: true,
       createTime: now,
       updateTime: now,
       // checkpointHash 不在此处设置，由 prepareMutation 在文件变更前统一关联
+    };
+  }
+
+  /**
+   * 以指定 content + contentParams 构建 user 消息。
+   * 用于工具 follow-up 消息（如 read 工具读取图片后把图片附加到 user 消息）。
+   */
+  buildUserMessageWithContentParams(
+    sessionId: string,
+    content: string,
+    contentParams: unknown | null
+  ): SessionMessage {
+    const now = new Date().toISOString();
+    return {
+      id: crypto.randomUUID(),
+      sessionId,
+      role: "user",
+      content,
+      contentParams,
+      messageParams: null,
+      visible: true,
+      createTime: now,
+      updateTime: now,
     };
   }
 

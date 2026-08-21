@@ -9090,8 +9090,6 @@ ${component_stack}
           "{{editor_selection}}",
           "{{active_file}}",
           "{{active_file_path}}",
-          "{{attached_files}}",
-          "{{attached_files_path}}",
           "{{date}}",
           "{{time}}",
           "{{plan}}"

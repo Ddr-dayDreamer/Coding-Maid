@@ -111,7 +111,7 @@ export class SessionManager {
   private editorSelection: { filePath: string; startLine: number; endLine: number } | undefined;
   /** {{active_file}} 宏所需 */
   private activeFile: string | undefined;
-  /** {{attached_files}} 宏所需 */
+  /** 用户附加的文件路径列表（发送时组装为 user 消息 parts） */
   private attachedFiles: string[] | undefined;
   /** 代码段虚拟路径→内容映射（不写磁盘） */
   private attachedSnippetContents: Record<string, string> = {};
@@ -207,7 +207,7 @@ export class SessionManager {
     this.activeFile = filePath;
   }
 
-  /** 设置附加文件路径列表（{{attached_files}} 宏所需） */
+  /** 设置附加文件路径列表（发送时组装为 user 消息 parts） */
   setAttachedFiles(filePaths: string[] | undefined): void {
     this.attachedFiles = filePaths;
   }
@@ -418,8 +418,6 @@ export class SessionManager {
         activePreset: getActivePreset(),
         editorSelection: this.editorSelection,
         activeFile: this.activeFile,
-        attachedFiles: this.attachedFiles,
-        attachedSnippetContents: this.attachedSnippetContents,
       });
     } finally {
       this.activationControllers.delete(sessionId);
@@ -668,9 +666,9 @@ export class SessionManager {
       toolMessages.push(toolMessage);
 
       for (const fup of execution.result.followUpMessages ?? []) {
-        if (fup.role !== "system") continue;
+        if (fup.role !== "user") continue;
         followUpMessages.push(
-          this.messageBuilder.buildSystemMessage(sessionId, fup.content, fup.contentParams ?? null)
+          this.messageBuilder.buildUserMessageWithContentParams(sessionId, fup.content, fup.contentParams ?? null)
         );
       }
     }

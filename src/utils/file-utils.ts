@@ -173,7 +173,7 @@ export type ReadFileContentResult = {
 /**
  * 读取文件并提取指定行范围，超过阈值时自动截断中间部分。
  *
- * 用于 {{editor_selection}}、{{active_file}}、{{attached_files}} 等宏，
+ * 用于 {{editor_selection}}、{{active_file}} 等宏，以及附加文件组装，
  * 保证确定性的输出以支持模型输入缓存。
  */
 export function readFileContent(options: ReadFileContentOptions): ReadFileContentResult {
@@ -211,4 +211,49 @@ export function readFileContent(options: ReadFileContentOptions): ReadFileConten
     truncated: true,
     omittedLines: omitted,
   };
+}
+
+// ─── 图像工具（供附加文件、read 工具共用） ────────────────
+
+/** 判断扩展名是否为图像文件 */
+export function isImageExtension(ext: string): boolean {
+  return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".svg", ".ico", ".avif"].includes(ext);
+}
+
+/** 根据扩展名推断图像 MIME 类型 */
+export function getImageMimeType(ext: string): string {
+  switch (ext) {
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    case ".bmp":
+      return "image/bmp";
+    case ".tif":
+    case ".tiff":
+      return "image/tiff";
+    case ".svg":
+      return "image/svg+xml";
+    case ".ico":
+      return "image/x-icon";
+    case ".avif":
+      return "image/avif";
+    case ".png":
+    default:
+      return "image/png";
+  }
+}
+
+/** 读取图像文件为 base64 data URL；失败返回 null */
+export function readImageAsDataUrl(filePath: string): string | null {
+  try {
+    const buffer = fs.readFileSync(filePath);
+    const mime = getImageMimeType(path.extname(filePath).toLowerCase());
+    return `data:${mime};base64,${buffer.toString("base64")}`;
+  } catch {
+    return null;
+  }
 }

@@ -58,7 +58,7 @@
     {
       "name": "env/运行环境",
       "role": "assistant",
-      "content": "<system>:current environment: \n{{runtime_context}}\n\ncurrent time: \n{{date}} {{time}}\n\ncurrent vsc selection:\n{{editor_selection}}\n\n{{user}} is looking at:\n{{active_file_path}}\n\nattached files:\n{{attached_files}}\n\nCurrent Plan:\n{{plan}}",
+      "content": "<system>:current environment: \n{{runtime_context}}\n\ncurrent time: \n{{date}} {{time}}\n\ncurrent vsc selection:\n{{editor_selection}}\n\n{{user}} is looking at:\n{{active_file_path}}\n\nCurrent Plan:\n{{plan}}",
       "enabled": true
     },
     {

@@ -137,9 +137,15 @@ export type UndoTarget = {
 
 // ─── 用户提示词 ──────────────────────────────────────────
 
+export type UserPromptFilePart =
+  | { type: "text"; path: string; content: string }
+  | { type: "image"; path: string; dataUrl: string };
+
 export type UserPromptContent = {
   text?: string;
   imageUrls?: string[];
+  /** 附加文件 parts（文本 → text part，图片 → image_url part） */
+  fileParts?: UserPromptFilePart[];
 };
 
 // ─── SessionManager 构造选项 ────────────────────────────
@@ -242,10 +248,6 @@ export type MacroContext = {
   editorSelection?: EditorSelectionInfo;
   /** {{active_file}} — 当前活动编辑器的文件路径 */
   activeFile?: string;
-  /** {{attached_files}} — 用户拖拽/选择的附加文件路径列表 */
-  attachedFiles?: string[];
-  /** {{attached_files}} — 代码段附加内容的虚拟路径→内容映射 */
-  attachedSnippetContents?: Record<string, string>;
   /** {{lastUserMessage}} — 当前会话中最后一条用户消息原文 */
   lastUserMessage?: string;
   /** {{plan}} — 最近一次 UpdatePlan 工具调用提交的计划内容（markdown） */

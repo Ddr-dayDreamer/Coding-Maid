@@ -20,7 +20,16 @@
     },
     {
       group: "运行时",
-      items: ["{{runtime_context}}","{{workspace}}", "{{editor_selection}}", "{{active_file}}", "{{active_file_path}}", "{{attached_files}}", "{{attached_files_path}}", "{{date}}", "{{time}}","{{plan}}"],
+      items: [
+        "{{runtime_context}}",
+        "{{workspace}}",
+        "{{editor_selection}}",
+        "{{active_file}}",
+        "{{active_file_path}}",
+        "{{date}}",
+        "{{time}}",
+        "{{plan}}",
+      ],
     },
     {
       group: "变量",
@@ -32,7 +41,10 @@
 <div class="macro-inline">
   <button class="macro-toggle" onclick={() => (open = !open)}>
     <svg viewBox="0 0 16 16" width="12" height="12" class:rotated={open}>
-      <path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"/>
+      <path
+        fill="currentColor"
+        d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"
+      />
     </svg>
     插入宏
   </button>
@@ -44,7 +56,13 @@
           <span class="macro-group-label">{group.group}</span>
           <div class="macro-items">
             {#each group.items as macro}
-              <button class="macro-btn" onmousedown={(e) => { e.preventDefault(); oninsert(macro); }}>
+              <button
+                class="macro-btn"
+                onmousedown={(e) => {
+                  e.preventDefault();
+                  oninsert(macro);
+                }}
+              >
                 <code>{macro}</code>
               </button>
             {/each}
@@ -125,7 +143,9 @@
     border-radius: 4px;
     background: var(--vscode-editor-background);
     cursor: pointer;
-    transition: border-color 0.1s, background 0.1s;
+    transition:
+      border-color 0.1s,
+      background 0.1s;
   }
 
   .macro-btn:hover {

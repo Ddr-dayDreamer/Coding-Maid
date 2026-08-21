@@ -86,7 +86,7 @@ export type ToolExecutionResult = {
 };
 
 export type ToolExecutionFollowUpMessage = {
-  role: "system";
+  role: "user";
   content: string;
   contentParams?: unknown | null;
 };

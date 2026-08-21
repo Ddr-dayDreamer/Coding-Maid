@@ -39,10 +39,6 @@ export type ActivateOptions = {
   editorSelection?: { filePath: string; startLine: number; endLine: number };
   /** {{active_file}} 宏所需 — 当前活动编辑器文件路径 */
   activeFile?: string;
-  /** {{attached_files}} 宏所需 — 用户附加的文件路径列表 */
-  attachedFiles?: string[];
-  /** {{attached_files}} 宏所需 — 代码段虚拟路径→内容映射 */
-  attachedSnippetContents?: Record<string, string>;
 };
 
 // ─── SessionActivator ────────────────────────────────────
@@ -215,8 +211,6 @@ export class SessionActivator {
             extensionRoot: getExtensionRoot(),
             editorSelection: opts.editorSelection,
             activeFile: opts.activeFile,
-            attachedFiles: opts.attachedFiles,
-            attachedSnippetContents: opts.attachedSnippetContents,
             lastUserMessage: lastUserMsg?.content ?? undefined,
             plan: planStr,
           };

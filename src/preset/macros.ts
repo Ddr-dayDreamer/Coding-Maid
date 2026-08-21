@@ -72,11 +72,9 @@ export class MacroEngine {
    * 6. {{global_memory}} / {{repo_memory}} — 替换为记忆目录中的文件内容
    * 7. {{editor_selection}} — 替换为当前 VS Code 编辑器中选中的内容（含定位）
    * 8. {{active_file}} — 替换为当前活动编辑器文件的全文
-   * 9. {{attached_files}} — 替换为用户附加的所有文件内容
-   * 10. {{active_file_path}} — 替换为当前活动编辑器文件路径
-   * 11. {{attached_files_path}} — 替换为用户附加的所有文件路径
-   * 12. {{lastUserMessage}} — 替换为当前会话中最后一条用户消息原文
-   * 13. {{date}} / {{time}} / {{model}} / {{user}} / {{char}} / {{workspace}} — 简单替换
+   * 9. {{active_file_path}} — 替换为当前活动编辑器文件路径
+   * 10. {{lastUserMessage}} — 替换为当前会话中最后一条用户消息原文
+   * 11. {{date}} / {{time}} / {{model}} / {{user}} / {{char}} / {{workspace}} — 简单替换
    */
   render(content: string, context: MacroContext): string {
     if (!content) return content;
@@ -127,22 +125,12 @@ export class MacroEngine {
       return this.readActiveFile(context);
     });
 
-    // 9. {{attached_files}}
-    result = result.replace(/\{\{attached_files\}\}/g, () => {
-      return this.readAttachedFiles(context);
-    });
-
-    // 10. {{active_file_path}}
+    // 9. {{active_file_path}}
     result = result.replace(/\{\{active_file_path\}\}/g, () => {
       return this.readActiveFilePath(context);
     });
 
-    // 11. {{attached_files_path}}
-    result = result.replace(/\{\{attached_files_path\}\}/g, () => {
-      return this.readAttachedFilesPath(context);
-    });
-
-    // 12. {{lastUserMessage}}
+    // 10. {{lastUserMessage}}
     result = result.replace(/\{\{lastUserMessage\}\}/g, () => {
       return context.lastUserMessage ?? "";
     });
@@ -263,44 +251,9 @@ ${JSON.stringify(env, null, 2)}
     }
   }
 
-  /** 读取用户附加的所有文件内容 */
-  private readAttachedFiles(context: MacroContext): string {
-    const files = context.attachedFiles;
-    if (!files || files.length === 0) return "";
-    const snippetContents = context.attachedSnippetContents ?? {};
-    const parts: string[] = [];
-    for (const filePath of files) {
-      // 优先使用内存中的代码段内容
-      const inlineContent = snippetContents[filePath];
-      if (inlineContent !== undefined) {
-        parts.push(`[${filePath}]\n\`\`\`\n${inlineContent}\n\`\`\``);
-        continue;
-      }
-      // 回退到磁盘读取
-      try {
-        const result = readFileContent({ filePath });
-        if (!result.content) continue;
-        const location = result.truncated
-          ? `${filePath} (${result.totalLines} lines, ${result.omittedLines} omitted)`
-          : `${filePath} (${result.totalLines} lines)`;
-        parts.push(`[${location}]\n\`\`\`\n${result.content}\n\`\`\``);
-      } catch {
-        continue;
-      }
-    }
-    return parts.join("\n\n");
-  }
-
   /** 返回当前活动编辑器文件路径（纯文本，无内容） */
   private readActiveFilePath(context: MacroContext): string {
     return context.activeFile ?? "";
-  }
-
-  /** 返回用户附加的所有文件路径（每行一个） */
-  private readAttachedFilesPath(context: MacroContext): string {
-    const files = context.attachedFiles;
-    if (!files || files.length === 0) return "";
-    return files.join("\n");
   }
 
   /**

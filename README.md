@@ -116,9 +116,7 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 | `{{workspace}}`               | 工作区路径                                 |
 | `{{editor_selection}}`        | 当前 VS Code 编辑器中选中内容（含定位）    |
 | `{{active_file}}`             | 当前活动编辑器的文件全文                   |
-| `{{attached_files}}`          | 用户附加的所有文件内容                     |
 | `{{active_file_path}}`        | 当前活动编辑器的文件路径                   |
-| `{{attached_files_path}}`     | 用户附加的所有文件路径列表                 |
 | `{{lastUserMessage}}`         | 当前会话中最后一条用户消息原文             |
 | `{{setvar::key::val}}`        | 设置会话级变量                             |
 | `{{getvar::key}}`             | 读取会话级变量                             |
@@ -128,7 +126,7 @@ profile.jsons可以有多个，储存的是api地址/key/模型/参数等信息
 
 ## 如何提高deepseek的缓存命中
 
-注意，想要确保缓存命中高，你需要将任何可能变化的提示词放到后面（“对话历史记录”后面），包括但不限于：{{time}}、{{plan}}、{{attached_files}}这样的随时可能变化的宏。
+注意，想要确保缓存命中高，你需要将任何可能变化的提示词放到后面（“对话历史记录”后面），包括但不限于：{{time}}、{{plan}}、{{editor_selection}}这样的随时可能变化的宏。
 
 - 注意不要在“对话历史记录”后面使用系统身份(system)的提示词，经过测试，我的推测是：deepseek会把传入参数里的tools数组中的那些schema格式注入到最后一个系统身份的提示词的位置。在变化内容后使用了系统身份的话这些东西可能不会命中的。
 
