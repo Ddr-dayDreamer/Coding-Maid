@@ -28,7 +28,7 @@
     {
       "name": "tools",
       "role": "system",
-      "content": "# Available Tools\n{{tool.bash}}\n{{tool.read}}\n{{tool.write}}\n{{tool.edit}}\n{{tool.AskUserQuestion}}\n{{tool.UpdatePlan}}\n{{tool.search}}\n{{tool.list_dir}}\n{{tool.find_references}}\n{{tool.rename_symbol}}\n{{tool.get_errors}}\n{{tool.fetch_webpage}}\n{{tool.memory}}",
+      "content": "# Available Tools\n\n## Tool Selection\n- Listing a directory: `list_dir` is the better choice than bash `ls` / `dir` / `find` / `tree`.\n- Reading a file: `read` beats `cat` / `head` / `tail`.\n- Editing → `edit`, writing → `write`, searching → `search`.\n- `bash` is mainly for CLI/development operations (git, npm/pnpm, docker, builds, tests, scripts); for file operations the dedicated tools are a better fit.\n\n{{tool.bash}}\n{{tool.read}}\n{{tool.write}}\n{{tool.edit}}\n{{tool.AskUserQuestion}}\n{{tool.UpdatePlan}}\n{{tool.search}}\n{{tool.list_dir}}\n{{tool.find_references}}\n{{tool.rename_symbol}}\n{{tool.get_errors}}\n{{tool.fetch_webpage}}\n{{tool.memory}}",
       "enabled": true
     },
     {

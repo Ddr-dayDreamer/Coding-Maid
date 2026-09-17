@@ -10,7 +10,8 @@ import type { ToolRegistration } from "../registry";
 export const listDirTool: ToolRegistration = {
   name: "list_dir",
   description:
-    "List directory contents, distinguishing files from directories. Supports optional recursive tree view.",
+    "List directory contents, distinguishing files from directories. Supports optional recursive tree view. " +
+    "Preferred over the Bash tool for directory listing — it is cross-platform and respects .gitignore.",
   parameters: {
     type: "object",
     properties: {
@@ -42,6 +43,10 @@ export const listDirTool: ToolRegistration = {
 
 Lists the contents of a directory, clearly showing which entries are files and which are subdirectories.
 
+### Prefer this over shell commands
+
+For listing a directory, \`list_dir\` is the better choice: it is cross-platform, honors \`.gitignore\`, and returns a cleaner, more token-efficient result than \`ls\`, \`dir\`, \`find\`, \`tree\` or \`Get-ChildItem\` run through Bash.
+
 ### Basic usage
 - Provide an absolute path to the directory you want to list.
 - Directories are shown with a trailing "/" for easy identification.
@@ -53,6 +58,15 @@ Lists the contents of a directory, clearly showing which entries are files and w
 - Use \`maxDepth\` to limit recursion depth (default 5, use -1 for unlimited).
 - Symlinks are **not** followed to prevent infinite loops.
 - Useful for quickly exploring a project's structure in a single call.
+
+### Choosing the right tool
+| Goal | Tool |
+|------|------|
+| List entries of one directory | \`list_dir\` |
+| Explore a whole project tree | \`list_dir\` with \`recursive: true\` |
+| Find files by name pattern (e.g. \`**/*.ts\`) | \`search\` with \`mode: "file"\` — cleaner than \`find\` |
+| Find code by content | \`search\` with \`mode: "text"\` — cleaner than \`grep\` |
+| Read a file's contents | \`read\` — cleaner than \`cat\` / \`head\` / \`tail\` |
 
 \`\`\`json
 {

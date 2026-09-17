@@ -44,7 +44,7 @@ Usage:
 - Results are returned with line numbers in \`001|\` format (e.g., \`001|const x = 1\`), zero-padded to at least 3 digits
 - Text reads return a snippet id in metadata. You can pass that snippet id to the Edit tool to constrain replacements to just that read range.
 - This tool allows you to read images (e.g., PNG, JPG, etc.). The contents are presented visually if the model supports multimodal input.
-- This tool can only read files, not directories. To read a directory, use an ls command via the Bash tool.
+- This tool can only read files, not directories. To inspect a directory's contents, use the \`list_dir\` tool — it gives a cleaner, cross-platform listing than \`ls\` / \`dir\` / \`find\` through the Bash tool.
 - You can call multiple tools in a single response. It is always better to speculatively read multiple potentially useful files in parallel.
 - You will regularly be asked to read screenshots. If the user provides a path to a screenshot, ALWAYS use this tool to view the file at the path. This tool will work with all temporary file paths.
 - If you read a file that exists but has empty contents you will receive a system reminder warning in place of file contents.

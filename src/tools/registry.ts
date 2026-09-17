@@ -132,16 +132,24 @@ export class ToolRegistry {
     }
   }
 
-  /** 获取工具文档（通过 {{tool.xxx}} 的 name 查找，不区分大小写，_ → -） */
+  /**
+   * 归一化工具名用于模糊匹配：
+   * 小写 + 去掉所有非字母数字字符。
+   * 这样 `AskUserQuestion` / `ask_user_question` / `ask-user-question` 都能命中。
+   */
+  private static normalizeName(name: string): string {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  /** 获取工具文档（通过 {{tool.xxx}} 的 name 查找，不区分大小写与分隔符） */
   getToolDoc(name: string): string | undefined {
-    const normalizedTarget = name.toLowerCase().replace(/_/g, "-");
-    // 先查规范名
-    const canonical = this.resolveName(name);
-    const direct = this.tools.get(canonical);
+    // 先查规范名 / 别名
+    const direct = this.tools.get(this.resolveName(name));
     if (direct) return direct.doc;
-    // 再模糊查（大小写 + _/- 归一化）
+    // 再模糊查（大小写 + 下划线/连字符归一化）
+    const normalizedTarget = ToolRegistry.normalizeName(name);
     for (const [, tool] of this.tools) {
-      if (tool.name.toLowerCase().replace(/_/g, "-") === normalizedTarget) {
+      if (ToolRegistry.normalizeName(tool.name) === normalizedTarget) {
         return tool.doc;
       }
     }
