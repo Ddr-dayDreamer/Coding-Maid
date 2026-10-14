@@ -221,7 +221,7 @@
           <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
         <span class="drop-hint-text">按住 Shift 并释放以附加文件</span>
-        <span class="drop-hint-sub">从 VS Code 资源管理器拖入文件</span>
+        <span class="drop-hint-sub">也可在资源管理器中右键「添加到 Coding Maid」</span>
       </div>
     </div>
   {/if}

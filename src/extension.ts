@@ -27,7 +27,26 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.commands.executeCommand("workbench.view.extension.codingmaid");
       await vscode.commands.executeCommand("codingmaid.chatView.focus");
     }),
+    vscode.commands.registerCommand(
+      "codingmaid.attachFile",
+      async (uri?: vscode.Uri, selectedUris?: vscode.Uri[]) => {
+        await provider.attachFilesFromExplorer(collectAttachTargets(uri, selectedUris));
+      },
+    ),
   );
+}
+
+/**
+ * 收集「添加到 Coding Maid」的目标文件。
+ *
+ * 资源管理器右键（含多选）传入 (uri, selectedUris)；
+ * 从命令面板调用时没有参数，回退到当前编辑器文件。
+ */
+function collectAttachTargets(uri?: vscode.Uri, selectedUris?: vscode.Uri[]): vscode.Uri[] {
+  if (selectedUris && selectedUris.length > 0) return selectedUris;
+  if (uri) return [uri];
+  const activeFile = vscode.window.activeTextEditor?.document.uri;
+  return activeFile ? [activeFile] : [];
 }
 
 export function deactivate(): void {

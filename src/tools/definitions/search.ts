@@ -34,8 +34,8 @@ export const searchTool: ToolRegistration = {
       },
       isRegexp: {
         type: "boolean",
-        description: "For text mode only. When true, treat query as a regular expression. Default false.",
-        default: false,
+        description:
+          "Text mode only, and usually unnecessary. By default a query containing regex metacharacters (\\ . * + ? ( ) [ ] { } | ^ $) is treated as a regular expression, and a plain query is treated as literal text. Set true to force regex interpretation, or false to force a literal search (handy when the text itself contains characters like '.' or '(').",
       },
       maxResults: {
         type: "number",
@@ -66,14 +66,26 @@ Honors \`.gitignore\` and skips binary files automatically.
 Returns matching file paths.
 Honors \`.gitignore\` automatically.
 
+### How the query is interpreted (text mode)
+
+You normally don't need to think about it — a query that contains regex metacharacters is treated as a regex, a plain query as literal text. Matching is case-insensitive either way. Set \`isRegexp\` only when you want to pin the behavior.
+
+| query | interpreted as |
+| --- | --- |
+| \`handleBashTool\` | literal text |
+| \`handle.*Tool\\(\` | regex |
+| \`config.json\` | regex (\`.\` matches any character) |
+| \`config.json\` + \`isRegexp: false\` | literal text |
+
+If a query that looks like a regex fails to compile (e.g. \`foo(\`), the search falls back to a literal match instead of failing.
+
 ### Usage Tips
 
 - Use \`text\` mode to find where a function is defined, where a variable is used, or any code pattern.
 - Use \`file\` mode to discover files by name pattern (e.g., \`**/*.controller.ts\`).
 - Use \`includePattern\` to narrow the search scope (e.g., \`src/**\`) for faster results.
-- Set \`isRegexp: true\` in text mode for regex searches. The regex is case-insensitive.
 - Results are capped at \`maxResults\` (default 50, max 200) to keep output manageable.
 - Binary file extensions and \`.gitignore\`d paths are automatically excluded in both modes.
-- If searching the whole workspace is too slow, use \`includePattern\` to restrict the search area.
+- Searching walks the tree once and stops as soon as \`maxResults\` is reached, so a narrow \`includePattern\` is the cheapest way to speed up a wide query.
 `,
 };

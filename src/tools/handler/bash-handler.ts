@@ -15,6 +15,17 @@ const MIN_BASH_TIMEOUT_MS = 60 * 1000;
 const BASH_TIMEOUT_INCREMENT_MS = 5 * 60 * 1000;
 const BASH_TIMEOUT_DECREMENT_MS = 60 * 1000;
 
+/**
+ * shell 进程退出后，等待 stdout/stderr 管道排空的宽限时间。
+ *
+ * 命令留下的后代进程（helper / watcher / daemon 等）如果继承了输出管道，
+ * Node 的 `close` 事件就会一直等管道关闭而不触发，工具便表现为"卡住"。
+ * 此时以已捕获的输出收尾，保证调用方一定能拿到结果。
+ */
+const EXIT_DRAIN_GRACE_MS = 500;
+/** 超时 kill 之后管道仍未关闭时，最多再等这么久就强制收尾 */
+const KILL_SETTLE_GRACE_MS = 5000;
+
 function clampBashTimeoutMs(timeoutMs: number, minTimeoutMs: number = MIN_BASH_TIMEOUT_MS): number {
   if (!Number.isFinite(timeoutMs)) {
     return DEFAULT_BASH_TIMEOUT_MS;
@@ -39,6 +50,25 @@ type ToolCommandResult = {
   timedOut?: boolean;
   timeoutMs?: number;
   deadlineAt?: string;
+  pipesHeldOpen?: boolean;
+};
+
+/**
+ * 一次 shell 执行的原始结果。
+ *
+ * `pipesHeldOpen` 为 true 表示 shell 已退出，但有后代进程仍持有输出管道，
+ * 因此结果是靠宽限时间兜底收尾的（否则 `close` 可能永远不来）。
+ */
+type ShellExecution = {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  signal: string | null;
+  error?: string;
+  timedOut: boolean;
+  timeoutMs: number;
+  deadlineAtMs: number;
+  pipesHeldOpen: boolean;
 };
 
 export async function handleBashTool(
@@ -71,18 +101,7 @@ export async function handleBashTool(
   const { shellPath, shellArgs, marker } = shellCommand;
 
   const execution = await executeShellCommand(shellPath, shellArgs, startCwd, command, description, context);
-  const result = buildToolCommandResult(
-    execution.stdout,
-    execution.stderr,
-    marker,
-    execution.exitCode,
-    execution.signal,
-    shellPath,
-    startCwd,
-    execution.timedOut,
-    execution.timeoutMs,
-    execution.deadlineAtMs
-  );
+  const result = buildToolCommandResult(execution, marker, shellPath, startCwd);
   updateSessionCwd(context.sessionId, startCwd, result.cwd);
 
   if (execution.error || result.exitCode !== 0 || result.signal !== null) {
@@ -136,16 +155,7 @@ async function executeShellCommand(
   command: string,
   description: string,
   context: ToolExecutionContext
-): Promise<{
-  stdout: string;
-  stderr: string;
-  exitCode: number | null;
-  signal: string | null;
-  error?: string;
-  timedOut: boolean;
-  timeoutMs: number;
-  deadlineAtMs: number;
-}> {
+): Promise<ShellExecution> {
   return new Promise((resolve) => {
     const detached = process.platform !== "win32";
     const configuredEnv = context.createOpenAIClient?.().env ?? {};
@@ -157,6 +167,7 @@ async function executeShellCommand(
     let timedOut = false;
     let settled = false;
     let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+    let drainTimer: ReturnType<typeof setTimeout> | null = null;
     const child = spawn(shellPath, shellArgs, {
       cwd,
       env: buildShellEnv(shellPath, configuredEnv),
@@ -165,6 +176,14 @@ async function executeShellCommand(
       stdio: ["ignore", "pipe", "pipe"],
     });
     const pid = child.pid;
+
+    let stdout = "";
+    let stderr = "";
+    let error: string | undefined;
+    let exitCode: number | null = null;
+    let exitSignal: string | null = null;
+    /** shell 已退出但输出管道仍被后代进程占用 */
+    let pipesHeldOpen = false;
 
     const getTimeoutInfo = (): ProcessTimeoutInfo => ({
       timeoutMs,
@@ -178,6 +197,54 @@ async function executeShellCommand(
         timeoutTimer = null;
       }
     };
+    const stopDrainTimer = () => {
+      if (drainTimer) {
+        clearTimeout(drainTimer);
+        drainTimer = null;
+      }
+    };
+    /** 以当前已捕获的输出结束这次执行（幂等） */
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      stopTimeoutTimer();
+      stopDrainTimer();
+      if (typeof pid === "number") {
+        context.onProcessTimeoutControl?.(pid, null);
+        context.onProcessExit?.(pid);
+      }
+      resolve({
+        stdout,
+        stderr,
+        exitCode,
+        signal: exitSignal,
+        error,
+        timedOut,
+        timeoutMs,
+        deadlineAtMs,
+        pipesHeldOpen,
+      });
+    };
+    /**
+     * 进程退出后的兜底收尾：正常情况下此时 `close` 马上就会到（并取消这个定时器），
+     * 只有当输出管道被后代进程攥住、`close` 不来时才会真正生效。
+     */
+    const scheduleDrain = (delayMs: number) => {
+      if (settled || drainTimer) {
+        return;
+      }
+      drainTimer = setTimeout(() => {
+        drainTimer = null;
+        if (!isStdioClosed()) {
+          pipesHeldOpen = true;
+        }
+        finish();
+      }, delayMs);
+    };
+    const isStdioClosed = (): boolean =>
+      (child.stdout?.readableEnded ?? true) && (child.stderr?.readableEnded ?? true);
     const triggerTimeout = () => {
       if (settled || timedOut || typeof pid !== "number") {
         return;
@@ -185,6 +252,8 @@ async function executeShellCommand(
       timedOut = true;
       stopTimeoutTimer();
       killProcessTree(pid, "SIGKILL");
+      // kill 之后仍拿不到 close 时（例如 kill 未生效）也要收尾，避免永久挂起
+      scheduleDrain(KILL_SETTLE_GRACE_MS);
     };
     const scheduleTimeout = () => {
       stopTimeoutTimer();
@@ -214,10 +283,6 @@ async function executeShellCommand(
       scheduleTimeout();
     }
 
-    let stdout = "";
-    let stderr = "";
-    let error: string | undefined;
-
     child.stdout?.on("data", (chunk: string | Buffer) => {
       stdout = appendChunk(stdout, chunk);
       const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
@@ -231,25 +296,22 @@ async function executeShellCommand(
 
     child.on("error", (spawnError) => {
       error = spawnError.message;
+      // spawn/exec 失败时不会有正常输出，也不可能等到 close，直接以错误收尾
+      finish();
     });
 
-    child.on("close", (code, signal) => {
-      settled = true;
-      stopTimeoutTimer();
-      if (typeof pid === "number") {
-        context.onProcessTimeoutControl?.(pid, null);
-        context.onProcessExit?.(pid);
-      }
-      resolve({
-        stdout,
-        stderr,
-        exitCode: typeof code === "number" ? code : null,
-        signal: signal ?? null,
-        error,
-        timedOut,
-        timeoutMs,
-        deadlineAtMs,
-      });
+    child.on("exit", (code, handlerSignal) => {
+      exitCode = typeof code === "number" ? code : null;
+      exitSignal = handlerSignal ?? null;
+      // shell 已经退出，命令结果已经确定；给管道留一个短窗口排空剩余输出，
+      // 若后代进程仍攥着管道导致 close 不来，就靠这个定时器收尾。
+      scheduleDrain(EXIT_DRAIN_GRACE_MS);
+    });
+
+    child.on("close", (code, handlerSignal) => {
+      exitCode = typeof code === "number" ? code : null;
+      exitSignal = handlerSignal ?? null;
+      finish();
     });
   });
 }
@@ -269,32 +331,27 @@ function buildMarker(): string {
 }
 
 function buildToolCommandResult(
-  stdout: string,
-  stderr: string,
+  execution: ShellExecution,
   marker: string,
-  exitCode: number | null,
-  signal: string | null,
   shellPath: string,
-  startCwd: string,
-  timedOut: boolean = false,
-  timeoutMs?: number,
-  deadlineAtMs?: number
+  startCwd: string
 ): ToolCommandResult {
-  const { output: cleanedStdout, cwd } = stripMarker(stdout, marker);
-  const combined = joinOutput(cleanedStdout, stderr);
+  const { output: cleanedStdout, cwd } = stripMarker(execution.stdout, marker);
+  const combined = joinOutput(cleanedStdout, execution.stderr);
   const { text, truncated } = truncateOutput(combined);
   return {
-    ok: exitCode === 0 && signal === null,
+    ok: execution.exitCode === 0 && execution.signal === null,
     output: text,
     cwd,
-    exitCode,
-    signal,
+    exitCode: execution.exitCode,
+    signal: execution.signal,
     truncated,
     shellPath,
     startCwd,
-    timedOut,
-    timeoutMs,
-    deadlineAt: typeof deadlineAtMs === "number" ? new Date(deadlineAtMs).toISOString() : undefined,
+    timedOut: execution.timedOut,
+    timeoutMs: execution.timeoutMs,
+    deadlineAt: new Date(execution.deadlineAtMs).toISOString(),
+    pipesHeldOpen: execution.pipesHeldOpen,
   };
 }
 
@@ -372,6 +429,9 @@ function formatResult(result: ToolCommandResult, name: string, errorMessage?: st
   }
   if (result.deadlineAt) {
     metadata.deadlineAt = result.deadlineAt;
+  }
+  if (result.pipesHeldOpen) {
+    metadata.pipesHeldOpen = true;
   }
 
   const outputValue = result.output ? result.output : undefined;

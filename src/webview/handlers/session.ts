@@ -27,11 +27,13 @@ export function registerSessionHandlers(
         activePreset: settings.activePreset,
         activeProfile: settings.profileName,
       });
-      return;
+    } else {
+      // 显示最新的对话
+      loadSession(ctx, sessions[0].id);
     }
 
-    // 显示最新的对话
-    loadSession(ctx, sessions[0].id);
+    // 右键菜单等入口可能在 Webview 就绪前就写入了附加文件，这里补齐界面状态
+    syncAttachedFiles(ctx);
   });
 
   registerHandler("selectSession", async (message) => {
@@ -174,6 +176,16 @@ function loadSession(ctx: HandlerContext, sessionId: string): void {
 function showSessionsList(ctx: HandlerContext): void {
   const sessions = buildSessionsList(ctx);
   ctx.sendMessage({ type: "showSessionsList", sessions });
+}
+
+/** 把后端已有的附加文件同步到界面（前端按 filePath 去重合并） */
+function syncAttachedFiles(ctx: HandlerContext): void {
+  const files = ctx.sessionManager.getAttachedFiles();
+  if (files.length === 0) return;
+  ctx.sendMessage({
+    type: "attachedFilesAdded",
+    files: files.map((filePath) => ({ filePath, fileName: path.basename(filePath) })),
+  });
 }
 
 function buildSessionsList(ctx: HandlerContext) {

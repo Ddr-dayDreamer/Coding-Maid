@@ -8494,7 +8494,7 @@ ${component_stack}
   var root_113 = from_html(`<button class="action-btn clear svelte-1j8bp8d" title="\u6E05\u7A7A\u5168\u90E8">\u6E05\u7A7A</button>`);
   var root_210 = from_html(`<span class="chip svelte-1j8bp8d"><span class="chip-icon svelte-1j8bp8d"> </span> <span class="chip-name svelte-1j8bp8d"> </span> <button class="chip-remove svelte-1j8bp8d" title="\u79FB\u9664">\u2715</button></span>`);
   var root_310 = from_html(`<div class="attached-chips svelte-1j8bp8d"></div>`);
-  var root_49 = from_html(`<div class="attached-bar svelte-1j8bp8d"><div class="attached-header svelte-1j8bp8d"><span class="attached-label svelte-1j8bp8d">\u9644\u52A0\u6587\u4EF6-Shift\u62D6\u5165\u6587\u4EF6 <!></span> <div class="attached-actions svelte-1j8bp8d"><button class="action-btn svelte-1j8bp8d" title="\u5C06\u7F16\u8F91\u5668\u4E2D\u9009\u4E2D\u7684\u4EE3\u7801\u9644\u52A0\u4E3A\u4EE3\u7801\u6BB5"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M4.5 2C3.12 2 2 3.12 2 4.5v7C2 12.88 3.12 14 4.5 14h7c1.38 0 2.5-1.12 2.5-2.5v-7C14 3.12 12.88 2 11.5 2h-7zM4 4.5C4 3.67 4.67 3 5.5 3h5c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5h-5A1.5 1.5 0 014 9.5v-5zm2 .5v5h1V5H6zm3 0v5h1V5H9z"></path></svg> \u9644\u52A0\u9009\u4E2D\u4EE3\u7801</button> <!></div></div> <!></div>`);
+  var root_49 = from_html(`<div class="attached-bar svelte-1j8bp8d"><div class="attached-header svelte-1j8bp8d"><span class="attached-label svelte-1j8bp8d">\u9644\u52A0\u6587\u4EF6\uFF08\u53F3\u952E\u83DC\u5355\u6216Shift\u62D6\u5165\uFF09 <!></span> <div class="attached-actions svelte-1j8bp8d"><button class="action-btn svelte-1j8bp8d" title="\u5C06\u7F16\u8F91\u5668\u4E2D\u9009\u4E2D\u7684\u4EE3\u7801\u9644\u52A0\u4E3A\u4EE3\u7801\u6BB5"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M4.5 2C3.12 2 2 3.12 2 4.5v7C2 12.88 3.12 14 4.5 14h7c1.38 0 2.5-1.12 2.5-2.5v-7C14 3.12 12.88 2 11.5 2h-7zM4 4.5C4 3.67 4.67 3 5.5 3h5c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5h-5A1.5 1.5 0 014 9.5v-5zm2 .5v5h1V5H6zm3 0v5h1V5H9z"></path></svg> \u9644\u52A0\u9009\u4E2D\u4EE3\u7801</button> <!></div></div> <!></div>`);
   function AttachedFilesBar($$anchor, $$props) {
     push($$props, true);
     let attaching = state(false);
@@ -10170,7 +10170,7 @@ ${component_stack}
   delegate(["click"]);
 
   // resources/webview/App.svelte
-  var root23 = from_html(`<div class="drop-overlay svelte-w8ccf7"><div class="drop-hint svelte-w8ccf7"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" class="svelte-w8ccf7"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline points="17,8 12,3 7,8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> <span class="drop-hint-text svelte-w8ccf7">\u6309\u4F4F Shift \u5E76\u91CA\u653E\u4EE5\u9644\u52A0\u6587\u4EF6</span> <span class="drop-hint-sub svelte-w8ccf7">\u4ECE VS Code \u8D44\u6E90\u7BA1\u7406\u5668\u62D6\u5165\u6587\u4EF6</span></div></div>`);
+  var root23 = from_html(`<div class="drop-overlay svelte-w8ccf7"><div class="drop-hint svelte-w8ccf7"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" class="svelte-w8ccf7"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline points="17,8 12,3 7,8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> <span class="drop-hint-text svelte-w8ccf7">\u6309\u4F4F Shift \u5E76\u91CA\u653E\u4EE5\u9644\u52A0\u6587\u4EF6</span> <span class="drop-hint-sub svelte-w8ccf7">\u4E5F\u53EF\u5728\u8D44\u6E90\u7BA1\u7406\u5668\u4E2D\u53F3\u952E\u300C\u6DFB\u52A0\u5230 Coding Maid\u300D</span></div></div>`);
   var root_124 = from_html(`<div class="app svelte-w8ccf7"><!> <!> <!> <!></div>`);
   function App($$anchor, $$props) {
     push($$props, true);
@@ -10402,6 +10402,17 @@ ${component_stack}
       case "showSessionsList":
         appState.sessions = msg.sessions;
         break;
+      case "attachedFilesAdded": {
+        const existing = new Set(appState.attachedFiles.map((f) => f.filePath));
+        const merged = [...appState.attachedFiles];
+        for (const file of msg.files) {
+          if (!file.filePath || existing.has(file.filePath)) continue;
+          existing.add(file.filePath);
+          merged.push({ filePath: file.filePath, fileName: file.fileName || file.filePath });
+        }
+        appState.attachedFiles = merged;
+        break;
+      }
       case "attachedFilesCleared":
         appState.attachedFiles = [];
         break;

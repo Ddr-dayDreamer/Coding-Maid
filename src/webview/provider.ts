@@ -173,6 +173,68 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
   }
 
   // ═══════════════════════════════════════════════════════
+  //  资源管理器附加文件
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * 从资源管理器右键菜单附加文件。
+   *
+   * Webview 内的 HTML5 拖放依赖宿主「按住 Shift 才放开 Webview」的内部实现，
+   * VS Code 在内部拖拽期间会把 Webview 设为 pointer-events: none（见
+   * webviewWindowDragMonitor.ts），事件根本进不来，因此提供这条稳定入口。
+   */
+  public async attachFilesFromExplorer(uris: vscode.Uri[]): Promise<void> {
+    const { files, skippedFolders } = this.filterAttachableFiles(uris);
+    if (files.length === 0) {
+      void vscode.window.showWarningMessage(
+        skippedFolders > 0 ? "Coding Maid 暂不支持附加文件夹" : "没有可附加的文件",
+      );
+      return;
+    }
+
+    const current = this.sessionManager.getAttachedFiles();
+    const added = files.filter((filePath) => !current.includes(filePath));
+
+    await this.revealView();
+
+    if (added.length === 0) {
+      void vscode.window.showInformationMessage("该文件已在附加列表中");
+      return;
+    }
+
+    this.sessionManager.setAttachedFiles([...current, ...added]);
+    this.sendMessage({
+      type: "attachedFilesAdded",
+      files: added.map((filePath) => ({ filePath, fileName: path.basename(filePath) })),
+    });
+  }
+
+  /** 过滤出可附加的实体文件（目录不支持整目录附加） */
+  private filterAttachableFiles(uris: vscode.Uri[]): { files: string[]; skippedFolders: number } {
+    const files: string[] = [];
+    let skippedFolders = 0;
+    for (const uri of uris) {
+      if (uri.scheme !== "file") continue;
+      try {
+        if (fs.statSync(uri.fsPath).isDirectory()) {
+          skippedFolders += 1;
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      files.push(uri.fsPath);
+    }
+    return { files, skippedFolders };
+  }
+
+  /** 展开并聚焦聊天视图（Webview 未创建时会触发创建） */
+  private async revealView(): Promise<void> {
+    await vscode.commands.executeCommand("workbench.view.extension.codingmaid");
+    await vscode.commands.executeCommand("codingmaid.chatView.focus");
+  }
+
+  // ═══════════════════════════════════════════════════════
   //  OpenAI 工厂 & 遥测
   // ═══════════════════════════════════════════════════════
 

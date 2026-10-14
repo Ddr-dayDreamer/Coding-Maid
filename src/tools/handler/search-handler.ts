@@ -7,6 +7,9 @@
  *
  * 使用 Node.js 原生 fs，无需外部依赖。
  * 自动过滤 .gitignore 和二进制文件。
+ *
+ * 全程异步 I/O：目录顺序递归、文件按批并发读取，
+ * 既不会阻塞扩展宿主，也能让大量小文件的读取重叠起来。
  */
 
 import * as fs from "fs";
@@ -20,6 +23,10 @@ import { posixPathToWindowsPath } from "../../utils/shell-utils";
 const DEFAULT_MAX_RESULTS = 50;
 const HARD_MAX_RESULTS = 200;
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 跳过 >1MB 的文件
+/** 单批并发读取的文件数：够快，又不会在超大目录里一次性打开上千个句柄 */
+const FILE_READ_CONCURRENCY = 16;
+/** 单行结果截断长度 */
+const MAX_LINE_CHARS = 200;
 
 const DEFAULT_GITIGNORE_PATTERNS = [
   "node_modules/",
@@ -190,6 +197,21 @@ function globToRegexPart(s: string): string {
   return out;
 }
 
+/** 已编译的 glob 正则缓存（同一个 pattern 会对每个文件都用到） */
+const globRegexCache = new Map<string, RegExp>();
+
+function globToRegexCached(pattern: string): RegExp {
+  const cached = globRegexCache.get(pattern);
+  if (cached) {
+    return cached;
+  }
+  const compiled = globToRegex(pattern);
+  if (globRegexCache.size < 200) {
+    globRegexCache.set(pattern, compiled);
+  }
+  return compiled;
+}
+
 /** 检查路径是否匹配 glob 模式 */
 function matchGlob(filePath: string, pattern: string): boolean {
   // 纯字符串包含查询
@@ -197,14 +219,86 @@ function matchGlob(filePath: string, pattern: string): boolean {
     return filePath.toLowerCase().includes(pattern.toLowerCase());
   }
 
-  const re = globToRegex(pattern);
-  return re.test(filePath);
+  return globToRegexCached(pattern).test(filePath);
 }
 
 // ─── 二进制文件检测 ─────────────────────────────────────
 
 function isBinaryExt(filePath: string): boolean {
   return BINARY_EXTS.has(path.extname(filePath).toLowerCase());
+}
+
+// ─── 异步遍历 ───────────────────────────────────────────
+
+type DirFile = { fullPath: string; relPath: string };
+
+/**
+ * 按目录递归遍历，把每个目录下的文件交给 handleDirFiles 处理。
+ *
+ * 目录顺序递归、文件按批并发读取，所以结果顺序稳定；
+ * 全程异步 I/O，不会阻塞扩展宿主。
+ */
+async function walkTree(
+  rootPath: string,
+  isIgnored: (relPath: string, isDir: boolean) => boolean,
+  includePattern: string | undefined,
+  handleDirFiles: (files: DirFile[]) => Promise<void>,
+  shouldStop: () => boolean,
+): Promise<void> {
+  async function walk(dir: string, relPath: string): Promise<void> {
+    if (shouldStop()) return;
+
+    let entries: fs.Dirent[];
+    try {
+      entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const files: DirFile[] = [];
+    const subdirs: { dir: string; relPath: string }[] = [];
+
+    for (const entry of entries) {
+      const relEntry = relPath ? `${relPath}/${entry.name}` : entry.name;
+      const fullPath = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        if (!isIgnored(relEntry, true)) {
+          subdirs.push({ dir: fullPath, relPath: relEntry });
+        }
+      } else if (entry.isFile()) {
+        if (isIgnored(relEntry, false)) continue;
+        if (includePattern && !matchGlob(relEntry, includePattern)) continue;
+        files.push({ fullPath, relPath: relEntry });
+      }
+    }
+
+    if (files.length > 0) {
+      await handleDirFiles(files);
+    }
+
+    for (const sub of subdirs) {
+      if (shouldStop()) return;
+      await walk(sub.dir, sub.relPath);
+    }
+  }
+
+  await walk(rootPath, "");
+}
+
+/** 读取文本文件内容；超出大小上限或读取失败时返回 null */
+async function readTextFile(fullPath: string): Promise<string | null> {
+  try {
+    const stat = await fs.promises.stat(fullPath);
+    if (stat.size > MAX_FILE_SIZE_BYTES) return null;
+  } catch {
+    return null;
+  }
+  try {
+    return await fs.promises.readFile(fullPath, "utf8");
+  } catch {
+    return null;
+  }
 }
 
 // ─── Text 模式 ──────────────────────────────────────────
@@ -215,126 +309,188 @@ interface TextMatch {
   content: string;
 }
 
-function searchText(
+/** 内容匹配器：把文件内容里的命中追加到 out，最多 limit 条 */
+type ContentMatcher = (content: string, file: string, limit: number, out: TextMatch[]) => void;
+
+function formatMatchedLine(rawLine: string): string {
+  return rawLine.replace(/\t/g, " ").substring(0, MAX_LINE_CHARS).trimEnd();
+}
+
+/**
+ * 字面量搜索（大小写不敏感）。
+ *
+ * 优先整文件小写化 + 原生 indexOf 定位命中的行，再回溯换行数算行号：
+ * 每个文件只走一遍内容，未命中的文件一次 indexOf 就能整体排除，
+ * 比"逐行 slice + toLowerCase + includes"省掉大量分配和 JS 循环。
+ */
+function collectLiteralMatches(
+  content: string,
+  needleLower: string,
+  file: string,
+  limit: number,
+  out: TextMatch[],
+): void {
+  if (limit <= 0) return;
+
+  const lower = content.toLowerCase();
+  if (lower.length !== content.length) {
+    // 极少数 Unicode 字符（如 İ）小写化后长度会变，此时退回逐行比较
+    collectLiteralMatchesByLine(content, needleLower, file, limit, out);
+    return;
+  }
+
+  let searchFrom = 0;
+  let lineStart = 0;
+  let lineNo = 1;
+
+  for (; ;) {
+    const hit = lower.indexOf(needleLower, searchFrom);
+    if (hit === -1) return;
+
+    // 从上一行行首走到命中所在行，累计行号（整次搜索摊下来是 O(n)）
+    for (; ;) {
+      const newline = content.indexOf("\n", lineStart);
+      if (newline === -1 || newline >= hit) break;
+      lineStart = newline + 1;
+      lineNo += 1;
+    }
+
+    const hitNewline = content.indexOf("\n", hit);
+    const lineEnd = hitNewline === -1 ? content.length : hitNewline;
+    out.push({ file, line: lineNo, content: formatMatchedLine(content.slice(lineStart, lineEnd)) });
+    if (out.length >= limit) return;
+
+    lineStart = lineEnd + 1;
+    lineNo += 1;
+    searchFrom = lineStart;
+  }
+}
+
+/** 退路：逐行比较（语义与整文件搜索一致，每行最多记一条） */
+function collectLiteralMatchesByLine(
+  content: string,
+  needleLower: string,
+  file: string,
+  limit: number,
+  out: TextMatch[],
+): void {
+  const lines = content.split("\n");
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (line.toLowerCase().includes(needleLower)) {
+      out.push({ file, line: i + 1, content: formatMatchedLine(line) });
+      if (out.length >= limit) return;
+    }
+  }
+}
+
+/**
+ * 正则搜索（大小写不敏感），按行匹配。
+ *
+ * 匹配前先用一次整文件 test 快速排除完全不含匹配的文件，多数"扫一遍没结果"的
+ * 文件就只花这一次原生扫描。外层用带 `m` 的同一份正则，`^` / `$` 才算在行边界上，
+ * 整文件 test 就是逐行匹配的超集，不会漏掉结果。
+ */
+function collectRegexMatches(
+  content: string,
+  regexp: RegExp,
+  file: string,
+  limit: number,
+  out: TextMatch[],
+): void {
+  if (limit <= 0) return;
+  if (!regexp.test(content)) return;
+
+  const lines = content.split("\n");
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (regexp.test(line)) {
+      out.push({ file, line: i + 1, content: formatMatchedLine(line) });
+      if (out.length >= limit) return;
+    }
+  }
+}
+
+function buildContentMatcher(regexp: RegExp | null, needleLower: string): ContentMatcher {
+  if (regexp) {
+    return (content, file, limit, out) => collectRegexMatches(content, regexp, file, limit, out);
+  }
+  return (content, file, limit, out) => collectLiteralMatches(content, needleLower, file, limit, out);
+}
+
+async function searchText(
   rootPath: string,
-  query: string,
-  isRegexp: boolean,
+  matcher: ContentMatcher,
   includePattern: string | undefined,
   maxResults: number,
   isIgnored: (relPath: string, isDir: boolean) => boolean,
-): TextMatch[] {
+): Promise<TextMatch[]> {
   const results: TextMatch[] = [];
-  const regex = isRegexp ? new RegExp(query, "i") : null;
-  const searchStr = isRegexp ? null : query.toLowerCase();
+  const shouldStop = () => results.length >= maxResults;
 
-  function walk(dir: string, relPath: string): void {
-    if (results.length >= maxResults) return;
+  await walkTree(
+    rootPath,
+    isIgnored,
+    includePattern,
+    async (files) => {
+      for (let i = 0; i < files.length; i += FILE_READ_CONCURRENCY) {
+        if (shouldStop()) return;
 
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
+        const chunk = files.slice(i, i + FILE_READ_CONCURRENCY);
+        const chunkMatches = await Promise.all(
+          chunk.map(async (file) => {
+            if (isBinaryExt(file.fullPath)) return null;
+            const content = await readTextFile(file.fullPath);
+            if (content === null) return null;
+            const found: TextMatch[] = [];
+            matcher(content, file.relPath, maxResults - results.length, found);
+            return found;
+          }),
+        );
 
-    for (const entry of entries) {
-      if (results.length >= maxResults) break;
-
-      const relEntry = relPath ? `${relPath}/${entry.name}` : entry.name;
-      const fullPath = path.join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        if (!isIgnored(relEntry, true)) {
-          walk(fullPath, relEntry);
-        }
-      } else if (entry.isFile()) {
-        if (isIgnored(relEntry, false)) continue;
-        if (isBinaryExt(fullPath)) continue;
-        if (includePattern && !matchGlob(relEntry, includePattern)) continue;
-
-        // 跳过过大文件
-        let stat: fs.Stats;
-        try {
-          stat = fs.statSync(fullPath);
-        } catch {
-          continue;
-        }
-        if (stat.size > MAX_FILE_SIZE_BYTES) continue;
-
-        // 读取文件并搜索
-        let content: string;
-        try {
-          content = fs.readFileSync(fullPath, "utf8");
-        } catch {
-          continue; // 二进制或无法读取
-        }
-
-        const lines = content.split("\n");
-        for (let i = 0; i < lines.length; i++) {
-          if (results.length >= maxResults) break;
-
-          const line = lines[i];
-          const matched = isRegexp ? regex!.test(line) : line.toLowerCase().includes(searchStr!);
-
-          if (matched) {
-            results.push({
-              file: relEntry,
-              line: i + 1,
-              content: line.replace(/\t/g, " ").substring(0, 200).trimEnd(),
-            });
+        // 按遍历顺序合并，保证输出稳定
+        for (const found of chunkMatches) {
+          if (!found) continue;
+          for (const match of found) {
+            results.push(match);
+            if (results.length >= maxResults) return;
           }
         }
       }
-    }
-  }
+    },
+    shouldStop,
+  );
 
-  walk(rootPath, "");
   return results;
 }
 
 // ─── File 模式 ──────────────────────────────────────────
 
-function searchFiles(
+async function searchFiles(
   rootPath: string,
   query: string,
   includePattern: string | undefined,
   maxResults: number,
   isIgnored: (relPath: string, isDir: boolean) => boolean,
-): string[] {
+): Promise<string[]> {
   const results: string[] = [];
+  const shouldStop = () => results.length >= maxResults;
 
-  function walk(dir: string, relPath: string): void {
-    if (results.length >= maxResults) return;
-
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-
-    for (const entry of entries) {
-      if (results.length >= maxResults) break;
-
-      const relEntry = relPath ? `${relPath}/${entry.name}` : entry.name;
-      const fullPath = path.join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        if (!isIgnored(relEntry, true)) {
-          walk(fullPath, relEntry);
-        }
-      } else if (entry.isFile()) {
-        if (isIgnored(relEntry, false)) continue;
-        if (includePattern && !matchGlob(relEntry, includePattern)) continue;
-
-        if (matchGlob(relEntry, query)) {
-          results.push(relEntry);
+  await walkTree(
+    rootPath,
+    isIgnored,
+    includePattern,
+    async (files) => {
+      for (const file of files) {
+        if (results.length >= maxResults) return;
+        if (matchGlob(file.relPath, query)) {
+          results.push(file.relPath);
         }
       }
-    }
-  }
+    },
+    shouldStop,
+  );
 
-  walk(rootPath, "");
   return results;
 }
 
@@ -388,6 +544,37 @@ function formatFileResults(
   return results.join("\n") + `\n\n(${results.length} file${results.length > 1 ? "s" : ""})`;
 }
 
+// ─── 查询解析 ───────────────────────────────────────────
+
+/** 命中任一字符时认为这条查询"看起来是正则" */
+const REGEX_META_CHARS = /[\\^$.*+?()[\]{}|]/;
+
+/**
+ * 决定把查询当成正则还是字面量。
+ *
+ * 显式传 `isRegexp` 时以传入值为准；没传时自动判断——
+ * 含正则元字符的查询按正则处理，这样模型忘记填 `isRegexp`
+ * 也能直接命中 `handle.*Tool\(` 这类写法。
+ */
+function resolveQueryMatcher(
+  query: string,
+  explicitRegexp: boolean | undefined,
+): { regexp: RegExp | null; needleLower: string; isRegexp: boolean } | { error: string } {
+  if (explicitRegexp === true || (explicitRegexp === undefined && REGEX_META_CHARS.test(query))) {
+    try {
+      // `m` 让 `^` / `$` 在整文件预筛时也按行边界工作，与逐行匹配保持一致
+      return { regexp: new RegExp(query, "im"), needleLower: "", isRegexp: true };
+    } catch (error) {
+      if (explicitRegexp === true) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { error: `Invalid regular expression: ${message}` };
+      }
+      // 自动判定出的"伪正则"编译失败（如 `foo(`），退回字面量搜索更实用
+    }
+  }
+  return { regexp: null, needleLower: query.toLowerCase(), isRegexp: false };
+}
+
 // ─── 入口 ───────────────────────────────────────────────
 
 export async function handleSearchTool(
@@ -416,7 +603,7 @@ export async function handleSearchTool(
   const maxResults = Math.max(1, Math.min(rawMax, HARD_MAX_RESULTS));
 
   const includePattern = typeof args.includePattern === "string" ? args.includePattern.trim() : undefined;
-  const isRegexp = args.isRegexp === true;
+  const explicitRegexp = typeof args.isRegexp === "boolean" ? args.isRegexp : undefined;
 
   // 确定搜索根目录
   let rootPath: string;
@@ -438,17 +625,32 @@ export async function handleSearchTool(
 
   const isIgnored = loadGitignoreMatcher(rootPath) ?? (() => false);
 
+  const matcher = resolveQueryMatcher(query, explicitRegexp);
+  if ("error" in matcher) {
+    return {
+      ok: false,
+      name: "search",
+      error: matcher.error,
+    };
+  }
+
   try {
     if (mode === "text") {
-      const results = searchText(rootPath, query, isRegexp, includePattern, maxResults, isIgnored);
+      const results = await searchText(
+        rootPath,
+        buildContentMatcher(matcher.regexp, matcher.needleLower),
+        includePattern,
+        maxResults,
+        isIgnored,
+      );
       return {
         ok: true,
         name: "search",
-        output: formatTextResults(results, query, rootPath, isRegexp, includePattern),
-        metadata: { mode: "text", total: results.length },
+        output: formatTextResults(results, query, rootPath, matcher.isRegexp, includePattern),
+        metadata: { mode: "text", total: results.length, regexp: matcher.isRegexp },
       };
     } else {
-      const results = searchFiles(rootPath, query, includePattern, maxResults, isIgnored);
+      const results = await searchFiles(rootPath, query, includePattern, maxResults, isIgnored);
       return {
         ok: true,
         name: "search",

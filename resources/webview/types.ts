@@ -38,6 +38,7 @@ export type BackendMessage =
   | { type: "llmStreamProgress"; progress: LlmStreamProgressData }
   | { type: "streamChunk"; sessionId?: string; content?: string; reasoningContent?: string }
   | { type: "notify"; level: "success" | "error" | "warning" | "info"; text: string; duration?: number }
+  | { type: "attachedFilesAdded"; files: { filePath: string; fileName: string }[] }
   // 审批消息
   | { type: "approvalConfig"; config: Record<string, string> };
 

@@ -2,7 +2,7 @@
   "name": "codingmaid",
   "displayName": "Coding Maid",
   "description": "你专属的编程女仆，提供**完全提示词控制**的agent工具",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/Ddr-dayDreamer/Coding-Maid.git"
@@ -32,6 +32,10 @@
           "light": "resources/coding_maid_icon.png",
           "dark": "resources/coding_maid_icon.png"
         }
+      },
+      {
+        "command": "codingmaid.attachFile",
+        "title": "添加到 Coding Maid"
       }
     ],
     "viewsContainers": {
@@ -59,6 +63,13 @@
           "command": "codingmaid.openView",
           "group": "navigation@100"
         }
+      ],
+      "explorer/context": [
+        {
+          "command": "codingmaid.attachFile",
+          "group": "codingmaid@1",
+          "when": "resourceScheme == file"
+        }
       ]
     }
   },
@@ -81,7 +92,7 @@
     "@types/markdown-it": "^14.1.1",
     "@types/node": "^20.12.7",
     "@types/vscode": "^1.85.0",
-    "@vscode/vsce": "^3.9.1",
+    "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.25.12",
     "esbuild-svelte": "^0.9.5",
     "ignore": "^5.3.2",

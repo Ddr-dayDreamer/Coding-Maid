@@ -78,6 +78,18 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.sessions = msg.sessions;
       break;
 
+    case "attachedFilesAdded": {
+      const existing = new Set(appState.attachedFiles.map((f) => f.filePath));
+      const merged = [...appState.attachedFiles];
+      for (const file of msg.files) {
+        if (!file.filePath || existing.has(file.filePath)) continue;
+        existing.add(file.filePath);
+        merged.push({ filePath: file.filePath, fileName: file.fileName || file.filePath });
+      }
+      appState.attachedFiles = merged;
+      break;
+    }
+
     case "attachedFilesCleared":
       appState.attachedFiles = [];
       break;

@@ -55,7 +55,7 @@
 <div class="attached-bar">
   <div class="attached-header">
     <span class="attached-label">
-      附加文件-Shift拖入文件
+      附加文件（右键菜单或Shift拖入）
       {#if appState.attachedFiles.length > 0}
         <span class="attached-count">({appState.attachedFiles.length})</span>
       {/if}
