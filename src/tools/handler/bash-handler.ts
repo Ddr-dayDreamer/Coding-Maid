@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import * as fs from "fs";
 import { killProcessTree } from "../../utils/process-tree";
 import type { ProcessTimeoutControl, ProcessTimeoutInfo, ToolExecutionContext, ToolExecutionResult } from "../types";
 import {
@@ -102,7 +103,15 @@ export async function handleBashTool(
 
   const execution = await executeShellCommand(shellPath, shellArgs, startCwd, command, description, context);
   const result = buildToolCommandResult(execution, marker, shellPath, startCwd);
-  updateSessionCwd(context.sessionId, startCwd, result.cwd);
+  const sessionCwd = updateSessionCwd(context.sessionId, startCwd, result.cwd);
+  if (result.cwd !== null && result.cwd !== sessionCwd) {
+    // 解析出的目录不可用（例如 MSYS 内部路径），报告实际沿用的目录，避免调用方使用无效路径
+    result.cwd = sessionCwd;
+  }
+  if (execution.error) {
+    // shell 进程都没起来（起始目录被删除等），清掉缓存，让下次调用从项目根目录重新开始
+    sessionWorkingDirs.delete(context.sessionId);
+  }
 
   if (execution.error || result.exitCode !== 0 || result.signal !== null) {
     const errorMessage = buildErrorMessage(result.exitCode, result.signal, execution.error, execution.timedOut);
@@ -112,13 +121,45 @@ export async function handleBashTool(
   return formatResult(result, "bash");
 }
 
+/**
+ * 选出这一次调用真正可用的起始目录。
+ *
+ * spawn 的 `cwd` 指向不存在的目录时，Node 会直接以 ENOENT 失败（并且报的是
+ * shell 可执行文件的 ENOENT），命令根本不会执行；这种情况下调用方连 `cd` 回去
+ * 的机会都没有，会话就永久卡死。因此缓存的目录、项目根目录都必须先确认存在，
+ * 逐级回退到最后一个兜底目录（进程工作目录）。
+ */
 function getSessionCwd(sessionId: string, fallback: string): string {
-  return sessionWorkingDirs.get(sessionId) ?? fallback;
+  for (const candidate of [sessionWorkingDirs.get(sessionId), fallback, process.cwd()]) {
+    if (isUsableDirectory(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
 }
 
-function updateSessionCwd(sessionId: string, fallback: string, cwd: string | null): void {
-  const nextCwd = cwd ?? fallback;
+/** 记录命令结束时的 cwd 供下次调用使用，并返回真正生效的目录（无效则沿用 fallback） */
+function updateSessionCwd(sessionId: string, fallback: string, cwd: string | null): string {
+  const nextCwd = isUsableDirectory(cwd) ? cwd : fallback;
   sessionWorkingDirs.set(sessionId, nextCwd);
+  return nextCwd;
+}
+
+/**
+ * 目录必须真实存在，否则不能作为 spawn 的 `cwd`。
+ *
+ * shell 里的 `PWD` 未必是 Windows 可用的路径：Git Bash 的 `cd /tmp` 其实是 MSYS
+ * 挂载点，转成 `\tmp` 这种路径在 Windows 上并不存在。
+ */
+function isUsableDirectory(candidate: string | null | undefined): candidate is string {
+  if (!candidate) {
+    return false;
+  }
+  try {
+    return fs.statSync(candidate).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 function buildShellCommand(command: string): {
@@ -141,7 +182,9 @@ function buildShellCommand(command: string): {
   wrappedParts.push(
     normalizedCommand,
     "__CODINGMAID_STATUS__=$?",
-    `printf '%s%s\\n' "${marker}" "$PWD"`,
+    // `pwd -W`（Git Bash/MSYS）输出 Windows 原生路径，避免 `/tmp` 这类 MSYS 路径被
+    // 当成相对路径记录；不支持 `-W` 的 shell（zsh/sh 等）回退到 `pwd`。
+    `printf '%s%s\\n' "${marker}" "$(pwd -W 2>/dev/null || pwd)"`,
     "exit $__CODINGMAID_STATUS__"
   );
   const wrappedCommand = `{ ${wrappedParts.join("; ")}; } < /dev/null`;
