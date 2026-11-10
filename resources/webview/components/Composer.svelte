@@ -60,7 +60,10 @@
 
     promptText = "";
     api.send("userPrompt", { prompt: text });
-    appState.currentSessionStatus = "pending"; // 立即切换为停止按钮，不等后端响应
+    // /compact 是控制指令，不进入 pending 状态（压缩进度由 compaction 事件驱动）
+    if (!/^\/compact(\s|$)/.test(text)) {
+      appState.currentSessionStatus = "pending"; // 立即切换为停止按钮，不等后端响应
+    }
 
     // 重置 textarea 高度
     if (textareaEl) {
@@ -105,6 +108,14 @@
     quickReplyOpen = !quickReplyOpen;
   }
 
+  // ─── 压缩上下文 ───────────────────────────────────
+
+  function compactContext() {
+    if (appState.isProcessing || appState.isCompacting) return;
+    if (!appState.currentSessionId) return;
+    api.send("compactContext", { sessionId: appState.currentSessionId });
+  }
+
   /** 选中快速回复：填入输入框（可再编辑），聚焦以便发送 */
   function applyQuickReply(reply: QuickReply) {
     promptText = reply.content;
@@ -130,6 +141,20 @@
     <div class="composer-footer">
       <div class="footer-left">
         <ContextMeter />
+        <button
+          class="compact-btn"
+          onclick={compactContext}
+          disabled={appState.isProcessing || appState.isCompacting || !appState.currentSessionId}
+          title={appState.isCompacting ? "正在压缩上下文…" : "压缩上下文（生成摘要以释放上下文窗口）"}
+        >
+          {#if appState.isCompacting}
+            <span class="compact-spinner"></span>
+          {:else}
+            <svg viewBox="0 0 16 16" width="13" height="13">
+              <path d="M2 3h12v1.5H2zm2 4h8v1.5H4zm2 4h4v1.5H6z" fill="currentColor" />
+            </svg>
+          {/if}
+        </button>
         <PresetQuickSelector />
         <ProfileQuickSelector />
       </div>
@@ -227,6 +252,42 @@
     display: flex;
     gap: 6px;
     align-items: center;
+  }
+
+  .compact-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    color: var(--vscode-descriptionForeground);
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .compact-btn:hover:not(:disabled) {
+    background: var(--vscode-toolbar-hoverBackground);
+    color: var(--vscode-foreground);
+  }
+
+  .compact-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .compact-spinner {
+    width: 11px;
+    height: 11px;
+    border: 1.5px solid var(--vscode-descriptionForeground);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: compact-spin 0.8s linear infinite;
+  }
+
+  @keyframes compact-spin {
+    to { transform: rotate(360deg); }
   }
 
   .footer-right {

@@ -20,6 +20,7 @@ export type BackendMessage =
     tokenTelemetry?: TokenTelemetry;
     processes?: ProcessInfo[];
     modifiedFiles?: ModifiedFileEntry[];
+    compaction?: CompactionInfo | null;
     activePreset?: string;
     activeProfile?: string;
   }
@@ -31,6 +32,7 @@ export type BackendMessage =
     lastError?: SessionErrorInfo | null;
     processes?: ProcessInfo[];
     modifiedFiles?: ModifiedFileEntry[];
+    compaction?: CompactionInfo | null;
     tokenTelemetry?: TokenTelemetry;
   }
   | { type: "userMessage"; content: string }
@@ -41,6 +43,16 @@ export type BackendMessage =
   | { type: "streamChunk"; sessionId?: string; content?: string; reasoningContent?: string }
   | { type: "notify"; level: "success" | "error" | "warning" | "info"; text: string; duration?: number }
   | { type: "attachedFilesAdded"; files: { filePath: string; fileName: string }[] }
+  | {
+    type: "compaction";
+    sessionId: string;
+    phase: "start" | "done" | "error";
+    tokensBefore?: number;
+    tokensAfter?: number;
+    messagesBefore?: number;
+    error?: string;
+  }
+  | { type: "compactionUndone"; sessionId: string }
   // 审批消息
   | { type: "approvalConfig"; config: Record<string, string> };
 
@@ -50,6 +62,8 @@ export type FrontendMessage =
   | { type: "userPrompt"; prompt: string }
   | { type: "interrupt" }
   | { type: "continueSession"; sessionId: string }
+  | { type: "compactContext"; sessionId?: string; instructions?: string }
+  | { type: "undoCompaction"; sessionId: string }
   | { type: "createNewSession" }
   | { type: "selectSession"; sessionId: string }
   | { type: "backToList" }
@@ -105,7 +119,24 @@ export interface SessionMessageData {
     resultMd?: string;
     isPreset?: boolean;
     isSummary?: boolean;
+    compaction?: {
+      tokensBefore: number;
+      tokensAfter: number;
+      messagesBefore: number;
+    };
   };
+}
+
+/** 当前生效的上下文压缩记录 */
+export interface CompactionInfo {
+  upToMessageId: string;
+  summaryMessageId: string;
+  summary: string;
+  createdAt: string;
+  messagesBefore: number;
+  tokensBefore: number;
+  tokensAfter: number;
+  model: string;
 }
 
 /** 快速回复条目（来自预设目录下的可选 quickReply.json） */

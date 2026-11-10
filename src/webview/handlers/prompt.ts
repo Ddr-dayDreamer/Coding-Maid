@@ -30,6 +30,45 @@ export function registerPromptHandlers(
     ctx.sessionManager.interruptActiveSession();
   });
 
+  // ─── 手动压缩上下文 ────────────────────────────────
+
+  registerHandler("compactContext", async (message) => {
+    const sessionId = String(message.sessionId || ctx.sessionManager.getActiveSessionId() || "").trim();
+    if (!sessionId) return;
+    const instructions = typeof message.instructions === "string" ? message.instructions : undefined;
+
+    ctx.sendMessage({ type: "loading", value: true });
+    try {
+      await ctx.sessionManager.compactSession(sessionId, instructions);
+    } catch (error) {
+      const text = error instanceof Error ? error.message : String(error);
+      ctx.sendMessage({ type: "notify", level: "error", text: `上下文压缩失败：${text}`, duration: 8000 });
+    } finally {
+      const session = ctx.sessionManager.getSession(sessionId);
+      if (session) {
+        ctx.sendMessage({
+          type: "sessionStatus",
+          sessionId,
+          status: session.status,
+          lastError: session.lastError ?? null,
+          processes: serializeProcesses(session.processes),
+          modifiedFiles: session.modifiedFiles ?? undefined,
+          compaction: session.compaction ?? null,
+          tokenTelemetry: buildTokenTelemetry(ctx, session),
+        });
+      }
+      ctx.sendMessage({ type: "loading", value: false });
+    }
+  });
+
+  registerHandler("undoCompaction", async (message) => {
+    const sessionId = String(message.sessionId || ctx.sessionManager.getActiveSessionId() || "").trim();
+    if (!sessionId) return;
+    ctx.sessionManager.undoCompaction(sessionId);
+    ctx.sendMessage({ type: "compactionUndone", sessionId });
+    ctx.sendMessage({ type: "notify", level: "success", text: "已撤销上下文压缩" });
+  });
+
   // ─── 失败后继续（不追加用户消息） ──────────────────
 
   registerHandler("continueSession", async (message) => {
@@ -52,6 +91,7 @@ export function registerPromptHandlers(
           lastError: session.lastError ?? null,
           processes: serializeProcesses(session.processes),
           modifiedFiles: session.modifiedFiles ?? undefined,
+          compaction: session.compaction ?? null,
           tokenTelemetry: buildTokenTelemetry(ctx, session),
         });
       } else {
@@ -200,9 +240,13 @@ async function handlePromptWithImages(ctx: HandlerContext, prompt: string, image
   const fileParts = buildFileParts(attachedFiles, snippetContents, dndContents);
 
   // 先让前端显示用户气泡 + 加载状态（后端处理完 LLM 后会发 appendMessage 替换为真实消息）
+  // /compact 是控制指令，不产生用户气泡
+  const isCompactCommand = /^\/compact(\s|$)/.test(prompt.trim());
   const displayPrompt =
     prompt || (imageUrls.length > 0 ? "粘贴的图像" : "") || (fileParts.length > 0 ? "附加的文件" : "");
-  ctx.sendMessage({ type: "userMessage", content: displayPrompt });
+  if (!isCompactCommand) {
+    ctx.sendMessage({ type: "userMessage", content: displayPrompt });
+  }
   ctx.sendMessage({ type: "loading", value: true });
 
   try {
@@ -219,6 +263,7 @@ async function handlePromptWithImages(ctx: HandlerContext, prompt: string, image
         lastError: activeSession.lastError ?? null,
         processes: serializeProcesses(activeSession.processes),
         modifiedFiles: activeSession.modifiedFiles ?? undefined,
+        compaction: activeSession.compaction ?? null,
         tokenTelemetry: buildTokenTelemetry(ctx, activeSession),
       });
     }

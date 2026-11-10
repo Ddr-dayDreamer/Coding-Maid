@@ -20,4 +20,6 @@ export type {
   SessionManagerOptions,
   LlmStreamProgress,
   ModifiedFileEntry,
+  CompactionRecord,
+  CompactionEvent,
 } from "./types";

@@ -147,6 +147,7 @@ function loadSession(ctx: HandlerContext, sessionId: string): void {
     lastError: session.lastError ?? null,
     processes: serializeProcesses(session.processes),
     modifiedFiles: session.modifiedFiles ?? undefined,
+    compaction: session.compaction ?? null,
     tokenTelemetry: buildTokenTelemetry(ctx, session),
     sessions,
     activePreset: settings.activePreset,

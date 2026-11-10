@@ -13,6 +13,7 @@ import type {
   AttachedFile,
   ModifiedFileEntry,
   SessionErrorInfo,
+  CompactionInfo,
 } from "../types";
 
 // ─── Tab 页面 ────────────────────────────────────────────
@@ -84,6 +85,12 @@ class AppState {
 
   /** 当前会话被 edit/write 修改过的文件列表 */
   modifiedFiles = $state<ModifiedFileEntry[]>([]);
+
+  /** 当前生效的上下文压缩记录 */
+  compaction = $state<CompactionInfo | null>(null);
+
+  /** 是否正在压缩上下文 */
+  isCompacting = $state(false);
 
   /** 流式输出暂存内容（打字机效果） */
   streamingContent = $state("");

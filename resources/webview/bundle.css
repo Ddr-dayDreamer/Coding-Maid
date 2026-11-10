@@ -1008,6 +1008,76 @@
   font-size: 11px;
 }
 
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/CompactionCard.esbuild-svelte-fake-css */
+.compaction-card.svelte-wswgrk {
+  align-self: stretch;
+  margin: 6px 0;
+  border: 1px dashed var(--vscode-panel-border);
+  border-radius: 6px;
+  background: var(--vscode-textBlockQuote-background, transparent);
+  font-size: 12px;
+}
+.card-header.svelte-wswgrk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+}
+.toggle.svelte-wswgrk {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+}
+.toggle.svelte-wswgrk .icon:where(.svelte-wswgrk) {
+  font-size: 9px;
+  opacity: 0.7;
+}
+.title.svelte-wswgrk {
+  font-weight: 600;
+}
+.stats.svelte-wswgrk {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+.undo.svelte-wswgrk {
+  margin-left: auto;
+  border: 1px solid var(--vscode-panel-border);
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  border-radius: 4px;
+  padding: 1px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.undo.svelte-wswgrk:hover {
+  color: var(--vscode-foreground);
+  border-color: var(--vscode-focusBorder);
+}
+.card-body.svelte-wswgrk {
+  padding: 0 10px 8px;
+  border-top: 1px solid var(--vscode-panel-border);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.summary-html.svelte-wswgrk,
+.summary-text.svelte-wswgrk {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--vscode-descriptionForeground);
+  white-space: pre-wrap;
+}
+.summary-html.svelte-wswgrk h2 {
+  font-size: 12px;
+  margin: 8px 0 4px;
+  color: var(--vscode-foreground);
+}
+
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/MessageBoard.esbuild-svelte-fake-css */
 .messages.svelte-12vix06 {
   flex: 1 1 0;
@@ -1546,6 +1616,39 @@ textarea.svelte-z2mbmf::placeholder {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+.compact-btn.svelte-z2mbmf {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  transition: background 0.15s, color 0.15s;
+}
+.compact-btn.svelte-z2mbmf:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
+}
+.compact-btn.svelte-z2mbmf:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.compact-spinner.svelte-z2mbmf {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--vscode-descriptionForeground);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: svelte-z2mbmf-compact-spin 0.8s linear infinite;
+}
+@keyframes svelte-z2mbmf-compact-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .footer-right.svelte-z2mbmf {
   position: relative;

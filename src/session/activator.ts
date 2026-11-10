@@ -11,6 +11,7 @@ import type { ToolDefinition } from "../prompt";
 import type { CreateOpenAIClient } from "../tools/types";
 import type { SessionStorage } from "./storage";
 import type { SessionMessageBuilder } from "./message-builder";
+import type { SessionCompactor } from "./compactor";
 import type { SessionNotifier } from "./notifier";
 import type { SessionEntry, SessionMessage } from "./types";
 import type { LlmStreamManager } from "../llm/stream";
@@ -59,6 +60,7 @@ export class SessionActivator {
   constructor(
     private readonly storage: SessionStorage,
     private readonly messageBuilder: SessionMessageBuilder,
+    private readonly compactor: SessionCompactor,
     private readonly llm: LlmStreamManager,
     private readonly notifier: SessionNotifier,
     private readonly createOpenAIClient: CreateOpenAIClient,
@@ -195,7 +197,11 @@ export class SessionActivator {
         }
 
         // 运行时注入预设（预设不落盘，仅运行时注入）
-        const conversationMessages = this.storage.listSessionMessages(sessionId);
+        // 上下文压缩：只把摘要 + 边界之后的消息交给 LLM
+        const conversationMessages = this.compactor.applyCompaction(
+          this.storage.listSessionMessages(sessionId),
+          session.compaction ?? null
+        );
         console.log("[DEBUG] activate iter", iteration, ": conversationMessages count =", conversationMessages.length);
 
         // ── 快速路径：tool 回调轮次，复用缓存 ──

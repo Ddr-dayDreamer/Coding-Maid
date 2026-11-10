@@ -409,10 +409,25 @@ export class LlmStreamManager {
 
   // ─── 非流式调用（用于技能匹配等简单请求） ────────────
 
+  /**
+   * 非流式补全，返回文本内容与 usage。
+   * 用于上下文压缩等不需要流式展示的场景。
+   */
+  async complete(
+    request: Record<string, unknown>,
+    options?: Record<string, unknown>
+  ): Promise<{ content: string; usage: ModelUsage | null }> {
+    const response = await this.createSimpleCompletion(request, options);
+    const message = response.choices?.[0]?.message as { content?: unknown } | undefined;
+    const content = typeof message?.content === "string" ? message.content : "";
+    const usage = (response as { usage?: ModelUsage | null }).usage ?? null;
+    return { content, usage };
+  }
+
   async createSimpleCompletion(
     request: Record<string, unknown>,
     options?: Record<string, unknown>
-  ): Promise<{ choices?: Array<{ message?: { content?: unknown } }> }> {
+  ): Promise<{ choices?: Array<{ message?: { content?: unknown } }>; usage?: ModelUsage | null }> {
     const { client, retryCount } = this.createClient();
     if (!client) {
       throw new Error("OpenAI client not available");
@@ -429,7 +444,10 @@ export class LlmStreamManager {
             body: Record<string, unknown>,
             options?: Record<string, unknown>
           ) => Promise<unknown>
-        )(request, options)) as { choices?: Array<{ message?: { content?: unknown } }> };
+        )(request, options)) as {
+          choices?: Array<{ message?: { content?: unknown } }>;
+          usage?: ModelUsage | null;
+        };
       } catch (error) {
         if (isAbortLikeError(error) || signal?.aborted) {
           throw error;

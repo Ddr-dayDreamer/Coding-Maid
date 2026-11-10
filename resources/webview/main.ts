@@ -59,6 +59,7 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       appState.runningProcesses = normalizeProcesses(msg.processes);
       appState.modifiedFiles = msg.modifiedFiles ?? [];
+      appState.compaction = msg.compaction ?? null;
       appState.sessions = msg.sessions;
       appState.activePreset = msg.activePreset ?? "default";
       appState.activeProfile = msg.activeProfile ?? "default";
@@ -104,6 +105,7 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.lastError = msg.lastError ?? null;
       appState.runningProcesses = normalizeProcesses(msg.processes);
       appState.modifiedFiles = msg.modifiedFiles ?? [];
+      appState.compaction = msg.compaction ?? null;
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       if (msg.status === "completed" || msg.status === "interrupted" || msg.status === "failed") {
         appState.isLoading = false;
@@ -164,6 +166,25 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.approvalConfig = msg.config;
       break;
 
+    case "compaction":
+      if (msg.phase === "start") {
+        appState.isCompacting = true;
+      } else {
+        appState.isCompacting = false;
+        if (msg.phase === "done") {
+          notify.success(
+            `上下文已压缩：${formatTokens(msg.tokensBefore ?? 0)} → ${formatTokens(msg.tokensAfter ?? 0)} tokens`,
+            5000
+          );
+        }
+      }
+      break;
+
+    case "compactionUndone":
+      appState.compaction = null;
+      appState.messages = appState.messages.filter((m) => !m.meta?.isSummary);
+      break;
+
     case "approvalProcessed":
       if (typeof msg.toolCallId === "string") {
         appState.approvalDecisions = {
@@ -203,6 +224,12 @@ function handleAppendMessage(message: SessionMessageData): void {
 function clearStreamState(): void {
   appState.streamingContent = "";
   appState.streamingReasoning = "";
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
 }
 
 function handleStreamChunk(content: string, reasoningContent: string): void {

@@ -4,6 +4,7 @@
   import AssistantMessage from "./AssistantMessage.svelte";
   import ToolMessage from "./ToolMessage.svelte";
   import SessionErrorCard from "./SessionErrorCard.svelte";
+  import CompactionCard from "./CompactionCard.svelte";
 
   let messagesContainer: HTMLDivElement | undefined = $state();
   let streamingReasoningRef: HTMLDivElement | undefined = $state();
@@ -78,7 +79,9 @@
 
 <div class="messages" bind:this={messagesContainer} onscroll={handleMessagesScroll}>
   {#each appState.messages as msg}
-    {#if msg.role === "user"}
+    {#if msg.meta?.isSummary}
+      <CompactionCard {msg} />
+    {:else if msg.role === "user"}
       <UserMessage {msg} />
     {:else if msg.role === "tool"}
       <ToolMessage {msg} {expandedIds} onToggleExpand={toggleExpand} />

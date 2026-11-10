@@ -68,6 +68,42 @@ export type ModifiedFileEntry = {
   lastModifiedAt: string;
 };
 
+// ─── 上下文压缩 ─────────────────────────────────────────
+
+/**
+ * 一次手动压缩的记录。
+ *
+ * 压缩是非破坏性的：完整历史仍保留在 JSONL 中，
+ * 只通过 upToMessageId 决定哪些消息不再发送给 LLM。
+ */
+export type CompactionRecord = {
+  /** 压缩边界：此 id 及之前的消息不再发送给 LLM */
+  upToMessageId: string;
+  /** 摘要消息 id（UI 定位 / 撤销用） */
+  summaryMessageId: string;
+  /** 摘要正文 */
+  summary: string;
+  createdAt: string;
+  /** 压缩前的消息条数 */
+  messagesBefore: number;
+  /** 压缩前估算 token */
+  tokensBefore: number;
+  /** 压缩后估算 token */
+  tokensAfter: number;
+  /** 生成摘要所用的模型 */
+  model: string;
+};
+
+/** 压缩进度事件（推送给前端） */
+export type CompactionEvent = {
+  sessionId: string;
+  phase: "start" | "done" | "error";
+  tokensBefore?: number;
+  tokensAfter?: number;
+  messagesBefore?: number;
+  error?: string;
+};
+
 // ─── 会话索引条目 ────────────────────────────────────────
 
 export type SessionEntry = {
@@ -91,6 +127,8 @@ export type SessionEntry = {
   pendingApprovals?: PendingApprovalItem[] | null;
   /** 本会话中 edit/write 工具修改过的文件列表 */
   modifiedFiles?: ModifiedFileEntry[] | null;
+  /** 当前生效的上下文压缩记录（null / 缺省 = 未压缩） */
+  compaction?: CompactionRecord | null;
 };
 
 // ─── 会话索引 ────────────────────────────────────────────
@@ -113,6 +151,12 @@ export type MessageMeta = {
   isSummary?: boolean;
   isPreset?: boolean;
   isModelChange?: boolean;
+  /** 摘要消息的压缩统计（供前端卡片展示） */
+  compaction?: {
+    tokensBefore: number;
+    tokensAfter: number;
+    messagesBefore: number;
+  };
 };
 
 export type SessionMessage = {
@@ -172,6 +216,8 @@ export type SessionManagerOptions = {
   onProcessStdout?: (pid: number, chunk: string) => void;
   /** 单个审批项处理完成后的回调（用于前端同步审批状态） */
   onApprovalProcessed?: (sessionId: string, toolCallId: string, action: "approve" | "reject") => void;
+  /** 上下文压缩进度回调 */
+  onCompaction?: (event: CompactionEvent) => void;
 };
 
 // ─── LLM 流进度 ──────────────────────────────────────────

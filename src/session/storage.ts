@@ -230,6 +230,31 @@ export class SessionStorage {
       processes: this.deserializeProcesses(value.processes),
       pendingApprovals: Array.isArray(value.pendingApprovals) ? (value.pendingApprovals as import("./types").PendingApprovalItem[]) : null,
       modifiedFiles: Array.isArray(value.modifiedFiles) ? (value.modifiedFiles as import("./types").ModifiedFileEntry[]) : null,
+      compaction: this.normalizeCompaction(value.compaction),
+    };
+  }
+
+  private normalizeCompaction(value: unknown): import("./types").CompactionRecord | null {
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    if (
+      typeof record.upToMessageId !== "string" ||
+      typeof record.summaryMessageId !== "string" ||
+      typeof record.summary !== "string"
+    ) {
+      return null;
+    }
+    return {
+      upToMessageId: record.upToMessageId,
+      summaryMessageId: record.summaryMessageId,
+      summary: record.summary,
+      createdAt: typeof record.createdAt === "string" ? record.createdAt : new Date().toISOString(),
+      messagesBefore: typeof record.messagesBefore === "number" ? record.messagesBefore : 0,
+      tokensBefore: typeof record.tokensBefore === "number" ? record.tokensBefore : 0,
+      tokensAfter: typeof record.tokensAfter === "number" ? record.tokensAfter : 0,
+      model: typeof record.model === "string" ? record.model : "",
     };
   }
 

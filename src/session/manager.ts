@@ -8,12 +8,16 @@
  * - SessionFileHistory      负责文件变更可撤销
  * - SessionProcessManager   负责进程追踪
  * - SessionMessageBuilder   负责消息构建 + OpenAI 装配
+ * - SessionCompactor        负责上下文压缩（摘要渲染 + 边界过滤）
  * - LlmStreamManager        负责LLM 流式调用
- * - SessionActivator        负责LLM 主循环 + 上下文压缩
+ * - SessionActivator        负责LLM 主循环
  * - SessionNotifier         负责提示上报 + 任务完成通知
  */
 
 import * as crypto from "crypto";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import { getExtensionRoot } from "../prompt";
 import type { ToolDefinition } from "../prompt";
 import { ToolExecutor } from "../tools/executor";
@@ -29,6 +33,7 @@ import { SessionStorage } from "./storage";
 import { SessionFileHistory } from "./file-history";
 import { SessionProcessManager } from "./process";
 import { SessionMessageBuilder } from "./message-builder";
+import { SessionCompactor } from "./compactor";
 import { LlmStreamManager } from "../llm/stream";
 import { SessionActivator } from "./activator";
 import { SessionNotifier } from "./notifier";
@@ -44,10 +49,11 @@ import type {
   BashTimeoutAdjustment,
   UndoTarget,
   PendingApprovalItem,
+  CompactionRecord,
+  CompactionEvent,
 } from "./types";
 
 // ─── 类型 re-export ──────────────────────────────────────
-
 export type {
   SessionStatus,
   ModelUsage,
@@ -62,7 +68,37 @@ export type {
   UserPromptContent,
   SessionManagerOptions,
   LlmStreamProgress,
+  CompactionRecord,
+  CompactionEvent,
 } from "./types";
+
+// ─── 默认压缩提示词（templates/compact_prompt.md 缺失时的兜底） ──
+
+const DEFAULT_COMPACT_PROMPT = `你是一个上下文压缩器。请把下面的对话历史压缩成结构化摘要，供后续继续工作使用。
+
+要求：
+- 保留：用户目标与约束、已完成的改动（文件路径 + 关键改动）、关键决策及原因、未完成事项、重要命令与错误信息、当前计划。
+- 丢弃：寒暄、重复内容、已被后续修改覆盖的中间状态、冗长的工具输出细节。
+- 不要编造未发生的事实；不确定的内容标注"（不确定）"。
+- 输出 Markdown，控制在 {{maxTokens}} tokens 以内。
+
+输出格式：
+
+## 目标
+
+## 已完成
+
+## 关键决策
+
+## 涉及文件
+
+## 待办
+
+## 重要上下文
+
+<conversation>
+{{conversation}}
+</conversation>`;
 
 // ─── SessionManager ──────────────────────────────────────
 
@@ -91,12 +127,14 @@ export class SessionManager {
     toolCallId: string,
     action: "approve" | "reject"
   ) => void;
+  private readonly onCompaction?: (event: CompactionEvent) => void;
 
   /* 子模块 */
   private readonly storage: SessionStorage;
   private readonly fileHistory: SessionFileHistory;
   private readonly processMgr: SessionProcessManager;
   private readonly messageBuilder: SessionMessageBuilder;
+  private readonly compactor: SessionCompactor;
   private readonly llm: LlmStreamManager;
   private readonly activator: SessionActivator;
   private readonly notifier: SessionNotifier;
@@ -137,11 +175,13 @@ export class SessionManager {
     this.onMcpStatusChanged = options.onMcpStatusChanged;
     this.onProcessStdout = options.onProcessStdout;
     this.onApprovalProcessed = options.onApprovalProcessed;
+    this.onCompaction = options.onCompaction;
 
     this.storage = new SessionStorage(this.projectRoot);
     this.fileHistory = new SessionFileHistory(this.projectRoot, this.storage);
     this.processMgr = new SessionProcessManager();
     this.messageBuilder = new SessionMessageBuilder(this.projectRoot, this.storage, this.fileHistory);
+    this.compactor = new SessionCompactor();
     this.llm = new LlmStreamManager(this.createOpenAIClient);
     this.toolExecutor = new ToolExecutor(this.projectRoot, this.createOpenAIClient, this.mcpManager);
     this.presetMgr = new PresetManager(getExtensionRoot());
@@ -150,6 +190,7 @@ export class SessionManager {
     this.activator = new SessionActivator(
       this.storage,
       this.messageBuilder,
+      this.compactor,
       this.llm,
       this.notifier,
       this.createOpenAIClient,
@@ -295,6 +336,17 @@ export class SessionManager {
     this.activePromptController = controller;
 
     try {
+      // /compact 是控制指令，不应创建新会话
+      const compactInstructions = this.parseCompactPrompt(userPrompt);
+      if (compactInstructions !== null) {
+        const sessionId = this.activeSessionId;
+        if (!sessionId || !this.getSession(sessionId)) {
+          throw new Error("当前没有可压缩的会话");
+        }
+        await this.compactSession(sessionId, compactInstructions || undefined);
+        return;
+      }
+
       if (!this.activeSessionId || !this.getSession(this.activeSessionId)) {
         console.log("[DEBUG] handleUserPrompt: no active session, creating new");
         this.createSession(userPrompt);
@@ -375,6 +427,26 @@ export class SessionManager {
     this.throwIfAborted(signal);
     const now = new Date().toISOString();
 
+    // /continue 直接继续 LLM 主循环，不加新消息
+    if (this.isContinuePrompt(userPrompt)) {
+      this.storage.updateSessionEntry(sessionId, (entry) => ({
+        ...entry,
+        status: "pending",
+        failReason: null,
+        lastError: null,
+        updateTime: now,
+      }));
+      await this.runActivate(sessionId, controller);
+      return;
+    }
+
+    // /compact 手动压缩上下文，不加新消息
+    const compactInstructions = this.parseCompactPrompt(userPrompt);
+    if (compactInstructions !== null) {
+      await this.compactSession(sessionId, compactInstructions || undefined);
+      return;
+    }
+
     // 更新会话状态
     this.storage.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
@@ -383,12 +455,6 @@ export class SessionManager {
       lastError: null,
       updateTime: now,
     }));
-
-    // /continue 直接继续 LLM 主循环，不加新消息
-    if (this.isContinuePrompt(userPrompt)) {
-      await this.runActivate(sessionId, controller);
-      return;
-    }
 
     this.notifier.reportNewPrompt();
     this.fileHistory.ensureSession(sessionId);
@@ -464,6 +530,224 @@ export class SessionManager {
    */
   async activateSession(sessionId: string, controller?: AbortController): Promise<void> {
     await this.runActivate(sessionId, controller);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  上下文压缩
+  // ═══════════════════════════════════════════════════════
+
+  /** 压缩所需的最小消息条数 */
+  private static readonly MIN_COMPACT_MESSAGES = 4;
+  /** 压缩所需的最小估算 token */
+  private static readonly MIN_COMPACT_TOKENS = 800;
+
+  /**
+   * 手动压缩上下文。
+   *
+   * 非破坏性：完整历史保留在磁盘，只记录压缩边界，
+   * 之后发给 LLM 的上下文 = 摘要 + 边界之后的消息。
+   */
+  async compactSession(sessionId: string, instructions?: string): Promise<void> {
+    const session = this.getSession(sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+    if (session.status === "processing" || session.status === "pending") {
+      throw new Error("会话正在处理中，请先中断再压缩上下文");
+    }
+
+    const messages = this.storage.listSessionMessages(sessionId);
+    const effective = this.compactor.applyCompaction(messages, session.compaction ?? null);
+    if (effective.length < SessionManager.MIN_COMPACT_MESSAGES) {
+      throw new Error("上下文太短，无需压缩");
+    }
+    // 有未完成的工具调用时压缩会破坏 tool_call / tool 配对
+    if (this.messageBuilder.getTrailingPendingToolCalls(effective).length > 0) {
+      throw new Error("存在未完成的工具调用，请先处理后再压缩");
+    }
+
+    const tokensBefore = this.compactor.estimateMessagesTokens(effective);
+    if (tokensBefore < SessionManager.MIN_COMPACT_TOKENS) {
+      throw new Error("上下文太短，无需压缩");
+    }
+
+    const controller = new AbortController();
+    this.activationControllers.set(sessionId, controller);
+    const previousStatus = session.status;
+
+    this.storage.updateSessionEntry(sessionId, (entry) => ({
+      ...entry,
+      status: "processing",
+      lastError: null,
+      updateTime: new Date().toISOString(),
+    }));
+    this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+    this.onCompaction?.({ sessionId, phase: "start", tokensBefore, messagesBefore: effective.length });
+
+    try {
+      const { model } = this.getResolvedSettings();
+      const summary = await this.requestSummary(effective, model, controller.signal, instructions);
+      if (!summary.trim()) {
+        throw new Error("模型返回了空摘要");
+      }
+
+      const now = new Date().toISOString();
+      const summaryMessage = this.messageBuilder.buildSystemMessage(
+        sessionId,
+        `# 上下文摘要（压缩于 ${now}）\n\n${summary}`,
+        null,
+        true,
+        {
+          isSummary: true,
+          compaction: {
+            tokensBefore,
+            tokensAfter: this.compactor.estimateTokens(summary),
+            messagesBefore: effective.length,
+          },
+        }
+      );
+      this.storage.appendSessionMessage(sessionId, summaryMessage);
+
+      const boundary = this.findSafeBoundary(effective);
+      const record: CompactionRecord = {
+        upToMessageId: boundary.id,
+        summaryMessageId: summaryMessage.id,
+        summary,
+        createdAt: now,
+        messagesBefore: effective.length,
+        tokensBefore,
+        tokensAfter: this.compactor.estimateTokens(summary),
+        model,
+      };
+
+      this.storage.updateSessionEntry(sessionId, (entry) => ({
+        ...entry,
+        compaction: record,
+        status: previousStatus,
+        updateTime: now,
+      }));
+      this.activator.clearFastPathCache();
+      this.onAssistantMessage(summaryMessage, false);
+      this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+      this.onCompaction?.({
+        sessionId,
+        phase: "done",
+        tokensBefore,
+        tokensAfter: record.tokensAfter,
+        messagesBefore: record.messagesBefore,
+      });
+    } catch (error) {
+      const aborted = controller.signal.aborted;
+      this.storage.updateSessionEntry(sessionId, (entry) => ({
+        ...entry,
+        status: aborted ? "interrupted" : previousStatus,
+        updateTime: new Date().toISOString(),
+      }));
+      this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+      if (!aborted) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.onCompaction?.({ sessionId, phase: "error", error: message });
+        this.onNotify?.("error", `上下文压缩失败：${message}`, 8000);
+      }
+      throw error;
+    } finally {
+      if (this.activationControllers.get(sessionId) === controller) {
+        this.activationControllers.delete(sessionId);
+      }
+    }
+  }
+
+  /** 撤销压缩：清除压缩记录并删除所有摘要消息（恢复完整上下文） */
+  undoCompaction(sessionId: string): void {
+    const session = this.getSession(sessionId);
+    if (!session?.compaction) {
+      return;
+    }
+
+    const messages = this.storage.listSessionMessages(sessionId);
+    const kept = messages.filter((message) => message.meta?.isSummary !== true);
+    if (kept.length !== messages.length) {
+      this.storage.saveSessionMessages(sessionId, kept);
+    }
+
+    this.storage.updateSessionEntry(sessionId, (entry) => ({
+      ...entry,
+      compaction: null,
+      updateTime: new Date().toISOString(),
+    }));
+    this.activator.clearFastPathCache();
+    this.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+  }
+
+  /**
+   * 找到安全的压缩边界。
+   *
+   * 边界之后的消息会被保留，因此边界不能是带 tool_calls 的 assistant
+   * （否则其 tool 结果会被切到边界之后，破坏配对），也不能是 tool 消息。
+   */
+  private findSafeBoundary(messages: SessionMessage[]): SessionMessage {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      if (message.role === "tool") {
+        continue;
+      }
+      const params = message.messageParams as { tool_calls?: unknown[] } | null | undefined;
+      if (message.role === "assistant" && Array.isArray(params?.tool_calls) && params.tool_calls.length > 0) {
+        continue;
+      }
+      return message;
+    }
+    return messages[messages.length - 1];
+  }
+
+  /** 调用 LLM 生成摘要文本 */  private async requestSummary(
+    messages: SessionMessage[],
+    model: string,
+    signal: AbortSignal,
+    instructions?: string
+  ): Promise<string> {
+    const conversation = this.compactor.renderForSummary(messages);
+    const template = this.loadCompactPromptTemplate();
+    const maxTokens = 2000;
+    const prompt = template
+      .replace(/\{\{maxTokens\}\}/g, String(maxTokens))
+      .replace(/\{\{conversation\}\}/g, conversation);
+
+    const extra = instructions?.trim()
+      ? `\n\n额外要求（来自用户）：\n${instructions.trim()}`
+      : "";
+
+    const { content } = await this.llm.complete(
+      {
+        model,
+        messages: [{ role: "user", content: `${prompt}${extra}` }],
+        max_tokens: maxTokens,
+        stream: false,
+      },
+      { signal }
+    );
+    return content;
+  }
+
+  /** 读取压缩提示词模板（支持 ~/.codingmaid/compact_prompt.md 覆盖） */
+  private loadCompactPromptTemplate(): string {
+    const candidates = [
+      path.join(os.homedir(), ".codingmaid", "compact_prompt.md"),
+      path.join(getExtensionRoot(), "templates", "compact_prompt.md"),
+    ];
+    for (const candidate of candidates) {
+      try {
+        if (fs.existsSync(candidate)) {
+          const content = fs.readFileSync(candidate, "utf8").trim();
+          if (content) {
+            return content;
+          }
+        }
+      } catch {
+        // 忽略读取失败，继续尝试下一个候选
+      }
+    }
+    return DEFAULT_COMPACT_PROMPT;
   }
 
   /** 委托给 SessionActivator 执行主循环 */
@@ -608,6 +892,8 @@ export class SessionManager {
       failReason: null,
       lastError: null,
       processes: null,
+      // 回退后压缩边界可能已失效，直接清除压缩记录
+      compaction: null,
       updateTime: now,
     }));
     return { messages: keptMessages, restoreError };
@@ -952,6 +1238,24 @@ export class SessionManager {
       userPrompt.text.trim() === "/continue" &&
       (!userPrompt.imageUrls || userPrompt.imageUrls.length === 0)
     );
+  }
+
+  /**
+   * 解析 /compact 指令。
+   * 返回 null 表示不是压缩指令；返回字符串表示附加指令（可能为空串）。
+   */
+  private parseCompactPrompt(userPrompt: UserPromptContent): string | null {
+    if (typeof userPrompt.text !== "string") {
+      return null;
+    }
+    if (userPrompt.imageUrls && userPrompt.imageUrls.length > 0) {
+      return null;
+    }
+    const trimmed = userPrompt.text.trim();
+    if (trimmed !== "/compact" && !trimmed.startsWith("/compact ")) {
+      return null;
+    }
+    return trimmed.slice("/compact".length).trim();
   }
 
   private throwIfAborted(signal?: AbortSignal | null): void {

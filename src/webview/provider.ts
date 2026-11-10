@@ -66,6 +66,7 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
           lastError: entry.lastError ?? null,
           processes: this.serializeProcesses(entry.processes),
           modifiedFiles: entry.modifiedFiles ?? undefined,
+          compaction: entry.compaction ?? null,
           tokenTelemetry: this.buildTokenTelemetry(entry),
         });
       },
@@ -89,6 +90,10 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       onApprovalProcessed: (_sessionId, toolCallId, action) => {
         if (!this.webviewView) return;
         this.webviewView.webview.postMessage({ type: "approvalProcessed", toolCallId, action });
+      },
+      onCompaction: (event) => {
+        if (!this.webviewView) return;
+        this.webviewView.webview.postMessage({ type: "compaction", ...event });
       },
     });
 
