@@ -3,6 +3,7 @@
   import UserMessage from "./UserMessage.svelte";
   import AssistantMessage from "./AssistantMessage.svelte";
   import ToolMessage from "./ToolMessage.svelte";
+  import SessionErrorCard from "./SessionErrorCard.svelte";
 
   let messagesContainer: HTMLDivElement | undefined = $state();
   let streamingReasoningRef: HTMLDivElement | undefined = $state();
@@ -117,6 +118,9 @@
       </div>
     </div>
   {/if}
+
+  <!-- 请求失败的错误卡片 -->
+  <SessionErrorCard />
 
   <!-- 加载指示器 -->
   {#if appState.isLoading && !appState.isStreaming}

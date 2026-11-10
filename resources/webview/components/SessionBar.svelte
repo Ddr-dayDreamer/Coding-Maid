@@ -145,6 +145,11 @@
             aria-selected={session.id === appState.currentSessionId}
           >
             <span class="session-item-title">{session.summary?.slice(0, 50) || "空对话"}</span>
+            {#if session.status === "failed"}
+              <span class="session-item-failed" title="上次请求失败">失败</span>
+            {:else if session.status === "interrupted"}
+              <span class="session-item-interrupted" title="已中断">中断</span>
+            {/if}
             <span class="session-item-time">{formatDate(session.createTime)}</span>
             {#if pendingDeleteId === session.id}
               <button
@@ -333,6 +338,25 @@
     font-size: 11px;
     color: var(--vscode-descriptionForeground);
     margin-left: 8px;
+  }
+
+  .session-item-failed,
+  .session-item-interrupted {
+    flex-shrink: 0;
+    margin-left: 6px;
+    padding: 0 4px;
+    border-radius: 6px;
+    font-size: 10px;
+    line-height: 14px;
+    border: 1px solid currentColor;
+  }
+
+  .session-item-failed {
+    color: var(--vscode-errorForeground, #e74c3c);
+  }
+
+  .session-item-interrupted {
+    color: var(--vscode-descriptionForeground);
   }
 
   .session-delete-btn {

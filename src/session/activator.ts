@@ -15,6 +15,11 @@ import type { SessionNotifier } from "./notifier";
 import type { SessionEntry, SessionMessage } from "./types";
 import type { LlmStreamManager } from "../llm/stream";
 import { accumulateUsage } from "../llm/stream";
+import {
+  formatLlmErrorText,
+  LlmStreamFailure,
+  toLlmErrorInfo,
+} from "../llm/errors";
 import { logPromptDebug } from "../utils/debug-logger";
 import { resolveReasoningPassback } from "../utils/thinking";
 import type { PresetManager } from "../preset/manager";
@@ -109,9 +114,19 @@ export class SessionActivator {
       this.storage.updateSessionEntry(sessionId, (entry) => ({
         ...entry,
         status: "failed",
-        failReason: "OpenAI API key not found",
+        failReason: "API 密钥未找到",
+        lastError: {
+          code: "auth",
+          title: "未配置 API Key",
+          message:
+            "请在连接配置中填写 API Key。如果之前已配置过，可能是插件升级导致加密密钥变更，请重新保存一次 API Key。",
+          detail: "OpenAI client not available (apiKey missing)",
+          retryable: false,
+        },
         updateTime: now,
       }));
+      const failedEntry = this.getSession(sessionId);
+      if (failedEntry) opts.onSessionEntryUpdated?.(failedEntry);
       opts.onNotify?.(
         "error",
         "API 密钥未找到。请在连接配置中填写 API Key。如果之前已配置过，可能是插件升级导致加密密钥变更，请重新保存一次 API Key。",
@@ -127,8 +142,11 @@ export class SessionActivator {
         ...entry,
         status: "interrupted",
         failReason: "interrupted",
+        lastError: null,
         updateTime: now,
       }));
+      const interruptedEntry = this.getSession(sessionId);
+      if (interruptedEntry) opts.onSessionEntryUpdated?.(interruptedEntry);
       this.notifier.maybeNotifyTaskCompletion(sessionId, notify, startedAt, this.projectRoot, env);
       return;
     }
@@ -136,6 +154,7 @@ export class SessionActivator {
     this.storage.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
       status: "processing",
+      lastError: null,
       updateTime: now,
     }));
 
@@ -305,11 +324,13 @@ export class SessionActivator {
           usage: accumulateUsage(entry.usage, responseUsage),
           lastUsage: responseUsage,
           status: refusal ? "failed" : waitingForUser ? "waiting_for_user" : toolCalls ? "processing" : "completed",
-          failReason: refusal ? refusal : entry.failReason,
+          failReason: refusal ? refusal : null,
+          lastError: null,
           updateTime: new Date().toISOString(),
         }));
 
-        opts.onSessionEntryUpdated?.(this.getSession(sessionId)!);
+        const updatedEntry = this.getSession(sessionId);
+        if (updatedEntry) opts.onSessionEntryUpdated?.(updatedEntry);
 
         console.log(
           "[DEBUG] activate: iter",
@@ -347,21 +368,36 @@ export class SessionActivator {
         false
       );
     } catch (error) {
-      const errMessage = error instanceof Error ? error.message : String(error);
-      console.log("[DEBUG] activate: CATCH error =", errMessage);
-      const aborted = this.isAbortLikeError(error) || sessionController.signal.aborted;
+      const info = toLlmErrorInfo(error);
+      const aborted = info.code === "aborted" || sessionController.signal.aborted;
+      console.log("[DEBUG] activate: CATCH error =", info.code, info.detail);
+
+      // 已输出的部分内容先落盘，避免用户刚看到的内容凭空消失；
+      // 之后点击“继续”会基于这段内容接着生成。
+      if (!aborted && error instanceof LlmStreamFailure && error.partialContent.trim()) {
+        const partialMessage = this.messageBuilder.buildAssistantMessage(
+          sessionId,
+          error.partialContent,
+          null,
+          error.partialReasoning || null
+        );
+        this.storage.appendSessionMessage(sessionId, partialMessage);
+        opts.onAssistantMessage(partialMessage, false);
+      }
+
       this.storage.updateSessionEntry(sessionId, (entry) => ({
         ...entry,
         status: aborted ? "interrupted" : "failed",
-        failReason: aborted ? "interrupted" : errMessage,
+        failReason: aborted ? "interrupted" : `${info.title}：${info.message}`,
+        lastError: aborted ? null : info,
         updateTime: new Date().toISOString(),
       }));
+      // 必须通知前端，否则 loading 指示器会永远停留在“等待响应…”
+      const failedEntry = this.getSession(sessionId);
+      if (failedEntry) opts.onSessionEntryUpdated?.(failedEntry);
 
       if (!aborted) {
-        opts.onAssistantMessage(
-          this.messageBuilder.buildAssistantMessage(sessionId, `Request failed: ${errMessage}`, null),
-          false
-        );
+        opts.onNotify?.("error", formatLlmErrorText(info), 8000);
       }
     } finally {
       if (this.sessionControllers.get(sessionId) === sessionController) {
@@ -459,13 +495,6 @@ export class SessionActivator {
       }
     }
     return undefined;
-  }
-
-  private isAbortLikeError(error: unknown): boolean {
-    if (!(error instanceof Error)) {
-      return false;
-    }
-    return error.name === "AbortError" || error.constructor.name === "APIUserAbortError";
   }
 
   private throwIfAborted(signal?: AbortSignal | null): void {

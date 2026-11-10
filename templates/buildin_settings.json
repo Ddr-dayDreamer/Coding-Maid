@@ -1,6 +1,8 @@
 {
   "activeProfile": "default",
   "debugEnabled": false,
+  "llmRetryCount": 2,
+  "llmTimeoutMs": 600000,
   "activePreset": "default",
   "approvalConfig": {
     "bash": "require",

@@ -10,6 +10,7 @@ import type { HandlerContext } from "../handler-context";
 import type { UserPromptContent, UserPromptFilePart } from "../../session/types";
 import { isImageExtension, readFileContent, readImageAsDataUrl } from "../../utils/file-utils";
 import { captureEditorSelection, captureActiveFile } from "./editor";
+import { formatLlmErrorText, toLlmErrorInfo } from "../../llm/errors";
 
 export function registerPromptHandlers(
   ctx: HandlerContext,
@@ -27,6 +28,36 @@ export function registerPromptHandlers(
 
   registerHandler("interrupt", async () => {
     ctx.sessionManager.interruptActiveSession();
+  });
+
+  // ─── 失败后继续（不追加用户消息） ──────────────────
+
+  registerHandler("continueSession", async (message) => {
+    const sessionId = String(message.sessionId || ctx.sessionManager.getActiveSessionId() || "").trim();
+    if (!sessionId) return;
+
+    ctx.sendMessage({ type: "loading", value: true });
+    try {
+      await ctx.sessionManager.continueSession(sessionId);
+    } catch (error) {
+      const info = toLlmErrorInfo(error);
+      ctx.sendMessage({ type: "notify", level: "error", text: formatLlmErrorText(info), duration: 8000 });
+    } finally {
+      const session = ctx.sessionManager.getSession(sessionId);
+      if (session) {
+        ctx.sendMessage({
+          type: "sessionStatus",
+          sessionId,
+          status: session.status,
+          lastError: session.lastError ?? null,
+          processes: serializeProcesses(session.processes),
+          modifiedFiles: session.modifiedFiles ?? undefined,
+          tokenTelemetry: buildTokenTelemetry(ctx, session),
+        });
+      } else {
+        ctx.sendMessage({ type: "loading", value: false });
+      }
+    }
   });
 
   // ─── 附加文件（追加模式） ─────────────────────────
@@ -185,6 +216,7 @@ async function handlePromptWithImages(ctx: HandlerContext, prompt: string, image
         type: "sessionStatus",
         sessionId: activeSessionId,
         status: activeSession.status,
+        lastError: activeSession.lastError ?? null,
         processes: serializeProcesses(activeSession.processes),
         modifiedFiles: activeSession.modifiedFiles ?? undefined,
         tokenTelemetry: buildTokenTelemetry(ctx, activeSession),
@@ -200,8 +232,9 @@ async function handlePromptWithImages(ctx: HandlerContext, prompt: string, image
     }));
     ctx.sendMessage({ type: "showSessionsList", sessions });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    ctx.sendMessage({ type: "assistant", html: ctx.md.render(`Request failed: ${msg}`) });
+    const info = toLlmErrorInfo(error);
+    ctx.sendMessage({ type: "notify", level: "error", text: formatLlmErrorText(info), duration: 8000 });
+    ctx.sendMessage({ type: "loading", value: false });
   }
 }
 

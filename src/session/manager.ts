@@ -22,6 +22,7 @@ import type { CreateOpenAIClient } from "../tools/types";
 import { McpManager } from "../mcp/mcp-manager";
 import type { McpServerConfig } from "../settings";
 import { getActivePreset } from "../utils/global-settings";
+import { isAbortLikeError } from "../llm/errors";
 import { killProcessTree } from "../utils/process-tree";
 
 import { SessionStorage } from "./storage";
@@ -158,6 +159,13 @@ export class SessionManager {
 
     this.llm.onProgress = (progress) => this.onLlmStreamProgress?.(progress);
     this.llm.onChunk = (chunk) => this.onStreamChunk?.(chunk);
+    this.llm.onRetry = (event) => {
+      this.onNotify?.(
+        "warning",
+        `${event.info.title}，正在自动重试（${event.attempt}/${event.maxRetries}）…`,
+        4000
+      );
+    };
     this.mcpManager.prepare(this.getResolvedSettings().mcpServers);
   }
 
@@ -294,7 +302,7 @@ export class SessionManager {
       console.log("[DEBUG] handleUserPrompt: activeSessionId =", this.activeSessionId);
       await this.sendMessage(this.activeSessionId!, userPrompt, controller);
     } catch (error) {
-      if (!this.isAbortLikeError(error) && !controller.signal.aborted) {
+      if (!isAbortLikeError(error) && !controller.signal.aborted) {
         throw error;
       }
     } finally {
@@ -329,6 +337,7 @@ export class SessionManager {
       toolCalls: null,
       status: "pending",
       failReason: null,
+      lastError: null,
       usage: null,
       lastUsage: null,
       createTime: now,
@@ -371,6 +380,7 @@ export class SessionManager {
       ...entry,
       status: "pending",
       failReason: null,
+      lastError: null,
       updateTime: now,
     }));
 
@@ -415,6 +425,37 @@ export class SessionManager {
       sessionId = this.activeSessionId!;
     }
     await this.sendMessage(sessionId, userPrompt, controller);
+  }
+
+  /**
+   * 继续当前会话（不追加用户消息，直接重跑 LLM 主循环）。
+   * 供前端“继续”按钮在请求失败/断流后使用。
+   */
+  async continueSession(sessionId: string): Promise<void> {
+    if (!this.getSession(sessionId)) {
+      throw new Error("Session not found");
+    }
+
+    const controller = new AbortController();
+    this.activePromptController = controller;
+    this.activeSessionId = sessionId;
+    this.activator.clearFastPathCache();
+
+    this.storage.updateSessionEntry(sessionId, (entry) => ({
+      ...entry,
+      status: "pending",
+      failReason: null,
+      lastError: null,
+      updateTime: new Date().toISOString(),
+    }));
+
+    try {
+      await this.runActivate(sessionId, controller);
+    } finally {
+      if (this.activePromptController === controller) {
+        this.activePromptController = null;
+      }
+    }
   }
 
   /**
@@ -481,6 +522,7 @@ export class SessionManager {
       ...entry,
       status: "interrupted",
       failReason: "interrupted",
+      lastError: null,
       processes: null,
       updateTime: now,
     }));
@@ -564,6 +606,7 @@ export class SessionManager {
       toolCalls: null,
       status: "completed",
       failReason: null,
+      lastError: null,
       processes: null,
       updateTime: now,
     }));
@@ -909,11 +952,6 @@ export class SessionManager {
       userPrompt.text.trim() === "/continue" &&
       (!userPrompt.imageUrls || userPrompt.imageUrls.length === 0)
     );
-  }
-
-  private isAbortLikeError(error: unknown): boolean {
-    if (!(error instanceof Error)) return false;
-    return error.name === "AbortError" || error.constructor.name === "APIUserAbortError";
   }
 
   private throwIfAborted(signal?: AbortSignal | null): void {

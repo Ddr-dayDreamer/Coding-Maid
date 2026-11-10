@@ -42,6 +42,7 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.messages = [];
       appState.currentSessionId = null;
       appState.currentSessionStatus = msg.status;
+      appState.lastError = null;
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       appState.sessions = msg.sessions;
       appState.activePreset = msg.activePreset ?? "default";
@@ -53,6 +54,7 @@ window.addEventListener("message", (event: MessageEvent) => {
       appState.messages = msg.messages.filter((m) => m.visible !== false);
       appState.currentSessionId = msg.sessionId;
       appState.currentSessionStatus = msg.status;
+      appState.lastError = msg.lastError ?? null;
       appState.isLoading = false;
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       appState.runningProcesses = normalizeProcesses(msg.processes);
@@ -99,11 +101,13 @@ window.addEventListener("message", (event: MessageEvent) => {
         appState.currentSessionId = msg.sessionId;
       }
       appState.currentSessionStatus = msg.status;
+      appState.lastError = msg.lastError ?? null;
       appState.runningProcesses = normalizeProcesses(msg.processes);
       appState.modifiedFiles = msg.modifiedFiles ?? [];
       appState.tokenTelemetry = msg.tokenTelemetry ?? null;
       if (msg.status === "completed" || msg.status === "interrupted" || msg.status === "failed") {
         appState.isLoading = false;
+        clearStreamState();
       } else if (msg.status === "processing") {
         appState.isLoading = true;
       }
@@ -112,6 +116,7 @@ window.addEventListener("message", (event: MessageEvent) => {
     case "userMessage":
       appState.inputHistory = [...appState.inputHistory, msg.content];
       appState.lastPrompt = msg.content;
+      appState.lastError = null;
       appState.messages = [
         ...appState.messages,
         {

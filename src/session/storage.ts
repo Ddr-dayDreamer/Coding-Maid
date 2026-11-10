@@ -17,6 +17,7 @@ import type {
   SessionStatus,
   ModelUsage,
 } from "./types";
+import type { LlmErrorInfo } from "../llm/errors";
 
 // ─── 常量 ────────────────────────────────────────────────
 
@@ -221,6 +222,7 @@ export class SessionStorage {
       toolCalls: Array.isArray(value.toolCalls) ? value.toolCalls : null,
       status: this.normalizeSessionStatus(value.status),
       failReason: typeof value.failReason === "string" ? value.failReason : null,
+      lastError: this.normalizeLastError(value.lastError),
       usage: (value.usage as ModelUsage) ?? null,
       lastUsage: (value.lastUsage as ModelUsage) ?? null,
       createTime: typeof value.createTime === "string" ? value.createTime : new Date().toISOString(),
@@ -231,8 +233,25 @@ export class SessionStorage {
     };
   }
 
-  private normalizeSessionStatus(status: unknown): SessionStatus {
-    if (
+  private normalizeLastError(value: unknown): LlmErrorInfo | null {
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    if (typeof record.code !== "string" || typeof record.title !== "string" || typeof record.message !== "string") {
+      return null;
+    }
+    return {
+      code: record.code as LlmErrorInfo["code"],
+      title: record.title,
+      message: record.message,
+      detail: typeof record.detail === "string" ? record.detail : "",
+      httpStatus: typeof record.httpStatus === "number" ? record.httpStatus : undefined,
+      retryable: record.retryable !== false,
+    };
+  }
+
+  private normalizeSessionStatus(status: unknown): SessionStatus {    if (
       status === "failed" ||
       status === "pending" ||
       status === "processing" ||

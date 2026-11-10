@@ -144,6 +144,7 @@ function loadSession(ctx: HandlerContext, sessionId: string): void {
     sessionId,
     summary: session.summary || "Untitled",
     status: session.status,
+    lastError: session.lastError ?? null,
     processes: serializeProcesses(session.processes),
     modifiedFiles: session.modifiedFiles ?? undefined,
     tokenTelemetry: buildTokenTelemetry(ctx, session),

@@ -55,6 +55,16 @@ export type CodingMaidSettings = {
   presetsDir?: string;
   /** 是否启用调试日志 */
   debugEnabled?: boolean;
+  /**
+   * LLM 请求在“尚未输出任何内容”时失败后的自动重试次数。
+   * 取值 0–3，0 表示关闭；未设置时默认 2。
+   */
+  llmRetryCount?: number;
+  /**
+   * 单次 LLM 请求的整体超时时间（毫秒）。
+   * 不设置时使用默认值 600000（10 分钟）。
+   */
+  llmTimeoutMs?: number;
   /** MCP 服务器配置 */
   mcpServers?: Record<string, McpServerConfig>;
   /** 工具审批配置 */

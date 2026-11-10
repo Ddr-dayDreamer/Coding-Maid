@@ -9,6 +9,13 @@ import * as crypto from "crypto";
 import { logLlmCompletion } from "../utils/debug-logger";
 import type { CreateOpenAIClient } from "../tools/types";
 import type { ModelUsage, LlmStreamProgress } from "../session/types";
+import {
+  classifyLlmError,
+  isAbortLikeError,
+  LlmStreamFailure,
+  normalizeRetryCount,
+  type LlmErrorInfo,
+} from "./errors";
 
 // ─── 工具函数 ────────────────────────────────────────────
 
@@ -63,10 +70,29 @@ export type StreamChunk = {
   reasoningContent?: string;
 };
 
+export type LlmRetryEvent = {
+  sessionId?: string;
+  attempt: number;
+  maxRetries: number;
+  delayMs: number;
+  info: LlmErrorInfo;
+};
+
+type OpenAIClient = NonNullable<ReturnType<CreateOpenAIClient>["client"]>;
+
+type StreamAttemptState = {
+  /** 是否已经产生过任何输出（文本/推理/工具调用） */
+  emitted: boolean;
+  content: string;
+  reasoning: string;
+};
+
 export class LlmStreamManager {
   private readonly createClient: CreateOpenAIClient;
   public onProgress?: (progress: LlmStreamProgress) => void;
   public onChunk?: (chunk: StreamChunk) => void;
+  /** 自动重试前的回调（用于向前端提示“正在重试”） */
+  public onRetry?: (event: LlmRetryEvent) => void;
 
   constructor(createClient: CreateOpenAIClient) {
     this.createClient = createClient;
@@ -122,17 +148,59 @@ export class LlmStreamManager {
 
   // ─── 流式调用 ──────────────────────────────────────────
 
+  /**
+   * 创建流式请求（带自动重试）。
+   *
+   * 仅在“尚未向用户输出任何内容”时才自动重试，避免重复文本。
+   * 已经输出过内容后断流，则抛出 LlmStreamFailure，携带部分内容供上层落盘。
+   */
   async createStream(
     request: Record<string, unknown>,
     options?: Record<string, unknown>,
     sessionId?: string,
     debug?: { enabled?: boolean; location: string; baseURL?: string; params?: Record<string, unknown> }
   ): Promise<StreamResult> {
-    const { client, baseURL } = this.createClient();
+    const { client, baseURL, retryCount } = this.createClient();
     if (!client) {
       throw new Error("OpenAI client not available");
     }
 
+    const maxRetries = normalizeRetryCount(retryCount);
+    const signal = options?.signal as AbortSignal | undefined;
+    let attempt = 0;
+
+    for (;;) {
+      const state: StreamAttemptState = { emitted: false, content: "", reasoning: "" };
+      try {
+        return await this.createStreamOnce(client, baseURL, request, options, sessionId, debug, state);
+      } catch (error) {
+        if (isAbortLikeError(error) || signal?.aborted) {
+          throw error;
+        }
+
+        const info = classifyLlmError(error);
+        const canRetry = info.retryable && !state.emitted && attempt < maxRetries;
+        if (!canRetry) {
+          throw new LlmStreamFailure(info, error, state.content, state.reasoning);
+        }
+
+        attempt += 1;
+        const delayMs = computeRetryDelay(attempt);
+        this.onRetry?.({ sessionId, attempt, maxRetries, delayMs, info });
+        await delayWithSignal(delayMs, signal);
+      }
+    }
+  }
+
+  private async createStreamOnce(
+    client: OpenAIClient,
+    baseURL: string | undefined,
+    request: Record<string, unknown>,
+    options: Record<string, unknown> | undefined,
+    sessionId: string | undefined,
+    debug: { enabled?: boolean; location: string; baseURL?: string; params?: Record<string, unknown> } | undefined,
+    state: StreamAttemptState
+  ): Promise<StreamResult> {
     const requestId = crypto.randomUUID();
     const startedAt = new Date().toISOString();
     const startedAtMs = Date.now();
@@ -192,6 +260,7 @@ export class LlmStreamManager {
       if (typeof value !== "string" || value.length === 0) {
         return;
       }
+      state.emitted = true;
       estimatedTokens += this.estimateStreamTokens(value);
       this.emitLlmStreamProgress(requestId, startedAt, estimatedTokens, "update", sessionId);
     };
@@ -212,12 +281,14 @@ export class LlmStreamManager {
           const contentDelta = delta.content;
           if (typeof contentDelta === "string") {
             content += contentDelta;
+            state.content = content;
             trackText(contentDelta);
           }
 
           const reasoningDelta = delta.reasoning_content ?? delta.reasoning;
           if (typeof reasoningDelta === "string") {
             reasoningContent += reasoningDelta;
+            state.reasoning = reasoningContent;
             trackText(reasoningDelta);
           }
 
@@ -272,6 +343,19 @@ export class LlmStreamManager {
     const toolCalls = Array.from(toolCallsByIndex.entries())
       .sort(([left], [right]) => left - right)
       .map(([, toolCall]) => toolCall);
+
+    state.content = content;
+    state.reasoning = reasoningContent;
+
+    // 部分第三方 API 断流时会以“正常结束”的形式返回空内容，显式当作错误处理，
+    // 让上层有机会重试，而不是产出一条空气泡。
+    if (content.trim() === "" && toolCalls.length === 0 && refusal == null) {
+      if (reasoningContent.trim() !== "") {
+        throw new Error("Model returned reasoning content without a final answer (possibly truncated by max_tokens).");
+      }
+      throw new Error("API returned an empty response (no content, tool calls, or refusal).");
+    }
+
     const message: Record<string, unknown> = { content };
     if (toolCalls.length > 0) {
       message.tool_calls = toolCalls;
@@ -329,19 +413,75 @@ export class LlmStreamManager {
     request: Record<string, unknown>,
     options?: Record<string, unknown>
   ): Promise<{ choices?: Array<{ message?: { content?: unknown } }> }> {
-    const { client } = this.createClient();
+    const { client, retryCount } = this.createClient();
     if (!client) {
       throw new Error("OpenAI client not available");
     }
 
-    return (
-      client.chat.completions.create as unknown as (
-        body: Record<string, unknown>,
-        options?: Record<string, unknown>
-      ) => Promise<unknown>
-    )(request, options) as Promise<{
-      choices?: Array<{ message?: { content?: unknown } }>;
-    }>;
+    const maxRetries = normalizeRetryCount(retryCount);
+    const signal = options?.signal as AbortSignal | undefined;
+    let attempt = 0;
+
+    for (;;) {
+      try {
+        return (await (
+          client.chat.completions.create as unknown as (
+            body: Record<string, unknown>,
+            options?: Record<string, unknown>
+          ) => Promise<unknown>
+        )(request, options)) as { choices?: Array<{ message?: { content?: unknown } }> };
+      } catch (error) {
+        if (isAbortLikeError(error) || signal?.aborted) {
+          throw error;
+        }
+        const info = classifyLlmError(error);
+        if (!info.retryable || attempt >= maxRetries) {
+          throw error;
+        }
+        attempt += 1;
+        const delayMs = computeRetryDelay(attempt);
+        this.onRetry?.({ attempt, maxRetries, delayMs, info });
+        await delayWithSignal(delayMs, signal);
+      }
+    }
   }
 
+}
+
+// ─── 重试工具 ────────────────────────────────────────────
+
+function computeRetryDelay(attempt: number): number {
+  const base = Math.min(8000, 700 * 2 ** (attempt - 1));
+  const jitter = 0.8 + Math.random() * 0.4;
+  return Math.round(base * jitter);
+}
+
+function createAbortError(): Error {
+  const error = new Error("Request was aborted.");
+  error.name = "AbortError";
+  return error;
+}
+
+function delayWithSignal(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createAbortError());
+      return;
+    }
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(createAbortError());
+    };
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }

@@ -128,6 +128,8 @@ export type CreateOpenAIClient = () => {
   webSearchTool?: string;
   env?: Record<string, string>;
   machineId?: string;
+  /** LLM 请求失败后的自动重试次数（0–3） */
+  retryCount?: number;
 };
 
 // ─── Handler 签名 ──────────────────────────────────────

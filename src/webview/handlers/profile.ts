@@ -11,6 +11,7 @@ import * as fs from "fs";
 import * as os from "os";
 import OpenAI from "openai";
 import type { HandlerContext } from "../handler-context";
+import { formatLlmErrorText, toLlmErrorInfo } from "../../llm/errors";
 import {
   listProfiles,
   loadProfile,
@@ -96,9 +97,6 @@ export function registerProfileHandlers(
         baseURL: profile.baseURL || undefined,
       });
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-
       const response = await client.chat.completions.create(
         {
           model: profile.model,
@@ -106,14 +104,13 @@ export function registerProfileHandlers(
           max_tokens: 1,
           stream: false,
         },
-        { signal: controller.signal },
+        { signal: AbortSignal.timeout(15000) },
       );
 
-      clearTimeout(timeout);
       ctx.respond(message.requestId as string, true, { success: true, model: response.model });
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      ctx.respond(message.requestId as string, false, undefined, msg);
+      const info = toLlmErrorInfo(error);
+      ctx.respond(message.requestId as string, false, undefined, formatLlmErrorText(info, { includeDetail: true }));
     }
   });
 

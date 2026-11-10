@@ -140,7 +140,8 @@ export class SessionMessageBuilder {
     sessionId: string,
     content: string | null,
     toolCalls: unknown[] | null,
-    reasoningContent?: string | null
+    reasoningContent?: string | null,
+    meta?: MessageMeta
   ): SessionMessage {
     const now = new Date().toISOString();
     const hasReasoningContent = reasoningContent != null;
@@ -152,6 +153,8 @@ export class SessionMessageBuilder {
     if (hasReasoningContent) {
       messageParams!.reasoning_content = reasoningContent;
     }
+    const mergedMeta: MessageMeta | undefined =
+      toolCalls || meta ? { ...(toolCalls ? { asThinking: true } : {}), ...(meta ?? {}) } : undefined;
     return {
       id: crypto.randomUUID(),
       sessionId,
@@ -162,7 +165,7 @@ export class SessionMessageBuilder {
       visible: (content || reasoningContent || "").trim() ? true : false,
       createTime: now,
       updateTime: now,
-      meta: toolCalls ? { asThinking: true } : undefined,
+      meta: mergedMeta,
     };
   }
 

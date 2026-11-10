@@ -5,7 +5,15 @@
  * 注意：此文件必须使用 .svelte.ts 后缀才能使用 $state。
  */
 
-import type { SessionSummary, TokenTelemetry, LlmStreamProgressData, SessionMessageData, AttachedFile, ModifiedFileEntry } from "../types";
+import type {
+  SessionSummary,
+  TokenTelemetry,
+  LlmStreamProgressData,
+  SessionMessageData,
+  AttachedFile,
+  ModifiedFileEntry,
+  SessionErrorInfo,
+} from "../types";
 
 // ─── Tab 页面 ────────────────────────────────────────────
 
@@ -22,6 +30,9 @@ class AppState {
 
   /** 当前会话状态 */
   currentSessionStatus = $state<string | null>(null);
+
+  /** 当前会话最近一次 API 请求失败的原因（null 表示无错误） */
+  lastError = $state<SessionErrorInfo | null>(null);
 
   /** 所有会话列表 */
   sessions = $state<SessionSummary[]>([]);

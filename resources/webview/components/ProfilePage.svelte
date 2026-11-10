@@ -146,8 +146,8 @@
         notify.success(`连接测试通过 ✓ 模型: ${result.model}`);
       }
     } catch (e) {
-      const msg = String(e);
-      notify.error(`连接测试失败: ${msg.slice(0, 120)}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      notify.error(`连接测试失败：${msg}`, 0);
     } finally {
       testingProfile = null;
     }

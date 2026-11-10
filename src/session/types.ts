@@ -7,6 +7,7 @@
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { CreateOpenAIClient, ProcessTimeoutControl, ProcessTimeoutInfo } from "../tools/types";
 import type { McpServerConfig } from "../settings";
+import type { LlmErrorInfo } from "../llm/errors";
 
 // ─── Session 状态 ────────────────────────────────────────
 
@@ -78,6 +79,8 @@ export type SessionEntry = {
   toolCalls: unknown[] | null;
   status: SessionStatus;
   failReason: string | null;
+  /** 最近一次 API 请求失败的结构化信息（成功/中断后清空） */
+  lastError?: LlmErrorInfo | null;
   usage: ModelUsage | null;
   /** 最后一次 LLM 响应的原始 usage（含 prompt_cache_hit/miss） */
   lastUsage: ModelUsage | null;

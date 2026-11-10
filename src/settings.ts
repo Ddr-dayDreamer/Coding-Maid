@@ -14,6 +14,10 @@ import {
   type McpServerConfig,
   loadGlobalSettings,
 } from "./utils/global-settings";
+import { normalizeRetryCount } from "./llm/errors";
+
+/** 单次 LLM 请求的默认整体超时 */
+export const DEFAULT_LLM_TIMEOUT_MS = 600_000;
 
 // ─── Re-export types for backward compatibility ─────────────────────────────
 
@@ -33,6 +37,10 @@ export type ResolvedSettings = {
   params?: Record<string, unknown>;
   /** 是否启用调试日志（统一开关，控制 LLM 请求日志 + prompt 调试输出） */
   debugEnabled: boolean;
+  /** 自动重试次数（0–3） */
+  llmRetryCount: number;
+  /** LLM 请求整体超时（毫秒） */
+  llmTimeoutMs: number;
   notify?: string;
   webSearchTool?: string;
   mcpServers?: Record<string, McpServerConfig>;
@@ -64,6 +72,11 @@ export function resolveSettingsWithCryptoKey(cryptoKey: string): ResolvedSetting
     contextLimit: profile?.contextLimit,
     params: profile?.params,
     debugEnabled: globalSettings.debugEnabled ?? false,
+    llmRetryCount: normalizeRetryCount(globalSettings.llmRetryCount),
+    llmTimeoutMs:
+      typeof globalSettings.llmTimeoutMs === "number" && Number.isFinite(globalSettings.llmTimeoutMs)
+        ? Math.max(5_000, Math.trunc(globalSettings.llmTimeoutMs))
+        : DEFAULT_LLM_TIMEOUT_MS,
     notify: globalSettings.notify,
     mcpServers: globalSettings.mcpServers,
     profileName: globalSettings.activeProfile || "default",

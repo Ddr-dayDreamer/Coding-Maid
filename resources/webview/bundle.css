@@ -205,6 +205,22 @@
   color: var(--vscode-descriptionForeground);
   margin-left: 8px;
 }
+.session-item-failed.svelte-13uwhhy,
+.session-item-interrupted.svelte-13uwhhy {
+  flex-shrink: 0;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 14px;
+  border: 1px solid currentColor;
+}
+.session-item-failed.svelte-13uwhhy {
+  color: var(--vscode-errorForeground, #e74c3c);
+}
+.session-item-interrupted.svelte-13uwhhy {
+  color: var(--vscode-descriptionForeground);
+}
 .session-delete-btn.svelte-13uwhhy {
   flex-shrink: 0;
   width: 20px;
@@ -838,6 +854,97 @@
 .question-submit.svelte-1gpypfo:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* fakecss:F:/projects/Coding-Maid/resources/webview/components/SessionErrorCard.esbuild-svelte-fake-css */
+.error-card.svelte-1ps6hqh {
+  margin: 4px 6px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--vscode-inputValidation-errorBorder, #e33);
+  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.error-header.svelte-1ps6hqh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.error-icon.svelte-1ps6hqh {
+  color: var(--vscode-errorForeground, #f88);
+}
+.error-title.svelte-1ps6hqh {
+  color: var(--vscode-errorForeground, #f88);
+  font-weight: 600;
+}
+.error-badge.svelte-1ps6hqh {
+  padding: 0 5px;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  line-height: 16px;
+}
+.error-badge.code.svelte-1ps6hqh {
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+.error-message.svelte-1ps6hqh {
+  color: var(--vscode-foreground);
+  line-height: 1.5;
+  user-select: text;
+}
+.detail-toggle.svelte-1ps6hqh {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--vscode-textLink-foreground, #3794ff);
+  cursor: pointer;
+  font-size: 11px;
+}
+.error-detail.svelte-1ps6hqh {
+  margin: 0;
+  padding: 6px;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.2));
+  border-radius: 4px;
+  user-select: text;
+}
+.error-actions.svelte-1ps6hqh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.retry-button.svelte-1ps6hqh {
+  padding: 2px 12px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.retry-button.svelte-1ps6hqh:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+}
+.retry-button.svelte-1ps6hqh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.retry-hint.svelte-1ps6hqh {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
 }
 
 /* fakecss:F:/projects/Coding-Maid/resources/webview/components/MessageBoard.esbuild-svelte-fake-css */

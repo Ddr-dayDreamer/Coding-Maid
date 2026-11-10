@@ -63,6 +63,7 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
           type: "sessionStatus",
           sessionId: entry.id,
           status: entry.status,
+          lastError: entry.lastError ?? null,
           processes: this.serializeProcesses(entry.processes),
           modifiedFiles: entry.modifiedFiles ?? undefined,
           tokenTelemetry: this.buildTokenTelemetry(entry),
@@ -248,17 +249,31 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
     webSearchTool?: string;
     env?: Record<string, string>;
     machineId?: string;
+    retryCount?: number;
   } {
     const settings = this.resolveCurrentSettings();
-    const { apiKey, baseURL, model, reasoningPassback, params, notify, webSearchTool } = settings;
+    const { apiKey, baseURL, model, reasoningPassback, params, notify, webSearchTool, llmRetryCount, llmTimeoutMs } =
+      settings;
     const machineId = vscode.env.machineId;
 
     if (!apiKey) {
-      return { client: null, model, baseURL, reasoningPassback, params, notify, webSearchTool, machineId };
+      return {
+        client: null,
+        model,
+        baseURL,
+        reasoningPassback,
+        params,
+        notify,
+        webSearchTool,
+        machineId,
+        retryCount: llmRetryCount,
+      };
     }
 
     return {
-      client: new OpenAI({ apiKey, baseURL: baseURL || undefined }),
+      // 重试统一由 LlmStreamManager 处理（可按设置控制次数并给出提示），
+      // 因此关闭 SDK 自带重试，避免叠加。
+      client: new OpenAI({ apiKey, baseURL: baseURL || undefined, timeout: llmTimeoutMs, maxRetries: 0 }),
       model,
       baseURL,
       reasoningPassback,
@@ -266,6 +281,7 @@ export class CodingMaidViewProvider implements vscode.WebviewViewProvider {
       notify,
       webSearchTool,
       machineId,
+      retryCount: llmRetryCount,
     };
   }
 

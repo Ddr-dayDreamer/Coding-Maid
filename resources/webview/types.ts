@@ -15,6 +15,7 @@ export type BackendMessage =
     sessionId: string;
     summary: string;
     status: string;
+    lastError?: SessionErrorInfo | null;
     messages: SessionMessageData[];
     tokenTelemetry?: TokenTelemetry;
     processes?: ProcessInfo[];
@@ -27,6 +28,7 @@ export type BackendMessage =
     type: "sessionStatus";
     sessionId: string;
     status: string;
+    lastError?: SessionErrorInfo | null;
     processes?: ProcessInfo[];
     modifiedFiles?: ModifiedFileEntry[];
     tokenTelemetry?: TokenTelemetry;
@@ -47,6 +49,7 @@ export type FrontendMessage =
   | { type: "ready" }
   | { type: "userPrompt"; prompt: string }
   | { type: "interrupt" }
+  | { type: "continueSession"; sessionId: string }
   | { type: "createNewSession" }
   | { type: "selectSession"; sessionId: string }
   | { type: "backToList" }
@@ -68,6 +71,16 @@ export interface SessionSummary {
   createTime: string;
   updateTime: string;
   status: string;
+}
+
+/** 会话级 API 错误（来自后端分类器） */
+export interface SessionErrorInfo {
+  code: string;
+  title: string;
+  message: string;
+  detail?: string;
+  httpStatus?: number;
+  retryable?: boolean;
 }
 
 export interface SessionMessageData {
