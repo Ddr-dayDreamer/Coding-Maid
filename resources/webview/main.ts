@@ -102,6 +102,7 @@ window.addEventListener("message", (event: MessageEvent) => {
         appState.currentSessionId = msg.sessionId;
       }
       appState.currentSessionStatus = msg.status;
+      appState.statusSeq += 1;
       appState.lastError = msg.lastError ?? null;
       appState.runningProcesses = normalizeProcesses(msg.processes);
       appState.modifiedFiles = msg.modifiedFiles ?? [];

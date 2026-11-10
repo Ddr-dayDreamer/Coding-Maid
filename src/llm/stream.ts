@@ -94,8 +94,33 @@ export class LlmStreamManager {
   /** 自动重试前的回调（用于向前端提示“正在重试”） */
   public onRetry?: (event: LlmRetryEvent) => void;
 
+  /**
+   * 各会话当前流式请求已产出的部分内容。
+   * 用户中断时由 SessionManager 同步取走并落盘，保证消息顺序正确。
+   */
+  private readonly partials = new Map<string, { content: string; reasoning: string }>();
+  /** 已被取走的会话：后续到达的 chunk 不再写入，避免重复落盘 */
+  private readonly sealedPartials = new Set<string>();
+
   constructor(createClient: CreateOpenAIClient) {
     this.createClient = createClient;
+  }
+
+  /** 取走并清除某会话的部分内容（无内容时返回 null） */
+  takePartial(sessionId: string): { content: string; reasoning: string } | null {
+    this.sealedPartials.add(sessionId);
+    const partial = this.partials.get(sessionId);
+    this.partials.delete(sessionId);
+    if (!partial || (!partial.content.trim() && !partial.reasoning.trim())) {
+      return null;
+    }
+    return partial;
+  }
+
+  /** 丢弃某会话的部分内容缓存 */
+  clearPartial(sessionId: string): void {
+    this.partials.delete(sessionId);
+    this.sealedPartials.delete(sessionId);
   }
 
   // ─── Token 估算 ────────────────────────────────────────
@@ -169,12 +194,22 @@ export class LlmStreamManager {
     const signal = options?.signal as AbortSignal | undefined;
     let attempt = 0;
 
+    // 新一轮请求开始，清掉上一轮可能残留的部分内容
+    if (sessionId) {
+      this.partials.delete(sessionId);
+      this.sealedPartials.delete(sessionId);
+    }
+
     for (;;) {
       const state: StreamAttemptState = { emitted: false, content: "", reasoning: "" };
       try {
         return await this.createStreamOnce(client, baseURL, request, options, sessionId, debug, state);
       } catch (error) {
         if (isAbortLikeError(error) || signal?.aborted) {
+          // 用户主动中断时同样保留已输出的部分内容，避免“写了一半的回答凭空消失”。
+          if (state.content.trim() || state.reasoning.trim()) {
+            throw new LlmStreamFailure(classifyLlmError(error), error, state.content, state.reasoning);
+          }
           throw error;
         }
 
@@ -297,6 +332,10 @@ export class LlmStreamManager {
             trackText(delta.refusal);
           }
 
+          if (sessionId && (content || reasoningContent) && !this.sealedPartials.has(sessionId)) {
+            this.partials.set(sessionId, { content, reasoning: reasoningContent });
+          }
+
           // 向前端推送流式增量
           if (typeof contentDelta === "string" && contentDelta.length > 0) {
             this.onChunk?.({ sessionId, content: contentDelta });
@@ -371,6 +410,9 @@ export class LlmStreamManager {
       choices: [{ message }],
       usage,
     };
+    if (sessionId) {
+      this.partials.delete(sessionId);
+    }
     // 只记录摘要，不记录完整消息体，避免日志爆炸
     const messages = (Array.isArray(request.messages) ? request.messages : []) as Record<string, unknown>[];
     const tools = (Array.isArray(request.tools) ? request.tools : []) as Record<string, unknown>[];

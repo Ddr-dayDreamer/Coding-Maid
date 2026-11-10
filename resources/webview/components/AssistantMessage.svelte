@@ -89,6 +89,9 @@
       {:else}
         <div class="bubble-content">{msg.content}</div>
       {/if}
+      {#if msg.meta?.interrupted}
+        <div class="interrupted-badge">已中断</div>
+      {/if}
     {/if}
   </div>
 </div>
@@ -143,6 +146,14 @@
 
   .bubble-content {
     white-space: pre-wrap;
+  }
+
+  .interrupted-badge {
+    margin-top: 4px;
+    font-size: 10px;
+    color: var(--vscode-descriptionForeground);
+    opacity: 0.7;
+    font-style: italic;
   }
 
   .bubble-content :global(pre) {

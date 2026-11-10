@@ -6534,7 +6534,7 @@ ${component_stack}
   }
 
   // resources/webview/lib/state.svelte.ts
-  var _currentTab, _currentSessionId, _currentSessionStatus, _lastError, _sessions, _messages, _tokenTelemetry, _llmStreamProgress, _isLoading, _runningProcesses, _inputHistory, _lastPrompt, _pendingPrompt, _pendingRollback, _activePreset, _activeProfile, _approvalConfig, _approvalDecisions, _attachedFiles, _isDragOver, _modifiedFiles, _compaction, _isCompacting, _streamingContent, _streamingReasoning;
+  var _currentTab, _currentSessionId, _currentSessionStatus, _lastError, _sessions, _messages, _tokenTelemetry, _llmStreamProgress, _isLoading, _runningProcesses, _inputHistory, _lastPrompt, _pendingPrompt, _pendingRollback, _activePreset, _activeProfile, _approvalConfig, _approvalDecisions, _attachedFiles, _isDragOver, _modifiedFiles, _compaction, _isCompacting, _statusSeq, _streamingContent, _streamingReasoning;
   var AppState = class {
     constructor() {
       __privateAdd(
@@ -6565,6 +6565,7 @@ ${component_stack}
       __privateAdd(this, _modifiedFiles, state(proxy([])));
       __privateAdd(this, _compaction, state(null));
       __privateAdd(this, _isCompacting, state(false));
+      __privateAdd(this, _statusSeq, state(0));
       __privateAdd(this, _streamingContent, state(""));
       __privateAdd(this, _streamingReasoning, state(""));
     }
@@ -6706,6 +6707,12 @@ ${component_stack}
     set isCompacting(value) {
       set(__privateGet(this, _isCompacting), value, true);
     }
+    get statusSeq() {
+      return get2(__privateGet(this, _statusSeq));
+    }
+    set statusSeq(value) {
+      set(__privateGet(this, _statusSeq), value, true);
+    }
     get streamingContent() {
       return get2(__privateGet(this, _streamingContent));
     }
@@ -6753,6 +6760,7 @@ ${component_stack}
   _modifiedFiles = new WeakMap();
   _compaction = new WeakMap();
   _isCompacting = new WeakMap();
+  _statusSeq = new WeakMap();
   _streamingContent = new WeakMap();
   _streamingReasoning = new WeakMap();
   var appState = new AppState();
@@ -7147,8 +7155,9 @@ ${component_stack}
   var root_33 = from_html(`<div class="thinking-block"><button class="thinking-header svelte-11dqytc"><span class="collapse-icon svelte-11dqytc"> </span> <span class="thinking-label svelte-11dqytc"> </span></button> <!></div>`);
   var root_42 = from_html(`<div class="thinking-content svelte-11dqytc"><div class="bubble-content svelte-11dqytc"> </div></div>`);
   var root_52 = from_html(`<div class="reasoning-toggle svelte-11dqytc"><button class="thinking-header svelte-11dqytc"><span class="collapse-icon svelte-11dqytc"> </span> <span class="thinking-label svelte-11dqytc"> </span></button> <!></div>`);
-  var root_62 = from_html(`<!> <!>`, 1);
-  var root_72 = from_html(`<div class="bubble-assistant svelte-11dqytc"><div class="bubble-avatar svelte-11dqytc"></div> <div class="bubble-body svelte-11dqytc"><!></div></div>`);
+  var root_62 = from_html(`<div class="interrupted-badge svelte-11dqytc">\u5DF2\u4E2D\u65AD</div>`);
+  var root_72 = from_html(`<!> <!> <!>`, 1);
+  var root_8 = from_html(`<div class="bubble-assistant svelte-11dqytc"><div class="bubble-avatar svelte-11dqytc"></div> <div class="bubble-body svelte-11dqytc"><!></div></div>`);
   function AssistantMessage($$anchor, $$props) {
     push($$props, true);
     function getReasoning() {
@@ -7171,7 +7180,7 @@ ${component_stack}
     function toggle() {
       $$props.onToggleExpand($$props.msg.id);
     }
-    var div = root_72();
+    var div = root_8();
     var div_1 = sibling(child(div), 2);
     var node = child(div_1);
     {
@@ -7233,7 +7242,7 @@ ${component_stack}
       };
       var d_1 = user_derived(() => isThinkingOnly());
       var alternate_2 = ($$anchor2) => {
-        var fragment = root_62();
+        var fragment = root_72();
         var node_3 = first_child(fragment);
         {
           var consequent_4 = ($$anchor3) => {
@@ -7299,6 +7308,16 @@ ${component_stack}
           if_block(node_5, ($$render) => {
             if ($$props.msg.html) $$render(consequent_5);
             else $$render(alternate_1, -1);
+          });
+        }
+        var node_6 = sibling(node_5, 2);
+        {
+          var consequent_6 = ($$anchor3) => {
+            var div_11 = root_62();
+            append($$anchor3, div_11);
+          };
+          if_block(node_6, ($$render) => {
+            if ($$props.msg.meta?.interrupted) $$render(consequent_6);
           });
         }
         append($$anchor2, fragment);
@@ -7490,7 +7509,7 @@ ${component_stack}
   var root_54 = from_html(`<span class="approval-decided-ok svelte-1gpypfo">\u2705 \u5DF2\u6279\u51C6</span>`);
   var root_63 = from_html(`<span class="approval-decided-no svelte-1gpypfo">\u274C \u5DF2\u62D2\u7EDD</span>`);
   var root_73 = from_html(`<div class="approval-decided svelte-1gpypfo"><!></div>`);
-  var root_8 = from_html(`<div class="approval-actions svelte-1gpypfo"><button class="btn-approve svelte-1gpypfo">\u2705 \u6279\u51C6</button> <button class="btn-reject svelte-1gpypfo">\u274C \u62D2\u7EDD</button></div>`);
+  var root_82 = from_html(`<div class="approval-actions svelte-1gpypfo"><button class="btn-approve svelte-1gpypfo">\u2705 \u6279\u51C6</button> <button class="btn-reject svelte-1gpypfo">\u274C \u62D2\u7EDD</button></div>`);
   var root_9 = from_html(`<div class="approval-item svelte-1gpypfo"><div class="approval-tool-name svelte-1gpypfo"><span class="tool-icon svelte-1gpypfo">\u2699</span> </div> <!> <pre class="approval-params svelte-1gpypfo"> </pre> <!></div>`);
   var root_10 = from_html(`<div class="approval-card svelte-1gpypfo"><div class="approval-header svelte-1gpypfo">\u{1F510} \u5DE5\u5177\u8C03\u7528\u5F85\u5BA1\u6279</div> <!></div>`);
   var root_11 = from_html(`<div class="plan-wrap svelte-1gpypfo"><!></div>`);
@@ -7822,7 +7841,7 @@ ${component_stack}
               append($$anchor4, div_11);
             };
             var alternate_1 = ($$anchor4) => {
-              var div_12 = root_8();
+              var div_12 = root_82();
               var button_2 = child(div_12);
               var button_3 = sibling(button_2, 2);
               reset(div_12);
@@ -9043,15 +9062,33 @@ ${component_stack}
         appState.pendingPrompt = "";
       }
     });
+    let queuedPrompt = state("");
+    let interruptSeq = 0;
+    let interruptFallback;
     function sendPrompt() {
+      const text2 = get2(promptText).trim();
       if (appState.isProcessing) {
+        if (text2) {
+          set(queuedPrompt, text2, true);
+          interruptSeq = appState.statusSeq;
+          set(promptText, "");
+          if (get2(textareaEl)) get2(textareaEl).style.height = "auto";
+          if (interruptFallback) clearTimeout(interruptFallback);
+          interruptFallback = setTimeout(() => flushQueuedPrompt(), 5e3);
+        }
         api.send("interrupt");
         appState.currentSessionStatus = "interrupted";
         appState.isLoading = false;
         return;
       }
-      const text2 = get2(promptText).trim();
       if (!text2) return;
+      if (get2(queuedPrompt)) {
+        set(queuedPrompt, "");
+        if (interruptFallback) {
+          clearTimeout(interruptFallback);
+          interruptFallback = void 0;
+        }
+      }
       set(promptText, "");
       api.send("userPrompt", { prompt: text2 });
       if (!/^\/compact(\s|$)/.test(text2)) {
@@ -9061,6 +9098,23 @@ ${component_stack}
         get2(textareaEl).style.height = "auto";
       }
     }
+    function flushQueuedPrompt() {
+      if (!get2(queuedPrompt)) return;
+      if (interruptFallback) {
+        clearTimeout(interruptFallback);
+        interruptFallback = void 0;
+      }
+      const text2 = get2(queuedPrompt);
+      set(queuedPrompt, "");
+      api.send("userPrompt", { prompt: text2 });
+      appState.currentSessionStatus = "pending";
+    }
+    user_effect(() => {
+      const seq = appState.statusSeq;
+      if (!get2(queuedPrompt)) return;
+      if (seq <= interruptSeq) return;
+      flushQueuedPrompt();
+    });
     function handleKeydown(e) {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -10080,7 +10134,7 @@ ${component_stack}
   var root_510 = from_html(`<span class="current-tag svelte-1no2ghb">\u5F53\u524D</span>`);
   var root_68 = from_html(`<div class="card-name svelte-1no2ghb"><!> <strong> </strong> <!></div>`);
   var root_75 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14" class="spin svelte-1no2ghb"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Z"></path></svg>`);
-  var root_82 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Zm2.5 4.15a.75.75 0 0 1 .1 1.06l-3 3.5a.75.75 0 0 1-1.1.04l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.47-2.88a.75.75 0 0 1 1-.13Z"></path></svg>`);
+  var root_83 = from_svg(`<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5.75.75 0 0 0-1.5 0 5 5 0 1 1-5-5 .75.75 0 0 0 0-1.5Zm2.5 4.15a.75.75 0 0 1 .1 1.06l-3 3.5a.75.75 0 0 1-1.1.04l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.47-2.88a.75.75 0 0 1 1-.13Z"></path></svg>`);
   var root_92 = from_html(`<div role="button" tabindex="0"><div class="card-info svelte-1no2ghb"><!></div> <div class="card-actions svelte-1no2ghb"><button class="icon-btn svelte-1no2ghb" title="\u91CD\u547D\u540D"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg></button> <button class="icon-btn svelte-1no2ghb" title="\u7F16\u8F91\u914D\u7F6E\u6587\u4EF6"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn test svelte-1no2ghb" title="\u6D4B\u8BD5\u8FDE\u63A5"><!></button> <button class="icon-btn danger svelte-1no2ghb" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
   var root_102 = from_html(`<div class="profile-list svelte-1no2ghb"></div>`);
   var root_1110 = from_html(`<div class="page svelte-1no2ghb"><div class="page-header svelte-1no2ghb"><h2 class="svelte-1no2ghb">\u8FDE\u63A5\u914D\u7F6E</h2> <span class="badge svelte-1no2ghb"> </span></div> <!> <!> <div class="list-actions svelte-1no2ghb"><button class="action-btn primary svelte-1no2ghb"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u65B0\u5EFA\u914D\u7F6E</button></div></div>`);
@@ -10317,7 +10371,7 @@ ${component_stack}
               append($$anchor4, svg);
             };
             var alternate_1 = ($$anchor4) => {
-              var svg_1 = root_82();
+              var svg_1 = root_83();
               append($$anchor4, svg_1);
             };
             if_block(node_5, ($$render) => {
@@ -10849,6 +10903,7 @@ ${component_stack}
           appState.currentSessionId = msg.sessionId;
         }
         appState.currentSessionStatus = msg.status;
+        appState.statusSeq += 1;
         appState.lastError = msg.lastError ?? null;
         appState.runningProcesses = normalizeProcesses(msg.processes);
         appState.modifiedFiles = msg.modifiedFiles ?? [];

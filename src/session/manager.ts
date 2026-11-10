@@ -447,6 +447,20 @@ export class SessionManager {
       return;
     }
 
+    // 新消息到达前，先把上一轮残留的部分内容落盘，保证消息顺序正确
+    const leftover = this.llm.takePartial(sessionId);
+    if (leftover) {
+      const leftoverMessage = this.messageBuilder.buildAssistantMessage(
+        sessionId,
+        leftover.content,
+        null,
+        leftover.reasoning || null,
+        { interrupted: true }
+      );
+      this.storage.appendSessionMessage(sessionId, leftoverMessage);
+      this.onAssistantMessage(leftoverMessage, false);
+    }
+
     // 更新会话状态
     this.storage.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
@@ -700,7 +714,8 @@ export class SessionManager {
     return messages[messages.length - 1];
   }
 
-  /** 调用 LLM 生成摘要文本 */  private async requestSummary(
+  /** 调用 LLM 生成摘要文本 */
+  private async requestSummary(
     messages: SessionMessage[],
     model: string,
     signal: AbortSignal,
@@ -759,7 +774,7 @@ export class SessionManager {
         controller: ctrl,
         mcpToolDefinitions: this.mcpToolDefinitions,
         getPromptToolOptions: () => this.getPromptToolOptions(),
-        appendToolMessages: (sid, calls) => this.appendToolMessages(sid, calls),
+        appendToolMessages: (sid, calls, ctrl) => this.appendToolMessages(sid, calls, ctrl),
         onAssistantMessage: (msg, connect) => this.onAssistantMessage(msg, connect),
         onSessionEntryUpdated: (entry) => this.onSessionEntryUpdated?.(entry),
         onNotify: this.onNotify,
@@ -770,7 +785,10 @@ export class SessionManager {
         activeFile: this.activeFile,
       });
     } finally {
-      this.activationControllers.delete(sessionId);
+      // 身份比较：新一轮 activate 已接管时不要删掉它的 controller
+      if (this.activationControllers.get(sessionId) === ctrl) {
+        this.activationControllers.delete(sessionId);
+      }
     }
   }
 
@@ -801,6 +819,21 @@ export class SessionManager {
     // 中止 LLM 请求
     this.activationControllers.get(sessionId)?.abort();
 
+    // 先把已生成的部分内容落盘，再追加中断提示，
+    // 否则用户会看到“Interrupted.”排在 AI 半截回答之前。
+    const partial = this.llm.takePartial(sessionId);
+    if (partial) {
+      const partialMessage = this.messageBuilder.buildAssistantMessage(
+        sessionId,
+        partial.content,
+        null,
+        partial.reasoning || null,
+        { interrupted: true }
+      );
+      this.storage.appendSessionMessage(sessionId, partialMessage);
+      this.onAssistantMessage(partialMessage, false);
+    }
+
     const now = new Date().toISOString();
     this.storage.updateSessionEntry(sessionId, (entry) => ({
       ...entry,
@@ -811,11 +844,17 @@ export class SessionManager {
       updateTime: now,
     }));
 
-    const contentParts = ["Interrupted."];
-    if (killedPids.length > 0) contentParts.push(`Killed processes: ${killedPids.join(", ")}.`);
-    if (failedPids.length > 0) contentParts.push(`Failed to kill processes: ${failedPids.join(", ")}.`);
-
-    this.onAssistantMessage(this.messageBuilder.buildUserMessage(sessionId, { text: contentParts.join(" ") }), false);
+    // 不再插入 "Interrupted." 用户气泡：
+    // 1) 它不落盘，刷新后消失，与历史不一致；
+    // 2) 前端会把新的 user 消息当作“替换最后一条用户消息”，
+    //    导致用户刚发的内容被覆盖。
+    // 中断状态由 sessionStatus 驱动 UI 展示。
+    if (killedPids.length > 0 || failedPids.length > 0) {
+      const parts = ["Interrupted."];
+      if (killedPids.length > 0) parts.push(`Killed processes: ${killedPids.join(", ")}.`);
+      if (failedPids.length > 0) parts.push(`Failed to kill processes: ${failedPids.join(", ")}.`);
+      this.onNotify?.("info", parts.join(" "), 4000);
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -955,6 +994,7 @@ export class SessionManager {
   private async executeToolCallBatch(
     sessionId: string,
     toolCalls: unknown[],
+    controller?: AbortController,
   ): Promise<{
     toolMessages: SessionMessage[];
     followUpMessages: SessionMessage[];
@@ -1001,7 +1041,7 @@ export class SessionManager {
       },
       onBeforeFileMutation: (filePath) => this.fileHistory.prepareMutation(sessionId, filePath),
       onAfterFileMutation: (filePath) => this.fileHistory.recordMutation(sessionId, filePath),
-      shouldStop: () => !this.activator.hasController(sessionId),
+      shouldStop: () => (controller ? !this.activator.isCurrentController(sessionId, controller) : !this.activator.hasController(sessionId)),
     });
 
     const toolMessages: SessionMessage[] = [];
@@ -1030,7 +1070,11 @@ export class SessionManager {
     return { toolMessages, followUpMessages, waitingForUser };
   }
 
-  private async appendToolMessages(sessionId: string, toolCalls: unknown[]): Promise<{ waitingForUser: boolean }> {
+  private async appendToolMessages(
+    sessionId: string,
+    toolCalls: unknown[],
+    controller?: AbortController
+  ): Promise<{ waitingForUser: boolean }> {
     // ── 第一步：分离需要审批和不需要审批的工具调用 ──
     const approvalNeeded: { parsed: { id: string; name: string; rawArguments: string }; check: ReturnType<typeof registry.checkApproval> }[] = [];
     const noApprovalNeeded: unknown[] = [];
@@ -1055,7 +1099,7 @@ export class SessionManager {
     // 这样当审批通过后 LLM 恢复时，所有 tool_calls 都有对应的 tool 响应。
     let waitingForUser = false;
     if (noApprovalNeeded.length > 0) {
-      const result = await this.executeToolCallBatch(sessionId, noApprovalNeeded);
+      const result = await this.executeToolCallBatch(sessionId, noApprovalNeeded, controller);
       for (const tm of result.toolMessages) {
         this.storage.appendSessionMessage(sessionId, tm);
         this.onAssistantMessage(tm, true);

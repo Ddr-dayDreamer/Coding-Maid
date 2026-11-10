@@ -47,16 +47,41 @@
 
   // ─── 发送 / 中断 ─────────────────────────────────────
 
+  /** 中断后待发送的插话内容 */
+  let queuedPrompt = $state("");
+  /** 发起中断时的状态序号，用于等待后端确认 */
+  let interruptSeq = 0;
+  let interruptFallback: ReturnType<typeof setTimeout> | undefined;
+
   function sendPrompt() {
+    const text = promptText.trim();
+
     if (appState.isProcessing) {
+      // 生成中插话：先中断，等后端确认中断（部分内容已落盘）后再自动发送
+      if (text) {
+        queuedPrompt = text;
+        interruptSeq = appState.statusSeq;
+        promptText = "";
+        if (textareaEl) textareaEl.style.height = "auto";
+        if (interruptFallback) clearTimeout(interruptFallback);
+        interruptFallback = setTimeout(() => flushQueuedPrompt(), 5000);
+      }
       api.send("interrupt");
       appState.currentSessionStatus = "interrupted";
       appState.isLoading = false;
       return;
     }
 
-    const text = promptText.trim();
     if (!text) return;
+
+    // 用户手动发送时，丢弃排队中的插话，避免重复发送
+    if (queuedPrompt) {
+      queuedPrompt = "";
+      if (interruptFallback) {
+        clearTimeout(interruptFallback);
+        interruptFallback = undefined;
+      }
+    }
 
     promptText = "";
     api.send("userPrompt", { prompt: text });
@@ -70,6 +95,26 @@
       textareaEl.style.height = "auto";
     }
   }
+
+  function flushQueuedPrompt() {
+    if (!queuedPrompt) return;
+    if (interruptFallback) {
+      clearTimeout(interruptFallback);
+      interruptFallback = undefined;
+    }
+    const text = queuedPrompt;
+    queuedPrompt = "";
+    api.send("userPrompt", { prompt: text });
+    appState.currentSessionStatus = "pending";
+  }
+
+  // 后端确认中断完成后，自动发送排队中的插话
+  $effect(() => {
+    const seq = appState.statusSeq;
+    if (!queuedPrompt) return;
+    if (seq <= interruptSeq) return;
+    flushQueuedPrompt();
+  });
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {

@@ -151,6 +151,8 @@ export type MessageMeta = {
   isSummary?: boolean;
   isPreset?: boolean;
   isModelChange?: boolean;
+  /** 该消息因用户中断而只保留了部分内容 */
+  interrupted?: boolean;
   /** 摘要消息的压缩统计（供前端卡片展示） */
   compaction?: {
     tokensBefore: number;

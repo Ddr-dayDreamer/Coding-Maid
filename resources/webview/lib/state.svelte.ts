@@ -92,6 +92,9 @@ class AppState {
   /** 是否正在压缩上下文 */
   isCompacting = $state(false);
 
+  /** 后端确认的会话状态变更序号（用于中断后触发插话队列） */
+  statusSeq = $state(0);
+
   /** 流式输出暂存内容（打字机效果） */
   streamingContent = $state("");
 

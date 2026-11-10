@@ -28,6 +28,21 @@ export function registerPromptHandlers(
 
   registerHandler("interrupt", async () => {
     ctx.sessionManager.interruptActiveSession();
+    // 通知前端中断已完成，插话队列据此触发
+    const sessionId = ctx.sessionManager.getActiveSessionId();
+    const session = sessionId ? ctx.sessionManager.getSession(sessionId) : null;
+    if (sessionId && session) {
+      ctx.sendMessage({
+        type: "sessionStatus",
+        sessionId,
+        status: session.status,
+        lastError: session.lastError ?? null,
+        processes: serializeProcesses(session.processes),
+        modifiedFiles: session.modifiedFiles ?? undefined,
+        compaction: session.compaction ?? null,
+        tokenTelemetry: buildTokenTelemetry(ctx, session),
+      });
+    }
   });
 
   // ─── 手动压缩上下文 ────────────────────────────────

@@ -31,7 +31,11 @@ export type ActivateOptions = {
   controller?: AbortController;
   mcpToolDefinitions: ToolDefinition[];
   getPromptToolOptions: () => { model: string; availableTools?: string[] };
-  appendToolMessages: (sessionId: string, toolCalls: unknown[]) => Promise<{ waitingForUser: boolean }>;
+  appendToolMessages: (
+    sessionId: string,
+    toolCalls: unknown[],
+    controller?: AbortController
+  ) => Promise<{ waitingForUser: boolean }>;
   onAssistantMessage: (message: SessionMessage, shouldConnect: boolean) => void;
   onSessionEntryUpdated?: (entry: SessionEntry) => void;
   presetMgr: PresetManager;
@@ -81,6 +85,11 @@ export class SessionActivator {
 
   hasController(sessionId: string): boolean {
     return this.sessionControllers.has(sessionId);
+  }
+
+  /** 判断给定 controller 是否仍是该会话当前生效的（用于中断后旧循环退出） */
+  isCurrentController(sessionId: string, controller: AbortController): boolean {
+    return this.sessionControllers.get(sessionId) === controller;
   }
 
   /** 清空快速路径缓存（用户发送新消息时由 SessionManager 调用） */
@@ -167,7 +176,7 @@ export class SessionActivator {
       let toolCalls: unknown[] | null = null;
 
       for (let iteration = 0; iteration < maxIterations; iteration++) {
-        if (this.isInterruptedLocal(sessionId)) {
+        if (this.isInterruptedLocal(sessionId, sessionController)) {
           return;
         }
 
@@ -181,8 +190,8 @@ export class SessionActivator {
           this.storage.listSessionMessages(sessionId)
         );
         if (pendingToolCalls.length > 0) {
-          const toolAppendResult = await opts.appendToolMessages(sessionId, pendingToolCalls);
-          if (this.isInterruptedLocal(sessionId)) {
+          const toolAppendResult = await opts.appendToolMessages(sessionId, pendingToolCalls, sessionController);
+          if (this.isInterruptedLocal(sessionId, sessionController)) {
             return;
           }
           if (toolAppendResult.waitingForUser) {
@@ -302,7 +311,7 @@ export class SessionActivator {
         const thinking = typeof rawThinking === "string" ? rawThinking : null;
         const refusal = (message as { refusal?: string } | undefined)?.refusal ?? null;
 
-        if (this.isInterruptedLocal(sessionId)) {
+        if (this.isInterruptedLocal(sessionId, sessionController)) {
           return;
         }
 
@@ -312,11 +321,11 @@ export class SessionActivator {
 
         let waitingForUser = false;
         if (toolCalls) {
-          const toolAppendResult = await opts.appendToolMessages(sessionId, toolCalls);
+          const toolAppendResult = await opts.appendToolMessages(sessionId, toolCalls, sessionController);
           waitingForUser = toolAppendResult.waitingForUser;
         }
 
-        if (this.isInterruptedLocal(sessionId)) {
+        if (this.isInterruptedLocal(sessionId, sessionController)) {
           return;
         }
 
@@ -378,17 +387,31 @@ export class SessionActivator {
       const aborted = info.code === "aborted" || sessionController.signal.aborted;
       console.log("[DEBUG] activate: CATCH error =", info.code, info.detail);
 
-      // 已输出的部分内容先落盘，避免用户刚看到的内容凭空消失；
-      // 之后点击“继续”会基于这段内容接着生成。
-      if (!aborted && error instanceof LlmStreamFailure && error.partialContent.trim()) {
+      // 已被新一轮 activate 接管（用户中断后立刻插话）：本轮不再改动会话状态，
+      // 否则会把新一轮刚设置的 processing 覆盖成 interrupted。
+      const superseded = this.sessionControllers.get(sessionId) !== sessionController;
+
+      // 已输出的部分内容先落盘，避免用户刚看到的内容凭空消失。
+      // 中断场景下 interruptSession 可能已经抢先落盘，takePartial 保证只落一次。
+      // 已被接管时不能取：partials 现在属于新一轮请求。
+      const partial = superseded ? null : this.llm.takePartial(sessionId);
+      const partialContent = partial?.content ?? (aborted ? "" : error instanceof LlmStreamFailure ? error.partialContent : "");
+      const partialReasoning =
+        partial?.reasoning ?? (aborted ? "" : error instanceof LlmStreamFailure ? error.partialReasoning : "");
+      if (!superseded && (partialContent.trim() || partialReasoning.trim())) {
         const partialMessage = this.messageBuilder.buildAssistantMessage(
           sessionId,
-          error.partialContent,
+          partialContent,
           null,
-          error.partialReasoning || null
+          partialReasoning || null,
+          aborted ? { interrupted: true } : undefined
         );
         this.storage.appendSessionMessage(sessionId, partialMessage);
         opts.onAssistantMessage(partialMessage, false);
+      }
+
+      if (superseded) {
+        return;
       }
 
       this.storage.updateSessionEntry(sessionId, (entry) => ({
@@ -470,7 +493,11 @@ export class SessionActivator {
     return result;
   }
 
-  private isInterruptedLocal(sessionId: string): boolean {
+  private isInterruptedLocal(sessionId: string, controller?: AbortController): boolean {
+    if (controller) {
+      // 身份比较：新一轮 activate 覆盖 controller 后，旧循环应立即退出
+      return this.sessionControllers.get(sessionId) !== controller;
+    }
     return !this.sessionControllers.has(sessionId);
   }
 

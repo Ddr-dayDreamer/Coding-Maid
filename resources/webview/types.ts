@@ -119,6 +119,8 @@ export interface SessionMessageData {
     resultMd?: string;
     isPreset?: boolean;
     isSummary?: boolean;
+    /** 该消息因用户中断而只保留了部分内容 */
+    interrupted?: boolean;
     compaction?: {
       tokensBefore: number;
       tokensAfter: number;
