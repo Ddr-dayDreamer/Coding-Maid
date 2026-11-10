@@ -68,3 +68,24 @@ test("reports the fallback directory when the shell directory has no native coun
   }
   assertUsableDirectory(metadata.cwd, "cwd");
 });
+
+test("reports timing metadata for the executed command", async () => {
+  const context = createContext("bash-timing", process.cwd());
+  const result = await handleBashTool({ command: "echo timing" }, context);
+  assert.equal(result.ok, true);
+  assert.equal(result.output?.trim(), "timing");
+
+  const metadata = result.metadata as {
+    startedAt?: string;
+    finishedAt?: string;
+    durationMs?: number;
+  };
+  assert.ok(metadata.startedAt, "startedAt should be present");
+  assert.ok(metadata.finishedAt, "finishedAt should be present");
+  assert.equal(typeof metadata.durationMs, "number");
+  assert.ok((metadata.durationMs ?? -1) >= 0, "durationMs should not be negative");
+  assert.ok(
+    Date.parse(metadata.finishedAt!) - Date.parse(metadata.startedAt!) >= 0,
+    "finishedAt should not precede startedAt"
+  );
+});

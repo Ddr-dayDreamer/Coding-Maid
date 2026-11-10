@@ -7478,13 +7478,17 @@ ${component_stack}
   var root_9 = from_html(`<div class="approval-item svelte-1gpypfo"><div class="approval-tool-name svelte-1gpypfo"><span class="tool-icon svelte-1gpypfo">\u2699</span> </div> <!> <pre class="approval-params svelte-1gpypfo"> </pre> <!></div>`);
   var root_10 = from_html(`<div class="approval-card svelte-1gpypfo"><div class="approval-header svelte-1gpypfo">\u{1F510} \u5DE5\u5177\u8C03\u7528\u5F85\u5BA1\u6279</div> <!></div>`);
   var root_11 = from_html(`<div class="plan-wrap svelte-1gpypfo"><!></div>`);
-  var root_122 = from_html(`<div class="tool-description svelte-1gpypfo"> </div>`);
-  var root_132 = from_html(`<div class="tool-command-line svelte-1gpypfo"><span class="tool-prompt svelte-1gpypfo">$</span> </div>`);
-  var root_142 = from_html(`<div class="tool-command-line svelte-1gpypfo"> </div>`);
-  var root_152 = from_html(`<pre class="tool-result svelte-1gpypfo"> </pre>`);
-  var root_162 = from_html(`<div class="tool-result-wrap svelte-1gpypfo"><!></div>`);
-  var root_17 = from_html(`<div class="tool-card svelte-1gpypfo"><button class="tool-header svelte-1gpypfo"><span class="collapse-icon svelte-1gpypfo"> </span> <span class="tool-icon svelte-1gpypfo">\u2699</span> <span class="tool-name svelte-1gpypfo"> </span></button> <div class="tool-summary svelte-1gpypfo"><!> <!></div> <!></div>`);
-  var root_18 = from_html(`<div class="bubble-tool svelte-1gpypfo"><div class="bubble-avatar svelte-1gpypfo"></div> <div class="bubble-body svelte-1gpypfo"><!></div></div>`);
+  var root_122 = from_html(`<span> </span>`);
+  var root_132 = from_html(`<span class="tool-duration svelte-1gpypfo"> </span>`);
+  var root_142 = from_html(`<div class="tool-description svelte-1gpypfo"> </div>`);
+  var root_152 = from_html(`<div class="tool-command-line svelte-1gpypfo"><span class="tool-prompt svelte-1gpypfo">$</span> </div>`);
+  var root_162 = from_html(`<div class="tool-command-line svelte-1gpypfo"> </div>`);
+  var root_17 = from_html(`<div class="tool-result-meta svelte-1gpypfo"> </div>`);
+  var root_18 = from_html(`<div class="tool-error svelte-1gpypfo"> </div>`);
+  var root_19 = from_html(`<pre class="tool-result svelte-1gpypfo"> </pre>`);
+  var root_20 = from_html(`<div class="tool-result-wrap svelte-1gpypfo"><!> <!> <!></div>`);
+  var root_21 = from_html(`<div class="tool-card svelte-1gpypfo"><button class="tool-header svelte-1gpypfo"><span class="collapse-icon svelte-1gpypfo"> </span> <span></span> <span class="tool-icon svelte-1gpypfo">\u2699</span> <span class="tool-name svelte-1gpypfo"> </span> <!> <!></button> <div class="tool-summary svelte-1gpypfo"><!> <!></div> <!></div>`);
+  var root_222 = from_html(`<div class="bubble-tool svelte-1gpypfo"><div class="bubble-avatar svelte-1gpypfo"></div> <div class="bubble-body svelte-1gpypfo"><!></div></div>`);
   function ToolMessage($$anchor, $$props) {
     push($$props, true);
     let selections = state(proxy({}));
@@ -7597,6 +7601,74 @@ ${component_stack}
     function getToolDescription() {
       return getToolArg("description");
     }
+    function getResultData() {
+      if (!$$props.msg.content) return null;
+      try {
+        const data = JSON.parse($$props.msg.content);
+        return data && typeof data === "object" ? data : null;
+      } catch {
+        return null;
+      }
+    }
+    function getDurationMs() {
+      const value = getResultData()?.metadata?.durationMs;
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    }
+    function formatDuration(ms) {
+      if (ms < 1e3) return `${Math.round(ms)}ms`;
+      if (ms < 6e4) return `${(ms / 1e3).toFixed(ms < 1e4 ? 2 : 1)}s`;
+      const minutes = Math.floor(ms / 6e4);
+      const seconds = Math.round(ms % 6e4 / 1e3);
+      return `${minutes}m ${seconds}s`;
+    }
+    function getFullResult() {
+      const data = getResultData();
+      if (data && typeof data.output === "string" && data.output) return data.output;
+      if (getErrorText()) return null;
+      return $$props.msg.meta?.resultMd ?? null;
+    }
+    function getErrorText() {
+      const data = getResultData();
+      if (!data) return null;
+      if (typeof data.error === "string" && data.error) return data.error;
+      if (typeof data.autoRejectReason === "string" && data.autoRejectReason) return data.autoRejectReason;
+      return null;
+    }
+    function getResultMetaLine() {
+      const data = getResultData();
+      if (!data) return null;
+      const meta = data.metadata ?? {};
+      const parts = [];
+      if (typeof meta.exitCode === "number") parts.push(`exit ${meta.exitCode}`);
+      if (typeof meta.durationMs === "number") parts.push(formatDuration(meta.durationMs));
+      if (typeof meta.cwd === "string" && meta.cwd) parts.push(meta.cwd);
+      if (meta.timedOut === true) parts.push("timed out");
+      if (meta.truncated === true) parts.push("output truncated");
+      return parts.length > 0 ? parts.join(" \xB7 ") : null;
+    }
+    function getStatus() {
+      if (!$$props.msg.content) return "pending";
+      const data = getResultData();
+      if (!data) return "ok";
+      if (data.autoReject === true) return "auto-rejected";
+      if (data.metadata?.userRejected === true) return "rejected";
+      return data.ok === true ? "ok" : "failed";
+    }
+    const STATUS_LABEL = {
+      ok: "\u6210\u529F",
+      failed: "\u5931\u8D25",
+      rejected: "\u5DF2\u62D2\u7EDD",
+      "auto-rejected": "\u5DF2\u62E6\u622A",
+      pending: "\u5F85\u6267\u884C"
+    };
+    const durationLabel = user_derived(() => {
+      const ms = getDurationMs();
+      return ms === null ? null : formatDuration(ms);
+    });
+    const resultMetaLine = user_derived(getResultMetaLine);
+    const fullResult = user_derived(getFullResult);
+    const errorText = user_derived(getErrorText);
+    const status = user_derived(getStatus);
     function isUpdatePlan() {
       return getToolName() === "UpdatePlan" && isSuccessfulUpdatePlan();
     }
@@ -7619,7 +7691,7 @@ ${component_stack}
       }
       return false;
     }
-    var div = root_18();
+    var div = root_222();
     var div_1 = sibling(child(div), 2);
     var node = child(div_1);
     {
@@ -7774,90 +7846,157 @@ ${component_stack}
       };
       var d_2 = user_derived(() => isUpdatePlan());
       var alternate_2 = ($$anchor2) => {
-        var div_14 = root_17();
+        var div_14 = root_21();
         var button_4 = child(div_14);
         var span_4 = child(button_4);
         var text_6 = child(span_4, true);
         reset(span_4);
-        var span_5 = sibling(span_4, 4);
-        var text_7 = child(span_5, true);
-        reset(span_5);
-        reset(button_4);
-        var div_15 = sibling(button_4, 2);
-        var node_8 = child(div_15);
+        var span_5 = sibling(span_4, 2);
+        let classes_1;
+        var span_6 = sibling(span_5, 4);
+        var text_7 = child(span_6, true);
+        reset(span_6);
+        var node_8 = sibling(span_6, 2);
         {
           var consequent_7 = ($$anchor3) => {
-            var div_16 = root_122();
-            var text_8 = child(div_16, true);
-            reset(div_16);
-            template_effect(($0) => set_text(text_8, $0), [() => getToolDescription()]);
-            append($$anchor3, div_16);
+            var span_7 = root_122();
+            let classes_2;
+            var text_8 = child(span_7, true);
+            reset(span_7);
+            template_effect(() => {
+              classes_2 = set_class(span_7, 1, "tool-status-label svelte-1gpypfo", null, classes_2, {
+                failed: get2(status) === "failed",
+                rejected: get2(status) === "rejected" || get2(status) === "auto-rejected"
+              });
+              set_text(text_8, STATUS_LABEL[get2(status)]);
+            });
+            append($$anchor3, span_7);
           };
-          var d_3 = user_derived(() => getToolDescription());
           if_block(node_8, ($$render) => {
-            if (get2(d_3)) $$render(consequent_7);
+            if (get2(status) !== "ok" && get2(status) !== "pending") $$render(consequent_7);
           });
         }
         var node_9 = sibling(node_8, 2);
         {
           var consequent_8 = ($$anchor3) => {
-            var div_17 = root_132();
-            var text_9 = sibling(child(div_17));
+            var span_8 = root_132();
+            var text_9 = child(span_8);
+            reset(span_8);
+            template_effect(() => set_text(text_9, `\u23F1 ${get2(durationLabel) ?? ""}`));
+            append($$anchor3, span_8);
+          };
+          if_block(node_9, ($$render) => {
+            if (get2(durationLabel)) $$render(consequent_8);
+          });
+        }
+        reset(button_4);
+        var div_15 = sibling(button_4, 2);
+        var node_10 = child(div_15);
+        {
+          var consequent_9 = ($$anchor3) => {
+            var div_16 = root_142();
+            var text_10 = child(div_16, true);
+            reset(div_16);
+            template_effect(($0) => set_text(text_10, $0), [() => getToolDescription()]);
+            append($$anchor3, div_16);
+          };
+          var d_3 = user_derived(() => getToolDescription());
+          if_block(node_10, ($$render) => {
+            if (get2(d_3)) $$render(consequent_9);
+          });
+        }
+        var node_11 = sibling(node_10, 2);
+        {
+          var consequent_10 = ($$anchor3) => {
+            var div_17 = root_152();
+            var text_11 = sibling(child(div_17));
             reset(div_17);
-            template_effect(($0) => set_text(text_9, ` ${$0 ?? ""}`), [() => getToolCommand()]);
+            template_effect(($0) => set_text(text_11, ` ${$0 ?? ""}`), [() => getToolCommand()]);
             append($$anchor3, div_17);
           };
           var d_4 = user_derived(() => getToolCommand());
-          var consequent_9 = ($$anchor3) => {
-            var div_18 = root_142();
-            var text_10 = child(div_18, true);
+          var consequent_11 = ($$anchor3) => {
+            var div_18 = root_162();
+            var text_12 = child(div_18, true);
             reset(div_18);
-            template_effect(() => set_text(text_10, $$props.msg.meta.paramsMd));
+            template_effect(() => set_text(text_12, $$props.msg.meta.paramsMd));
             append($$anchor3, div_18);
           };
-          if_block(node_9, ($$render) => {
-            if (get2(d_4)) $$render(consequent_8);
-            else if ($$props.msg.meta?.paramsMd) $$render(consequent_9, 1);
+          if_block(node_11, ($$render) => {
+            if (get2(d_4)) $$render(consequent_10);
+            else if ($$props.msg.meta?.paramsMd) $$render(consequent_11, 1);
           });
         }
         reset(div_15);
-        var node_10 = sibling(div_15, 2);
+        var node_12 = sibling(div_15, 2);
         {
-          var consequent_12 = ($$anchor3) => {
-            var div_19 = root_162();
-            var node_11 = child(div_19);
+          var consequent_16 = ($$anchor3) => {
+            var div_19 = root_20();
+            var node_13 = child(div_19);
             {
-              var consequent_10 = ($$anchor4) => {
-                var pre_1 = root_152();
-                var text_11 = child(pre_1, true);
+              var consequent_12 = ($$anchor4) => {
+                var div_20 = root_17();
+                var text_13 = child(div_20, true);
+                reset(div_20);
+                template_effect(() => set_text(text_13, get2(resultMetaLine)));
+                append($$anchor4, div_20);
+              };
+              if_block(node_13, ($$render) => {
+                if (get2(resultMetaLine)) $$render(consequent_12);
+              });
+            }
+            var node_14 = sibling(node_13, 2);
+            {
+              var consequent_13 = ($$anchor4) => {
+                var div_21 = root_18();
+                var text_14 = child(div_21, true);
+                reset(div_21);
+                template_effect(() => set_text(text_14, get2(errorText)));
+                append($$anchor4, div_21);
+              };
+              if_block(node_14, ($$render) => {
+                if (get2(errorText)) $$render(consequent_13);
+              });
+            }
+            var node_15 = sibling(node_14, 2);
+            {
+              var consequent_14 = ($$anchor4) => {
+                var pre_1 = root_19();
+                var text_15 = child(pre_1, true);
                 reset(pre_1);
-                template_effect(() => set_text(text_11, $$props.msg.meta.resultMd));
+                template_effect(() => set_text(text_15, get2(fullResult)));
                 append($$anchor4, pre_1);
               };
-              var consequent_11 = ($$anchor4) => {
-                var pre_2 = root_152();
-                var text_12 = child(pre_2, true);
+              var consequent_15 = ($$anchor4) => {
+                var pre_2 = root_19();
+                var text_16 = child(pre_2, true);
                 reset(pre_2);
-                template_effect(() => set_text(text_12, $$props.msg.content));
+                template_effect(() => set_text(text_16, $$props.msg.content));
                 append($$anchor4, pre_2);
               };
-              if_block(node_11, ($$render) => {
-                if ($$props.msg.meta?.resultMd) $$render(consequent_10);
-                else if ($$props.msg.content) $$render(consequent_11, 1);
+              if_block(node_15, ($$render) => {
+                if (get2(fullResult)) $$render(consequent_14);
+                else if ($$props.msg.content && !get2(errorText)) $$render(consequent_15, 1);
               });
             }
             reset(div_19);
             append($$anchor3, div_19);
           };
           var d_5 = user_derived(() => $$props.expandedIds.has($$props.msg.id));
-          if_block(node_10, ($$render) => {
-            if (get2(d_5)) $$render(consequent_12);
+          if_block(node_12, ($$render) => {
+            if (get2(d_5)) $$render(consequent_16);
           });
         }
         reset(div_14);
         template_effect(
           ($0, $1) => {
             set_text(text_6, $0);
+            classes_1 = set_class(span_5, 1, "tool-status-dot svelte-1gpypfo", null, classes_1, {
+              ok: get2(status) === "ok",
+              failed: get2(status) === "failed",
+              rejected: get2(status) === "rejected" || get2(status) === "auto-rejected"
+            });
+            set_attribute2(span_5, "title", STATUS_LABEL[get2(status)]);
             set_text(text_7, $1);
           },
           [
@@ -7884,7 +8023,7 @@ ${component_stack}
 
   // resources/webview/components/SessionErrorCard.svelte
   var root7 = from_html(`<span class="error-badge svelte-1ps6hqh"> </span>`);
-  var root_19 = from_html(`<span class="error-badge code svelte-1ps6hqh"> </span>`);
+  var root_110 = from_html(`<span class="error-badge code svelte-1ps6hqh"> </span>`);
   var root_26 = from_html(`<pre class="error-detail svelte-1ps6hqh"> </pre>`);
   var root_36 = from_html(`<button class="detail-toggle svelte-1ps6hqh"> </button> <!>`, 1);
   var root_45 = from_html(`<div class="error-actions svelte-1ps6hqh"><button class="retry-button svelte-1ps6hqh">\u7EE7\u7EED</button> <span class="retry-hint svelte-1ps6hqh">\u4E0D\u8FFD\u52A0\u7528\u6237\u6D88\u606F\uFF0C\u76F4\u63A5\u91CD\u65B0\u8BF7\u6C42</span></div>`);
@@ -7926,7 +8065,7 @@ ${component_stack}
         var node_2 = sibling(node_1, 2);
         {
           var consequent_1 = ($$anchor3) => {
-            var span_2 = root_19();
+            var span_2 = root_110();
             var text_2 = child(span_2, true);
             reset(span_2);
             template_effect(() => set_text(text_2, appState.lastError.code));
@@ -8001,7 +8140,7 @@ ${component_stack}
 
   // resources/webview/components/MessageBoard.svelte
   var root8 = from_html(`<div class="bubble-system svelte-12vix06"><div class="bubble-body svelte-12vix06"> </div></div>`);
-  var root_110 = from_html(`<div class="empty-state svelte-12vix06"><div class="empty-icon svelte-12vix06">\u{1F4AC}</div> <p class="svelte-12vix06">\u5F00\u59CB\u65B0\u7684\u5BF9\u8BDD</p> <p class="empty-hint svelte-12vix06">\u8F93\u5165\u6D88\u606F\u5E76\u6309 Enter \u53D1\u9001</p></div>`);
+  var root_111 = from_html(`<div class="empty-state svelte-12vix06"><div class="empty-icon svelte-12vix06">\u{1F4AC}</div> <p class="svelte-12vix06">\u5F00\u59CB\u65B0\u7684\u5BF9\u8BDD</p> <p class="empty-hint svelte-12vix06">\u8F93\u5165\u6D88\u606F\u5E76\u6309 Enter \u53D1\u9001</p></div>`);
   var root_27 = from_html(`<div class="streaming-thinking svelte-12vix06"><span class="thinking-label svelte-12vix06"> </span> <div class="streaming-reasoning svelte-12vix06"> </div></div>`);
   var root_37 = from_html(`<div class="streaming-answer svelte-12vix06"><div class="bubble-content svelte-12vix06"> <span class="cursor svelte-12vix06">\u258A</span></div></div>`);
   var root_46 = from_html(`<div class="bubble-streaming svelte-12vix06"><div class="bubble-avatar svelte-12vix06"></div> <div class="bubble-body svelte-12vix06"><!> <!></div></div>`);
@@ -8122,7 +8261,7 @@ ${component_stack}
         var node_2 = first_child(fragment_4);
         {
           var consequent_3 = ($$anchor3) => {
-            var div_3 = root_110();
+            var div_3 = root_111();
             append($$anchor3, div_3);
           };
           if_block(node_2, ($$render) => {
@@ -8209,7 +8348,7 @@ ${component_stack}
 
   // resources/webview/components/ContextMeter.svelte
   var root9 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8F93\u5165</span> <span class="svelte-vvns5x"> </span></div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8F93\u51FA</span> <span class="svelte-vvns5x"> </span></div> <div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u8BF7\u6C42\u6B21\u6570</span> <span class="svelte-vvns5x"> </span></div>`, 1);
-  var root_111 = from_html(`<div class="meter-empty svelte-vvns5x">\u6682\u65E0\u7528\u91CF\u6570\u636E</div>`);
+  var root_112 = from_html(`<div class="meter-empty svelte-vvns5x">\u6682\u65E0\u7528\u91CF\u6570\u636E</div>`);
   var root_28 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u672C\u6B21\u7F13\u5B58</span> <span class="svelte-vvns5x"> </span></div>`);
   var root_38 = from_html(`<div class="meter-row svelte-vvns5x"><span class="svelte-vvns5x">\u7D2F\u8BA1\u7F13\u5B58</span> <span class="svelte-vvns5x"> </span></div>`);
   var root_47 = from_html(`<!> <!>`, 1);
@@ -8324,7 +8463,7 @@ ${component_stack}
             append($$anchor3, fragment);
           };
           var alternate = ($$anchor3) => {
-            var div_6 = root_111();
+            var div_6 = root_112();
             append($$anchor3, div_6);
           };
           if_block(node_1, ($$render) => {
@@ -8413,7 +8552,7 @@ ${component_stack}
 
   // resources/webview/components/PresetQuickSelector.svelte
   var root10 = from_html(`<span class="check svelte-afcpaa">\u2713</span>`);
-  var root_112 = from_html(`<button><span class="item-name svelte-afcpaa"> </span> <!></button>`);
+  var root_113 = from_html(`<button><span class="item-name svelte-afcpaa"> </span> <!></button>`);
   var root_29 = from_html(`<div class="empty svelte-afcpaa">\u6682\u65E0\u9884\u8BBE</div>`);
   var root_39 = from_html(`<div class="dropdown svelte-afcpaa"></div>`);
   var root_48 = from_html(`<div class="quick-selector svelte-afcpaa"><button class="badge-btn svelte-afcpaa"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div>`);
@@ -8455,7 +8594,7 @@ ${component_stack}
           () => get2(items2),
           (item) => item.name,
           ($$anchor3, item) => {
-            var button_1 = root_112();
+            var button_1 = root_113();
             let classes_1;
             var span = child(button_1);
             var text_1 = child(span, true);
@@ -8503,7 +8642,7 @@ ${component_stack}
 
   // resources/webview/components/ProfileQuickSelector.svelte
   var root11 = from_html(`<span class="check svelte-hh7eb2">\u2713</span>`);
-  var root_113 = from_html(`<button><span class="item-name svelte-hh7eb2"> </span> <!></button>`);
+  var root_114 = from_html(`<button><span class="item-name svelte-hh7eb2"> </span> <!></button>`);
   var root_210 = from_html(`<div class="empty svelte-hh7eb2">\u6682\u65E0\u914D\u7F6E</div>`);
   var root_310 = from_html(`<div class="dropdown svelte-hh7eb2"></div>`);
   var root_49 = from_html(`<div class="quick-selector svelte-hh7eb2"><button class="badge-btn svelte-hh7eb2"> <svg viewBox="0 0 1024 1024" width="10" height="10"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"></path></svg></button> <!></div>`);
@@ -8545,7 +8684,7 @@ ${component_stack}
           () => get2(items2),
           (item) => item.name,
           ($$anchor3, item) => {
-            var button_1 = root_113();
+            var button_1 = root_114();
             let classes_1;
             var span = child(button_1);
             var text_1 = child(span, true);
@@ -8635,7 +8774,7 @@ ${component_stack}
 
   // resources/webview/components/AttachedFilesBar.svelte
   var root12 = from_html(`<span class="attached-count svelte-1j8bp8d"> </span>`);
-  var root_114 = from_html(`<button class="action-btn clear svelte-1j8bp8d" title="\u6E05\u7A7A\u5168\u90E8">\u6E05\u7A7A</button>`);
+  var root_115 = from_html(`<button class="action-btn clear svelte-1j8bp8d" title="\u6E05\u7A7A\u5168\u90E8">\u6E05\u7A7A</button>`);
   var root_211 = from_html(`<span class="chip svelte-1j8bp8d"><span class="chip-icon svelte-1j8bp8d"> </span> <span class="chip-name svelte-1j8bp8d"> </span> <button class="chip-remove svelte-1j8bp8d" title="\u79FB\u9664">\u2715</button></span>`);
   var root_311 = from_html(`<div class="attached-chips svelte-1j8bp8d"></div>`);
   var root_410 = from_html(`<div class="attached-bar svelte-1j8bp8d"><div class="attached-header svelte-1j8bp8d"><span class="attached-label svelte-1j8bp8d">\u9644\u52A0\u6587\u4EF6\uFF08\u53F3\u952E\u83DC\u5355\u6216Shift\u62D6\u5165\uFF09 <!></span> <div class="attached-actions svelte-1j8bp8d"><button class="action-btn svelte-1j8bp8d" title="\u5C06\u7F16\u8F91\u5668\u4E2D\u9009\u4E2D\u7684\u4EE3\u7801\u9644\u52A0\u4E3A\u4EE3\u7801\u6BB5"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M4.5 2C3.12 2 2 3.12 2 4.5v7C2 12.88 3.12 14 4.5 14h7c1.38 0 2.5-1.12 2.5-2.5v-7C14 3.12 12.88 2 11.5 2h-7zM4 4.5C4 3.67 4.67 3 5.5 3h5c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5h-5A1.5 1.5 0 014 9.5v-5zm2 .5v5h1V5H6zm3 0v5h1V5H9z"></path></svg> \u9644\u52A0\u9009\u4E2D\u4EE3\u7801</button> <!></div></div> <!></div>`);
@@ -8701,7 +8840,7 @@ ${component_stack}
     var node_1 = sibling(button, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var button_1 = root_114();
+        var button_1 = root_115();
         delegated("click", button_1, clearAll2);
         append($$anchor2, button_1);
       };
@@ -8757,7 +8896,7 @@ ${component_stack}
 
   // resources/webview/components/Composer.svelte
   var root13 = from_html(`<button class="dropdown-item svelte-z2mbmf"><span class="item-label svelte-z2mbmf"> </span></button>`);
-  var root_115 = from_html(`<div class="quick-reply-dropdown svelte-z2mbmf"></div>`);
+  var root_116 = from_html(`<div class="quick-reply-dropdown svelte-z2mbmf"></div>`);
   var root_212 = from_html(`<div class="quick-reply-wrap svelte-z2mbmf"><button title="\u5FEB\u901F\u56DE\u590D"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M9 0L1 9h4l-1 7 8-9H8l1-7z" fill="currentColor"></path></svg></button> <!></div>`);
   var root_312 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor"></rect></svg>`);
   var root_411 = from_svg(`<svg viewBox="0 0 16 16" width="16" height="16"><path d="M1.5 1.5L14.5 8L1.5 14.5V1.5z" fill="currentColor"></path></svg>`);
@@ -8867,7 +9006,7 @@ ${component_stack}
         var node_5 = sibling(button, 2);
         {
           var consequent = ($$anchor3) => {
-            var div_6 = root_115();
+            var div_6 = root_116();
             each(div_6, 21, () => get2(quickReplies), (reply) => reply.id, ($$anchor4, reply) => {
               var button_1 = root13();
               var span = child(button_1);
@@ -8934,7 +9073,7 @@ ${component_stack}
 
   // resources/webview/components/ModifiedFiles.svelte
   var root14 = from_html(`<div class="file-item svelte-1miwrjb" role="button" tabindex="0" title="\u5DE6\u952E\u6253\u5F00 \uFF5C \u53F3\u952E Diff"><svg class="file-icon svelte-1miwrjb" viewBox="0 0 16 16" width="12" height="12"><path d="M2 1.5C2 .67 2.67 0 3.5 0h5.59c.4 0 .78.16 1.06.44l3.41 3.41c.28.28.44.66.44 1.06V14.5c0 .83-.67 1.5-1.5 1.5h-9A1.5 1.5 0 012 14.5V1.5z" fill="currentColor" opacity="0.3"></path><path d="M9 0v3c0 .55.45 1 1 1h3" fill="none" stroke="currentColor" stroke-width="1.2"></path></svg> <span class="file-name svelte-1miwrjb"> </span> <span class="file-dir svelte-1miwrjb"> </span></div>`);
-  var root_116 = from_html(`<div class="file-list svelte-1miwrjb"></div>`);
+  var root_117 = from_html(`<div class="file-list svelte-1miwrjb"></div>`);
   var root_213 = from_html(`<div class="modified-files svelte-1miwrjb"><div class="header svelte-1miwrjb" role="button" tabindex="0"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg> <span class="header-label svelte-1miwrjb">\u4FEE\u6539\u7684\u6587\u4EF6</span> <span class="header-count svelte-1miwrjb"> </span> <button class="clear-btn svelte-1miwrjb" title="\u6E05\u9664\u4FEE\u6539\u6587\u4EF6\u5217\u8868\u4E0E\u7F16\u8F91\u5668\u9AD8\u4EAE">&times;</button></div> <!></div>`);
   function ModifiedFiles($$anchor, $$props) {
     push($$props, true);
@@ -8975,7 +9114,7 @@ ${component_stack}
         var node_1 = sibling(div_1, 2);
         {
           var consequent = ($$anchor3) => {
-            var div_2 = root_116();
+            var div_2 = root_117();
             each(div_2, 21, () => appState.modifiedFiles, (file) => file.filePath, ($$anchor4, file) => {
               var div_3 = root14();
               var span_1 = sibling(child(div_3), 2);
@@ -9043,7 +9182,7 @@ ${component_stack}
 
   // resources/webview/components/PresetList.svelte
   var root16 = from_html(`<p class="hint svelte-199frlg">\u52A0\u8F7D\u4E2D...</p>`);
-  var root_117 = from_html(`<p class="hint svelte-199frlg">\u6682\u65E0\u9884\u8BBE\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
+  var root_118 = from_html(`<p class="hint svelte-199frlg">\u6682\u65E0\u9884\u8BBE\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
   var root_214 = from_html(`<span class="indicator svelte-199frlg">\u25CF</span>`);
   var root_313 = from_html(`<span class="current-tag svelte-199frlg">\u5F53\u524D</span>`);
   var root_412 = from_html(`<div role="button" tabindex="0"><div class="item-info svelte-199frlg"><div class="item-name svelte-199frlg"><!> <strong> </strong> <!></div> <p class="item-desc svelte-199frlg"> </p></div> <div class="item-actions svelte-199frlg"><button class="icon-btn svelte-199frlg" title="\u7F16\u8F91"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25a1.75 1.75 0 0 1 .445-.758l8.61-8.61Zm1.414 1.06a.25.25 0 0 0-.354 0L3.103 11.46a.25.25 0 0 0-.064.108l-.558 1.953 1.953-.558a.25.25 0 0 0 .108-.064l8.97-8.97a.25.25 0 0 0 0-.354l-1.086-1.086Z"></path></svg></button> <button class="icon-btn svelte-199frlg" title="\u5BFC\u51FA"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.5 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75ZM2 12.25v1.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 13.75v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .138-.112.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-1.5a.75.75 0 0 0-1.5 0Z"></path></svg></button> <button class="icon-btn danger svelte-199frlg" title="\u5220\u9664"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Zm-6.5 5.5v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Zm4.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0Z"></path></svg></button></div></div>`);
@@ -9071,7 +9210,7 @@ ${component_stack}
         append($$anchor2, p);
       };
       var consequent_1 = ($$anchor2) => {
-        var p_1 = root_117();
+        var p_1 = root_118();
         append($$anchor2, p_1);
       };
       var alternate = ($$anchor2) => {
@@ -9156,7 +9295,7 @@ ${component_stack}
 
   // resources/webview/components/EntryCard.svelte
   var root17 = from_html(`<option> </option>`);
-  var root_118 = from_html(`<div role="listitem"><div class="entry-header svelte-1y400fn"><div class="entry-drag-order svelte-1y400fn"><span class="drag-handle svelte-1y400fn" title="\u62D6\u62FD\u6392\u5E8F"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M5 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path></svg></span> <span class="entry-index svelte-1y400fn"> </span></div> <input class="entry-name-input svelte-1y400fn" type="text" placeholder="\u6761\u76EE\u540D\u79F0"/> <div class="entry-actions svelte-1y400fn"><select class="entry-role-select svelte-1y400fn"></select> <div class="action-divider svelte-1y400fn"></div> <label class="toggle-label svelte-1y400fn" title="\u542F\u7528/\u7981\u7528"><input type="checkbox" class="svelte-1y400fn"/> <span class="toggle-switch svelte-1y400fn"></span></label> <button class="icon-btn danger svelte-1y400fn" title="\u5220\u9664\u6761\u76EE"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Z"></path></svg></button></div></div> <div class="entry-content svelte-1y400fn"><textarea class="entry-textarea svelte-1y400fn" placeholder="\u8F93\u5165\u63D0\u793A\u8BCD\u5185\u5BB9\uFF0C\u652F\u6301 tool.xxx\u3001char \u7B49\u5B8F"></textarea></div></div>`);
+  var root_119 = from_html(`<div role="listitem"><div class="entry-header svelte-1y400fn"><div class="entry-drag-order svelte-1y400fn"><span class="drag-handle svelte-1y400fn" title="\u62D6\u62FD\u6392\u5E8F"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M5 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path></svg></span> <span class="entry-index svelte-1y400fn"> </span></div> <input class="entry-name-input svelte-1y400fn" type="text" placeholder="\u6761\u76EE\u540D\u79F0"/> <div class="entry-actions svelte-1y400fn"><select class="entry-role-select svelte-1y400fn"></select> <div class="action-divider svelte-1y400fn"></div> <label class="toggle-label svelte-1y400fn" title="\u542F\u7528/\u7981\u7528"><input type="checkbox" class="svelte-1y400fn"/> <span class="toggle-switch svelte-1y400fn"></span></label> <button class="icon-btn danger svelte-1y400fn" title="\u5220\u9664\u6761\u76EE"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3V1.75Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5h-.12l-.66 8.69a1.75 1.75 0 0 1-1.74 1.56H4.27a1.75 1.75 0 0 1-1.74-1.56L1.87 4.5h-.12a.75.75 0 0 1 0-1.5H4V1.75C4 .784 4.784 0 5.75 0h4.5C11.216 0 12 .784 12 1.75Z"></path></svg></button></div></div> <div class="entry-content svelte-1y400fn"><textarea class="entry-textarea svelte-1y400fn" placeholder="\u8F93\u5165\u63D0\u793A\u8BCD\u5185\u5BB9\uFF0C\u652F\u6301 tool.xxx\u3001char \u7B49\u5B8F"></textarea></div></div>`);
   function EntryCard($$anchor, $$props) {
     push($$props, true);
     let entry = prop($$props, "entry", 19, () => ({ name: "", role: "system", content: "", enabled: true })), index2 = prop($$props, "index", 3, 0), isActive = prop($$props, "isActive", 3, false), onupdate = prop($$props, "onupdate", 3, (_entry) => {
@@ -9170,7 +9309,7 @@ ${component_stack}
       { value: "assistant", label: "assistant" },
       { value: "chat_history", label: "chat_history" }
     ];
-    var div = root_118();
+    var div = root_119();
     let classes;
     var div_1 = child(div);
     var div_2 = child(div_1);
@@ -9267,7 +9406,7 @@ ${component_stack}
 
   // resources/webview/components/MacroPanel.svelte
   var root18 = from_html(`<button class="macro-btn svelte-11xah9r"><code class="svelte-11xah9r"> </code></button>`);
-  var root_119 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
+  var root_120 = from_html(`<div class="macro-group svelte-11xah9r"><span class="macro-group-label svelte-11xah9r"> </span> <div class="macro-items svelte-11xah9r"></div></div>`);
   var root_215 = from_html(`<div class="macro-groups svelte-11xah9r"></div>`);
   var root_314 = from_html(`<div class="macro-inline svelte-11xah9r"><button class="macro-toggle svelte-11xah9r"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M5.22 3.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L8.94 8 5.22 4.53a.75.75 0 0 1 0-1.06Z"></path></svg> \u63D2\u5165\u5B8F</button> <!></div>`);
   function MacroPanel($$anchor, $$props) {
@@ -9320,7 +9459,7 @@ ${component_stack}
       var consequent = ($$anchor2) => {
         var div_1 = root_215();
         each(div_1, 21, () => MACROS, index, ($$anchor3, group) => {
-          var div_2 = root_119();
+          var div_2 = root_120();
           var span = child(div_2);
           var text2 = child(span, true);
           reset(span);
@@ -9360,7 +9499,7 @@ ${component_stack}
 
   // resources/webview/components/PresetEditor.svelte
   var root19 = from_html(`<button> </button>`);
-  var root_120 = from_html(`<div><!> <!></div>`);
+  var root_121 = from_html(`<div><!> <!></div>`);
   var root_216 = from_html(`<p class="empty-hint svelte-1yfq08f">\u6682\u65E0\u6761\u76EE\uFF0C\u70B9\u51FB"\u6DFB\u52A0\u6761\u76EE"\u5F00\u59CB</p>`);
   var root_315 = from_html(`<div class="editor-panel svelte-1yfq08f"><div class="editor-header svelte-1yfq08f"><button class="back-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M9.78 11.78a.75.75 0 0 1-1.06 0L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 1.06L7.06 8l2.72 2.72a.75.75 0 0 1 0 1.06Z"></path></svg> \u8FD4\u56DE</button> <h2 class="svelte-1yfq08f"> </h2></div> <div class="meta-section svelte-1yfq08f"><div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-name">\u6807\u8BC6\u540D\u79F0</label> <input id="edit-name" class="field-input svelte-1yfq08f" type="text" placeholder="preset-name"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-display-name">\u663E\u793A\u540D\u79F0</label> <input id="edit-display-name" class="field-input svelte-1yfq08f" type="text" placeholder="\u6211\u7684\u9884\u8BBE"/></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-description">\u63CF\u8FF0</label> <input id="edit-description" class="field-input svelte-1yfq08f" type="text" placeholder="\u9884\u8BBE\u7528\u9014\u8BF4\u660E"/></div> <div class="field-row half svelte-1yfq08f"><div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-char">char \u53D8\u91CF</label> <input id="edit-char" class="field-input svelte-1yfq08f" type="text" placeholder="Coding Maid"/></div> <div class="half-field svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-user">user \u53D8\u91CF</label> <input id="edit-user" class="field-input svelte-1yfq08f" type="text" placeholder="user"/></div></div> <div class="field-row svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-tools">\u53EF\u7528\u5DE5\u5177</label> <div class="tool-chips svelte-1yfq08f"></div></div></div> <div class="entries-section svelte-1yfq08f"><div class="entries-header svelte-1yfq08f"><label class="field-label svelte-1yfq08f" for="edit-entries"> </label> <button class="add-entry-btn svelte-1yfq08f"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg> \u6DFB\u52A0\u6761\u76EE</button></div> <div class="entries-list svelte-1yfq08f" role="list"><!> <!></div></div> <div class="editor-footer svelte-1yfq08f"><button class="action-btn primary svelte-1yfq08f"><svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"></path><path fill="currentColor" d="M0 2.75C0 1.784.784 1 1.75 1H9c.464 0 .91.184 1.24.513l2.247 2.247c.329.33.513.776.513 1.24v8.25A1.75 1.75 0 0 1 11.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V5.704a.25.25 0 0 0-.073-.177l-2.204-2.204a.25.25 0 0 0-.177-.073H1.75Z"></path></svg> \u4FDD\u5B58</button> <button class="action-btn svelte-1yfq08f">\u53D6\u6D88</button></div></div>`);
   function PresetEditor($$anchor, $$props) {
@@ -9563,7 +9702,7 @@ ${component_stack}
     var div_13 = sibling(div_12, 2);
     var node = child(div_13);
     each(node, 17, () => get2(editDef).entries, index, ($$anchor2, entry, i) => {
-      var div_14 = root_120();
+      var div_14 = root_121();
       set_attribute2(div_14, "data-entry-index", i);
       var node_1 = child(div_14);
       {
@@ -9792,7 +9931,7 @@ ${component_stack}
 
   // resources/webview/components/ProfilePage.svelte
   var root21 = from_html(`<div class="new-profile-bar svelte-1no2ghb"><input class="new-profile-input svelte-1no2ghb" type="text" placeholder="\u8F93\u5165\u914D\u7F6E\u540D\u79F0..."/> <button class="action-btn primary svelte-1no2ghb">\u521B\u5EFA</button> <button class="action-btn svelte-1no2ghb">\u53D6\u6D88</button></div>`);
-  var root_121 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
+  var root_123 = from_html(`<p class="hint svelte-1no2ghb">\u52A0\u8F7D\u4E2D...</p>`);
   var root_217 = from_html(`<p class="hint svelte-1no2ghb">\u6682\u65E0\u914D\u7F6E\uFF0C\u70B9\u51FB\u4E0B\u65B9\u6309\u94AE\u65B0\u5EFA</p>`);
   var root_316 = from_html(`<input class="rename-input svelte-1no2ghb" type="text"/>`);
   var root_413 = from_html(`<span class="indicator svelte-1no2ghb">\u25CF</span>`);
@@ -9965,7 +10104,7 @@ ${component_stack}
     var node_1 = sibling(node, 2);
     {
       var consequent_1 = ($$anchor2) => {
-        var p = root_121();
+        var p = root_123();
         append($$anchor2, p);
       };
       var consequent_2 = ($$anchor2) => {
@@ -10083,7 +10222,7 @@ ${component_stack}
 
   // resources/webview/components/ApprovalPage.svelte
   var root22 = from_html(`<div class="loading-indicator svelte-ccpdy5"><div class="spinner svelte-ccpdy5"></div> <span>\u52A0\u8F7D\u4E2D\u2026</span></div>`);
-  var root_123 = from_html(`<div class="tool-row svelte-ccpdy5"><div class="tool-info svelte-ccpdy5"><span class="tool-name svelte-ccpdy5"> </span> <span class="tool-label svelte-ccpdy5"> </span></div> <div class="tool-control svelte-ccpdy5"><div class="mode-indicator svelte-ccpdy5"></div> <select class="mode-select svelte-ccpdy5"><option>\u65E0\u9700\u5BA1\u6279</option><option>\u9700\u8981\u5BA1\u6279</option></select></div></div>`);
+  var root_124 = from_html(`<div class="tool-row svelte-ccpdy5"><div class="tool-info svelte-ccpdy5"><span class="tool-name svelte-ccpdy5"> </span> <span class="tool-label svelte-ccpdy5"> </span></div> <div class="tool-control svelte-ccpdy5"><div class="mode-indicator svelte-ccpdy5"></div> <select class="mode-select svelte-ccpdy5"><option>\u65E0\u9700\u5BA1\u6279</option><option>\u9700\u8981\u5BA1\u6279</option></select></div></div>`);
   var root_218 = from_html(`<div class="save-bar svelte-ccpdy5"><button class="btn-save svelte-ccpdy5">\u{1F4BE} \u4FDD\u5B58\u66F4\u6539</button> <span class="save-hint svelte-ccpdy5">\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539</span></div>`);
   var root_317 = from_html(`<div class="batch-actions svelte-ccpdy5"><button class="btn-batch svelte-ccpdy5">\u{1F512} \u5168\u90E8\u9700\u8981\u5BA1\u6279</button> <button class="btn-batch svelte-ccpdy5">\u{1F513} \u5168\u90E8\u65E0\u9700\u5BA1\u6279</button></div> <div class="tool-list svelte-ccpdy5"></div> <!>`, 1);
   var root_414 = from_html(`<div class="approval-page svelte-ccpdy5"><div class="page-header svelte-ccpdy5"><h3 class="svelte-ccpdy5">\u{1F510} \u5DE5\u5177\u5BA1\u6279\u8BBE\u7F6E</h3> <p class="page-hint svelte-ccpdy5">\u8BBE\u7F6E\u5404\u5DE5\u5177\u662F\u5426\u9700\u8981\u7528\u6237\u5BA1\u6279\u540E\u624D\u6267\u884C\u3002\u672A\u8BBE\u7F6E\u7684\u5DE5\u5177\u9ED8\u8BA4<span class="badge-require svelte-ccpdy5">\u9700\u8981\u5BA1\u6279</span>\u3002</p></div> <!></div>`);
@@ -10199,7 +10338,7 @@ ${component_stack}
         reset(div_2);
         var div_3 = sibling(div_2, 2);
         each(div_3, 21, () => get2(tools), (tool) => tool.name, ($$anchor3, tool) => {
-          var div_4 = root_123();
+          var div_4 = root_124();
           var div_5 = child(div_4);
           var span = child(div_5);
           var text2 = child(span, true);
@@ -10266,7 +10405,7 @@ ${component_stack}
 
   // resources/webview/components/ToastNotification.svelte
   var root23 = from_html(`<div role="alert"><span class="toast-icon svelte-1fwhj3x"></span> <span class="toast-text svelte-1fwhj3x"> </span> <button class="toast-close svelte-1fwhj3x" aria-label="\u5173\u95ED"><svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg></button></div>`);
-  var root_124 = from_html(`<div class="toast-container svelte-1fwhj3x"></div>`);
+  var root_125 = from_html(`<div class="toast-container svelte-1fwhj3x"></div>`);
   function ToastNotification($$anchor, $$props) {
     push($$props, true);
     let items2 = user_derived(() => notify.items);
@@ -10283,7 +10422,7 @@ ${component_stack}
     var node = first_child(fragment);
     {
       var consequent = ($$anchor2) => {
-        var div = root_124();
+        var div = root_125();
         each(div, 21, () => get2(items2), (item) => item.id, ($$anchor3, item) => {
           var div_1 = root23();
           var span = child(div_1);
@@ -10315,7 +10454,7 @@ ${component_stack}
 
   // resources/webview/App.svelte
   var root24 = from_html(`<div class="drop-overlay svelte-w8ccf7"><div class="drop-hint svelte-w8ccf7"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" class="svelte-w8ccf7"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline points="17,8 12,3 7,8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> <span class="drop-hint-text svelte-w8ccf7">\u6309\u4F4F Shift \u5E76\u91CA\u653E\u4EE5\u9644\u52A0\u6587\u4EF6</span> <span class="drop-hint-sub svelte-w8ccf7">\u4E5F\u53EF\u5728\u8D44\u6E90\u7BA1\u7406\u5668\u4E2D\u53F3\u952E\u300C\u6DFB\u52A0\u5230 Coding Maid\u300D</span></div></div>`);
-  var root_125 = from_html(`<div class="app svelte-w8ccf7"><!> <!> <!> <!></div>`);
+  var root_126 = from_html(`<div class="app svelte-w8ccf7"><!> <!> <!> <!></div>`);
   function App($$anchor, $$props) {
     push($$props, true);
     let dragCounter = state(0);
@@ -10445,7 +10584,7 @@ ${component_stack}
       api.send("attachFiles", { filePaths: newFiles.map((f) => f.filePath) });
       appState.attachedFiles = [...appState.attachedFiles, ...newFiles];
     }
-    var div = root_125();
+    var div = root_126();
     var node = child(div);
     TabBar(node, {});
     var node_1 = sibling(node, 2);

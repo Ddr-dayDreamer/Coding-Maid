@@ -52,6 +52,9 @@ type ToolCommandResult = {
   timeoutMs?: number;
   deadlineAt?: string;
   pipesHeldOpen?: boolean;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
 };
 
 /**
@@ -70,6 +73,8 @@ type ShellExecution = {
   timeoutMs: number;
   deadlineAtMs: number;
   pipesHeldOpen: boolean;
+  startedAtMs: number;
+  finishedAtMs: number;
 };
 
 export async function handleBashTool(
@@ -227,6 +232,7 @@ async function executeShellCommand(
     let exitSignal: string | null = null;
     /** shell 已退出但输出管道仍被后代进程占用 */
     let pipesHeldOpen = false;
+    let finishedAtMs = startedAtMs;
 
     const getTimeoutInfo = (): ProcessTimeoutInfo => ({
       timeoutMs,
@@ -252,6 +258,7 @@ async function executeShellCommand(
         return;
       }
       settled = true;
+      finishedAtMs = Date.now();
       stopTimeoutTimer();
       stopDrainTimer();
       if (typeof pid === "number") {
@@ -268,6 +275,8 @@ async function executeShellCommand(
         timeoutMs,
         deadlineAtMs,
         pipesHeldOpen,
+        startedAtMs,
+        finishedAtMs,
       });
     };
     /**
@@ -395,6 +404,9 @@ function buildToolCommandResult(
     timeoutMs: execution.timeoutMs,
     deadlineAt: new Date(execution.deadlineAtMs).toISOString(),
     pipesHeldOpen: execution.pipesHeldOpen,
+    startedAt: new Date(execution.startedAtMs).toISOString(),
+    finishedAt: new Date(execution.finishedAtMs).toISOString(),
+    durationMs: Math.max(0, execution.finishedAtMs - execution.startedAtMs),
   };
 }
 
@@ -475,6 +487,15 @@ function formatResult(result: ToolCommandResult, name: string, errorMessage?: st
   }
   if (result.pipesHeldOpen) {
     metadata.pipesHeldOpen = true;
+  }
+  if (result.startedAt) {
+    metadata.startedAt = result.startedAt;
+  }
+  if (result.finishedAt) {
+    metadata.finishedAt = result.finishedAt;
+  }
+  if (typeof result.durationMs === "number") {
+    metadata.durationMs = result.durationMs;
   }
 
   const outputValue = result.output ? result.output : undefined;

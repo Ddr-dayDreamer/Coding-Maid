@@ -727,6 +727,67 @@
   letter-spacing: 0.3px;
   flex-shrink: 0;
 }
+.tool-duration.svelte-1gpypfo {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.7;
+}
+.tool-status-dot.svelte-1gpypfo {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-descriptionForeground);
+  opacity: 0.4;
+}
+.tool-status-dot.ok.svelte-1gpypfo {
+  background: var(--vscode-charts-green, #3fb950);
+  opacity: 0.9;
+}
+.tool-status-dot.failed.svelte-1gpypfo {
+  background: var(--vscode-charts-red, #f85149);
+  opacity: 0.9;
+}
+.tool-status-dot.rejected.svelte-1gpypfo {
+  background: var(--vscode-charts-orange, #d29922);
+  opacity: 0.9;
+}
+.tool-status-label.svelte-1gpypfo {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 3px;
+  line-height: 1.5;
+}
+.tool-status-label.failed.svelte-1gpypfo {
+  color: var(--vscode-charts-red, #f85149);
+  background: color-mix(in srgb, var(--vscode-charts-red, #f85149) 15%, transparent 85%);
+}
+.tool-status-label.rejected.svelte-1gpypfo {
+  color: var(--vscode-charts-orange, #d29922);
+  background: color-mix(in srgb, var(--vscode-charts-orange, #d29922) 15%, transparent 85%);
+}
+.tool-error.svelte-1gpypfo {
+  font-size: 11px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: var(--vscode-charts-red, #f85149);
+  margin-bottom: 3px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.tool-result-meta.svelte-1gpypfo {
+  font-size: 10px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.7;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .tool-summary.svelte-1gpypfo {
   margin-left: 17px;
   margin-top: 2px;

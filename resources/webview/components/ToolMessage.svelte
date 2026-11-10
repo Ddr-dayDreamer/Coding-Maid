@@ -174,6 +174,107 @@
     return getToolArg("description");
   }
 
+  // ─── 工具结果解析（耗时 / 完整返回值） ──────
+
+  type ToolResultData = {
+    ok?: boolean;
+    name?: string;
+    output?: string;
+    error?: string;
+    autoReject?: boolean;
+    autoRejectReason?: string;
+    metadata?: Record<string, unknown>;
+  };
+
+  /** 解析 msg.content 中的工具结果 JSON */
+  function getResultData(): ToolResultData | null {
+    if (!msg.content) return null;
+    try {
+      const data = JSON.parse(msg.content) as ToolResultData;
+      return data && typeof data === "object" ? data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** 工具执行耗时（毫秒），后端未提供时返回 null */
+  function getDurationMs(): number | null {
+    const value = getResultData()?.metadata?.durationMs;
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function formatDuration(ms: number): string {
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)}s`;
+    const minutes = Math.floor(ms / 60_000);
+    const seconds = Math.round((ms % 60_000) / 1000);
+    return `${minutes}m ${seconds}s`;
+  }
+
+  /** 展开时展示的完整返回值：优先 output；无 output 且无错误时回退到 resultMd */
+  function getFullResult(): string | null {
+    const data = getResultData();
+    if (data && typeof data.output === "string" && data.output) return data.output;
+    // 有错误信息时不再回退到 resultMd（那是整段结果 JSON，重复且难读）
+    if (getErrorText()) return null;
+    return msg.meta?.resultMd ?? null;
+  }
+
+  /** 失败原因（有 output 时单独展示在输出上方） */
+  function getErrorText(): string | null {
+    const data = getResultData();
+    if (!data) return null;
+    if (typeof data.error === "string" && data.error) return data.error;
+    if (typeof data.autoRejectReason === "string" && data.autoRejectReason) return data.autoRejectReason;
+    return null;
+  }
+
+  /** 结果元信息摘要（退出码 / 耗时 / 工作目录） */
+  function getResultMetaLine(): string | null {
+    const data = getResultData();
+    if (!data) return null;
+    const meta = data.metadata ?? {};
+    const parts: string[] = [];
+    if (typeof meta.exitCode === "number") parts.push(`exit ${meta.exitCode}`);
+    if (typeof meta.durationMs === "number") parts.push(formatDuration(meta.durationMs));
+    if (typeof meta.cwd === "string" && meta.cwd) parts.push(meta.cwd);
+    if (meta.timedOut === true) parts.push("timed out");
+    if (meta.truncated === true) parts.push("output truncated");
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }
+
+  // ─── 执行状态 ──────────────────────────────
+
+  type ToolStatus = "ok" | "failed" | "rejected" | "auto-rejected" | "pending";
+
+  /** 从结果 JSON 推导执行状态，用于区分成功 / 失败 / 被拒绝的样式 */
+  function getStatus(): ToolStatus {
+    if (!msg.content) return "pending";
+    const data = getResultData();
+    // 非 JSON 结果（历史数据等）无法判断状态，按成功处理，避免误标
+    if (!data) return "ok";
+    if (data.autoReject === true) return "auto-rejected";
+    if (data.metadata?.userRejected === true) return "rejected";
+    return data.ok === true ? "ok" : "failed";
+  }
+
+  const STATUS_LABEL: Record<ToolStatus, string> = {
+    ok: "成功",
+    failed: "失败",
+    rejected: "已拒绝",
+    "auto-rejected": "已拦截",
+    pending: "待执行",
+  };
+
+  const durationLabel = $derived.by(() => {
+    const ms = getDurationMs();
+    return ms === null ? null : formatDuration(ms);
+  });
+  const resultMetaLine = $derived(getResultMetaLine());
+  const fullResult = $derived(getFullResult());
+  const errorText = $derived(getErrorText());
+  const status = $derived(getStatus());
+
   function isUpdatePlan(): boolean {
     return getToolName() === "UpdatePlan" && isSuccessfulUpdatePlan();
   }
@@ -277,8 +378,15 @@
       <div class="tool-card">
         <button class="tool-header" onclick={toggle}>
           <span class="collapse-icon">{expandedIds.has(msg.id) ? "▼" : "▶"}</span>
+          <span class="tool-status-dot" class:ok={status === "ok"} class:failed={status === "failed"} class:rejected={status === "rejected" || status === "auto-rejected"} title={STATUS_LABEL[status]}></span>
           <span class="tool-icon">⚙</span>
           <span class="tool-name">{getToolName()}</span>
+          {#if status !== "ok" && status !== "pending"}
+            <span class="tool-status-label" class:failed={status === "failed"} class:rejected={status === "rejected" || status === "auto-rejected"}>{STATUS_LABEL[status]}</span>
+          {/if}
+          {#if durationLabel}
+            <span class="tool-duration">⏱ {durationLabel}</span>
+          {/if}
         </button>
         <div class="tool-summary">
           {#if getToolDescription()}
@@ -292,9 +400,15 @@
         </div>
         {#if expandedIds.has(msg.id)}
           <div class="tool-result-wrap">
-            {#if msg.meta?.resultMd}
-              <pre class="tool-result">{msg.meta.resultMd}</pre>
-            {:else if msg.content}
+            {#if resultMetaLine}
+              <div class="tool-result-meta">{resultMetaLine}</div>
+            {/if}
+            {#if errorText}
+              <div class="tool-error">{errorText}</div>
+            {/if}
+            {#if fullResult}
+              <pre class="tool-result">{fullResult}</pre>
+            {:else if msg.content && !errorText}
               <pre class="tool-result">{msg.content}</pre>
             {/if}
           </div>
@@ -524,6 +638,77 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     opacity: 0.75;
+  }
+
+  .tool-duration {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-family: var(--vscode-editor-font-family, monospace);
+    color: var(--vscode-descriptionForeground);
+    opacity: 0.7;
+  }
+
+  .tool-status-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--vscode-descriptionForeground);
+    opacity: 0.4;
+  }
+
+  .tool-status-dot.ok {
+    background: var(--vscode-charts-green, #3fb950);
+    opacity: 0.9;
+  }
+
+  .tool-status-dot.failed {
+    background: var(--vscode-charts-red, #f85149);
+    opacity: 0.9;
+  }
+
+  .tool-status-dot.rejected {
+    background: var(--vscode-charts-orange, #d29922);
+    opacity: 0.9;
+  }
+
+  .tool-status-label {
+    flex-shrink: 0;
+    font-size: 10px;
+    padding: 0 4px;
+    border-radius: 3px;
+    line-height: 1.5;
+  }
+
+  .tool-status-label.failed {
+    color: var(--vscode-charts-red, #f85149);
+    background: color-mix(in srgb, var(--vscode-charts-red, #f85149) 15%, transparent 85%);
+  }
+
+  .tool-status-label.rejected {
+    color: var(--vscode-charts-orange, #d29922);
+    background: color-mix(in srgb, var(--vscode-charts-orange, #d29922) 15%, transparent 85%);
+  }
+
+  .tool-error {
+    font-size: 11px;
+    font-family: var(--vscode-editor-font-family, monospace);
+    color: var(--vscode-charts-red, #f85149);
+    margin-bottom: 3px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .tool-result-meta {
+    font-size: 10px;
+    font-family: var(--vscode-editor-font-family, monospace);
+    color: var(--vscode-descriptionForeground);
+    opacity: 0.7;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .tool-summary {

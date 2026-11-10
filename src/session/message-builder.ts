@@ -178,7 +178,6 @@ export class SessionMessageBuilder {
     const now = new Date().toISOString();
     const paramsMd = this.buildToolParamsSnippet(toolFunction);
     const resultMd = this.buildToolResultSnippet(content);
-    const isInvisibleExecution = this.isInvisibleExecution(content);
     return {
       id: crypto.randomUUID(),
       sessionId,
@@ -186,7 +185,9 @@ export class SessionMessageBuilder {
       content,
       contentParams: null,
       messageParams: { tool_call_id: toolCallId },
-      visible: !isInvisibleExecution,
+      // 工具结果一律展示：失败、超时、被拒绝同样是用户需要看到的信息，
+      // 由前端按 ok / autoReject / userRejected 区分状态样式。
+      visible: true,
       createTime: now,
       updateTime: now,
       meta: {
@@ -676,18 +677,6 @@ export class SessionMessageBuilder {
     return `${value.slice(0, maxLength)}... (total ${value.length} chars)`;
   }
 
-  isInvisibleExecution(content: string): boolean {
-    if (!content.trim()) {
-      return false;
-    }
-    try {
-      const parsed = JSON.parse(content) as { name?: unknown; ok?: unknown };
-      return parsed.name === "bash" && parsed.ok !== true;
-    } catch {
-      return false;
-    }
-  }
-
   normalizeSessionMessage(message: SessionMessage): SessionMessage {
     if (message.role !== "tool") {
       return message;
@@ -706,7 +695,8 @@ export class SessionMessageBuilder {
 
     return {
       ...message,
-      visible: typeof message.content === "string" ? !this.isInvisibleExecution(message.content) : message.visible,
+      // 历史会话中曾被隐藏的工具结果（旧版会隐藏失败的 bash）一并恢复显示
+      visible: true,
       meta: nextMeta,
     };
   }
